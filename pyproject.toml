@@ -1,0 +1,129 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyvis"
+version = "0.3.0"
+description = "A Python network graph visualization library - Optimized Edition"
+readme = "README.md"
+requires-python = ">=3.6"
+license = {text = "BSD"}
+authors = [
+    {name = "Jose Unpingco", email = "datascience@westhealth.org"}
+]
+maintainers = [
+    {name = "PyVis Contributors"}
+]
+keywords = ["network", "visualization", "graph", "networkx", "vis.js", "interactive"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "jinja2>=2.9.6",
+    "networkx>=1.11",
+    "ipython>=5.3.0",
+    "jsonpickle>=1.4.1",
+]
+
+[project.optional-dependencies]
+# Shiny integration support
+shiny = [
+    "shiny>=0.6.0",
+    "htmltools",
+]
+
+# Development dependencies
+dev = [
+    "pytest>=6.0",
+    "pytest-cov",
+    "black",
+    "flake8",
+    "mypy",
+]
+
+# Full installation with all optional features
+all = [
+    "pyvis[shiny,dev]",
+]
+
+[project.urls]
+Homepage = "https://github.com/WestHealth/pyvis"
+Documentation = "https://pyvis.readthedocs.io"
+Repository = "https://github.com/WestHealth/pyvis"
+"Bug Tracker" = "https://github.com/WestHealth/pyvis/issues"
+Changelog = "https://github.com/WestHealth/pyvis/blob/master/CHANGELOG.md"
+
+[tool.setuptools]
+packages = ["pyvis", "pyvis.shiny", "pyvis.tests"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+pyvis = [
+    "templates/*",
+    "templates/lib/**/*",
+    "shiny/*.js",
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["pyvis/tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+
+[tool.black]
+line-length = 100
+target-version = ['py36', 'py37', 'py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+python_version = "3.6"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["pyvis"]
+omit = ["pyvis/tests/*", "*/tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
