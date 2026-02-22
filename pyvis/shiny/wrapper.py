@@ -484,13 +484,18 @@ if SHINY_AVAILABLE:
         
         def _send_command(self, command: str, args: Optional[Dict[str, Any]] = None):
             """Send a command to the network via custom message."""
+            import asyncio
+
             message = {
                 "outputId": self.output_id,
                 "command": command,
                 "args": args or {}
             }
-            # send_custom_message is synchronous in Shiny for Python
-            self.session.send_custom_message("pyvis-command", message)
+            # send_custom_message is a coroutine in Shiny for Python;
+            # schedule it from synchronous reactive contexts.
+            asyncio.create_task(
+                self.session.send_custom_message("pyvis-command", message)
+            )
         
         # === Selection Methods ===
         
@@ -804,6 +809,16 @@ if SHINY_AVAILABLE:
             """
             self._send_command("getAllData")
 
+        # === Theme ===
+
+        def set_theme(self, theme: str):
+            """Switch the network container theme without re-rendering.
+
+            Args:
+                theme: "light" or "dark"
+            """
+            self._send_command("setTheme", {"theme": theme})
+
         # === Diff-based Update ===
 
         def update_data(self, nodes: List[Dict[str, Any]], edges: List[Dict[str, Any]]):
@@ -840,12 +855,14 @@ def _send_network_command(
     if not SHINY_AVAILABLE:
         raise ImportError("Shiny is required")
 
+    import asyncio
+
     message = {
         "outputId": output_id,
         "command": command,
         "args": args or {}
     }
-    session.send_custom_message("pyvis-command", message)
+    asyncio.create_task(session.send_custom_message("pyvis-command", message))
 
 
 def network_select_nodes(

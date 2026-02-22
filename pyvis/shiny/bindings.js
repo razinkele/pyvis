@@ -19,6 +19,27 @@ if (typeof Shiny !== 'undefined') {
         };
     }
 
+    // Safe clone — vis.js objects can contain circular references that
+    // break JSON.stringify (used internally by Shiny.setInputValue).
+    function pyvisSafeClone(obj) {
+        try {
+            return JSON.parse(JSON.stringify(obj));
+        } catch (e) {
+            if (typeof obj !== 'object' || obj === null) return obj;
+            var result = {};
+            Object.keys(obj).forEach(function(key) {
+                var val = obj[key];
+                if (val === null || typeof val !== 'object') {
+                    result[key] = val;
+                } else {
+                    try { result[key] = JSON.parse(JSON.stringify(val)); }
+                    catch (e2) { /* skip circular property */ }
+                }
+            });
+            return result;
+        }
+    }
+
     class PyVisOutputBinding extends Shiny.OutputBinding {
 
         find(scope) {
@@ -234,7 +255,7 @@ if (typeof Shiny !== 'undefined') {
                     Shiny.setInputValue(outputId + '_selectNode', {
                         nodeId: nodeId,
                         nodeIds: params.nodes,
-                        nodeData: nodesDataSet.get(nodeId),
+                        nodeData: pyvisSafeClone(nodesDataSet.get(nodeId)),
                         connectedNodes: network.getConnectedNodes(nodeId),
                         connectedEdges: network.getConnectedEdges(nodeId),
                         edges: params.edges
@@ -245,7 +266,7 @@ if (typeof Shiny !== 'undefined') {
             if (shouldBind('deselectNode')) {
                 network.on('deselectNode', function(params) {
                     Shiny.setInputValue(outputId + '_deselectNode', {
-                        previousSelection: params.previousSelection
+                        previousSelection: pyvisSafeClone(params.previousSelection)
                     }, {priority: 'event'});
                 });
             }
@@ -256,7 +277,7 @@ if (typeof Shiny !== 'undefined') {
                     Shiny.setInputValue(outputId + '_selectEdge', {
                         edgeId: edgeId,
                         edgeIds: params.edges,
-                        edgeData: edgesDataSet.get(edgeId)
+                        edgeData: pyvisSafeClone(edgesDataSet.get(edgeId))
                     }, {priority: 'event'});
                 });
             }
@@ -264,7 +285,7 @@ if (typeof Shiny !== 'undefined') {
             if (shouldBind('deselectEdge')) {
                 network.on('deselectEdge', function(params) {
                     Shiny.setInputValue(outputId + '_deselectEdge', {
-                        previousSelection: params.previousSelection
+                        previousSelection: pyvisSafeClone(params.previousSelection)
                     }, {priority: 'event'});
                 });
             }
@@ -291,7 +312,7 @@ if (typeof Shiny !== 'undefined') {
                 network.on('hoverNode', pyvisDebounce(function(params) {
                     Shiny.setInputValue(outputId + '_hoverNode', {
                         nodeId: params.node,
-                        nodeData: nodesDataSet.get(params.node)
+                        nodeData: pyvisSafeClone(nodesDataSet.get(params.node))
                     }, {priority: 'event'});
                 }, 100));
             }
@@ -308,7 +329,7 @@ if (typeof Shiny !== 'undefined') {
                 network.on('hoverEdge', pyvisDebounce(function(params) {
                     Shiny.setInputValue(outputId + '_hoverEdge', {
                         edgeId: params.edge,
-                        edgeData: edgesDataSet.get(params.edge)
+                        edgeData: pyvisSafeClone(edgesDataSet.get(params.edge))
                     }, {priority: 'event'});
                 }, 100));
             }
@@ -658,6 +679,13 @@ if (typeof Shiny !== 'undefined') {
                 network.setOptions(args.options);
                 break;
 
+            // Theme
+            case 'setTheme':
+                var newTheme = args.theme || 'light';
+                ref.container.className = ref.container.className
+                    .replace(/pyvis-theme-\w+/, 'pyvis-theme-' + newTheme);
+                break;
+
             // Queries - responses sent back as Shiny inputs
             case 'getPositions':
                 Shiny.setInputValue(outputId + '_response_positions',
@@ -676,13 +704,13 @@ if (typeof Shiny !== 'undefined') {
                     network.getViewPosition(), {priority: 'event'});
                 break;
             case 'getAllData':
-                Shiny.setInputValue(outputId + '_response_allData', {
+                Shiny.setInputValue(outputId + '_response_allData', pyvisSafeClone({
                     nodes: nodes.get(),
                     edges: edges.get(),
                     positions: network.getPositions(),
                     scale: network.getScale(),
                     viewPosition: network.getViewPosition()
-                }, {priority: 'event'});
+                }), {priority: 'event'});
                 break;
 
             default:

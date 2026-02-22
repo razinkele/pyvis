@@ -6,7 +6,7 @@ Demonstrates the new direct-render architecture:
 - Node search, layout switching, PNG/JSON export in toolbar
 - Events sent to Shiny inputs with full node data
 - Controller for programmatic network control
-- Light/dark theme switching
+- Light/dark theme switching via controller command
 
 Run:
     shiny run examples/shiny_demo.py
@@ -45,13 +45,7 @@ def server(input, output, session):
 
     @render_pyvis_network
     def network():
-        # Re-render when theme changes
-        theme = input.theme()
-
-        net = Network(
-            heading="Demo Network",
-            bgcolor="#ffffff" if theme == "light" else "#1e1e1e",
-        )
+        net = Network(heading="Demo Network")
         net.add_node(1, label="Python", color="#3776ab", shape="dot", size=30)
         net.add_node(2, label="JavaScript", color="#f7df1e", shape="dot", size=25)
         net.add_node(3, label="Shiny", color="#428bca", shape="dot", size=25)
@@ -64,8 +58,13 @@ def server(input, output, session):
         net.add_edge(2, 4, title="library")
         net.add_edge(3, 2, title="depends on")
 
-        # Return network -- the renderer handles config via its decorator params
         return net
+
+    # Switch theme via controller (no re-render needed)
+    @reactive.effect
+    @reactive.event(input.theme)
+    def _switch_theme():
+        ctrl.set_theme(input.theme())
 
     # Handle add node button
     @reactive.effect
@@ -74,7 +73,6 @@ def server(input, output, session):
         n = node_counter()
         node_counter.set(n + 1)
         ctrl.add_node({"id": n, "label": f"Node {n}", "color": "#9b59b6"})
-        # Connect to a random existing node
         import random
         target = random.randint(1, 5)
         ctrl.add_edge({"from": n, "to": target})
