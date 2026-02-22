@@ -77,175 +77,311 @@ ALL_EVENTS = [
 # ── Custom CSS ────────────────────────────────────────────────────────
 
 CUSTOM_CSS = """
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-    --pyvis-accent: #2563eb;
-    --pyvis-accent-hover: #1d4ed8;
-    --pyvis-sidebar-bg: #f8fafc;
-    --pyvis-border: #e2e8f0;
-    --pyvis-text: #1e293b;
-    --pyvis-text-muted: #64748b;
-    --pyvis-section-bg: #ffffff;
+    --pv-bg-deep: #0c0e14;
+    --pv-bg-surface: #13151e;
+    --pv-bg-elevated: #1a1d2b;
+    --pv-bg-hover: #222538;
+    --pv-border: #2a2e42;
+    --pv-border-subtle: #1e2134;
+    --pv-text: #e2e8f0;
+    --pv-text-muted: #8891a8;
+    --pv-text-dim: #505770;
+    --pv-accent: #22d3ee;
+    --pv-accent-glow: rgba(34, 211, 238, 0.12);
+    --pv-accent-hover: #06b6d4;
+    --pv-success: #34d399;
+    --pv-warning: #fbbf24;
+    --pv-danger: #f87171;
+    --pv-indigo: #818cf8;
 }
 
-body { font-family: 'DM Sans', system-ui, sans-serif !important; }
+body {
+    font-family: 'Outfit', sans-serif !important;
+    background: var(--pv-bg-deep) !important;
+    color: var(--pv-text);
+}
 
-/* Sidebar refinement */
+/* ── Page header ── */
+header, .navbar {
+    background: var(--pv-bg-surface) !important;
+    border-bottom: 1px solid var(--pv-border) !important;
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.5) !important;
+    position: relative;
+}
+header::after, .navbar::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 5%, var(--pv-accent) 30%, var(--pv-indigo) 70%, transparent 95%);
+    opacity: 0.5;
+}
+.navbar .navbar-brand, .navbar-brand, header h1 {
+    font-family: 'Outfit', sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    background: linear-gradient(135deg, var(--pv-accent), var(--pv-indigo)) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+}
+
+/* ── Sidebar ── */
 .bslib-sidebar-layout > .sidebar {
-    background: var(--pyvis-sidebar-bg) !important;
-    border-right: 1px solid var(--pyvis-border) !important;
+    background: var(--pv-bg-surface) !important;
+    border-right: 1px solid var(--pv-border) !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3) !important;
+}
+.bslib-sidebar-layout > .main {
+    background: var(--pv-bg-deep) !important;
+}
+.bslib-sidebar-layout .collapse-toggle {
+    background: var(--pv-bg-elevated) !important;
+    color: var(--pv-text-muted) !important;
+    border-color: var(--pv-border) !important;
 }
 
-/* Tab pills — compact horizontal row */
+/* ── Tab pills ── */
 .sidebar .nav-pills {
-    gap: 4px;
-    padding: 0 0 12px 0;
-    border-bottom: 1px solid var(--pyvis-border);
-    margin-bottom: 12px;
+    gap: 2px;
+    padding: 0 0 14px 0;
+    border-bottom: 1px solid var(--pv-border);
+    margin-bottom: 14px;
 }
 .sidebar .nav-pills .nav-link {
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
-    padding: 6px 10px;
+    padding: 7px 11px;
     border-radius: 6px;
-    color: var(--pyvis-text-muted);
-    transition: all 0.15s ease;
+    color: var(--pv-text-dim);
+    background: transparent;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
 }
 .sidebar .nav-pills .nav-link.active {
-    background: var(--pyvis-accent) !important;
-    color: #fff !important;
-    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+    background: var(--pv-accent-glow) !important;
+    color: var(--pv-accent) !important;
+    border-color: rgba(34, 211, 238, 0.25) !important;
+    box-shadow: 0 0 14px rgba(34, 211, 238, 0.08);
 }
 .sidebar .nav-pills .nav-link:not(.active):hover {
-    background: #e2e8f0;
-    color: var(--pyvis-text);
+    background: var(--pv-bg-hover);
+    color: var(--pv-text);
+    border-color: var(--pv-border);
 }
 
-/* Accordion styling */
+/* ── Accordion ── */
 .sidebar .accordion {
-    --bs-accordion-border-color: var(--pyvis-border);
-    --bs-accordion-border-radius: 8px;
-    --bs-accordion-btn-padding-x: 12px;
-    --bs-accordion-btn-padding-y: 10px;
-    --bs-accordion-body-padding-x: 12px;
-    --bs-accordion-body-padding-y: 10px;
+    --bs-accordion-border-color: transparent;
+    --bs-accordion-bg: transparent;
 }
 .sidebar .accordion-item {
-    background: var(--pyvis-section-bg);
+    background: var(--pv-bg-elevated);
     border-radius: 8px !important;
-    margin-bottom: 8px;
-    border: 1px solid var(--pyvis-border);
+    margin-bottom: 6px;
+    border: 1px solid var(--pv-border-subtle);
+    border-left: 2px solid var(--pv-border-subtle);
     overflow: hidden;
+    transition: border-color 0.2s ease;
+}
+.sidebar .accordion-item:has(.accordion-button:not(.collapsed)) {
+    border-left-color: var(--pv-accent);
+    border-color: var(--pv-border);
 }
 .sidebar .accordion-button {
-    font-size: 0.82rem;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    color: var(--pyvis-text);
-    background: var(--pyvis-section-bg);
-    padding: 10px 12px;
-}
-.sidebar .accordion-button:not(.collapsed) {
-    color: var(--pyvis-accent);
-    background: #f0f5ff;
-    box-shadow: none;
-}
-.sidebar .accordion-button::after {
-    width: 14px; height: 14px;
-    background-size: 14px;
-}
-.sidebar .accordion-body {
-    padding: 10px 12px 12px;
-}
-
-/* Compact form controls */
-.sidebar .form-group { margin-bottom: 8px; }
-.sidebar .control-label, .sidebar .form-label {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--pyvis-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-bottom: 3px;
-}
-.sidebar .form-control, .sidebar .form-select {
-    font-size: 0.84rem;
-    padding: 5px 10px;
-    border-radius: 6px;
-    border: 1px solid var(--pyvis-border);
-}
-.sidebar .form-control:focus, .sidebar .form-select:focus {
-    border-color: var(--pyvis-accent);
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
-}
-
-/* Buttons */
-.sidebar .btn {
+    font-family: 'Outfit', sans-serif;
     font-size: 0.8rem;
     font-weight: 600;
-    padding: 7px 12px;
+    letter-spacing: 0.02em;
+    color: var(--pv-text-muted);
+    background: var(--pv-bg-elevated) !important;
+    padding: 10px 12px;
+    box-shadow: none !important;
+}
+.sidebar .accordion-button:not(.collapsed) {
+    color: var(--pv-accent) !important;
+    background: rgba(34, 211, 238, 0.03) !important;
+}
+.sidebar .accordion-button::after {
+    width: 12px; height: 12px;
+    background-size: 12px;
+    filter: brightness(0) invert(0.4);
+}
+.sidebar .accordion-button:not(.collapsed)::after {
+    filter: brightness(0) invert(0.7) sepia(1) saturate(5) hue-rotate(145deg);
+}
+.sidebar .accordion-body {
+    padding: 8px 12px 14px;
+    background: transparent;
+}
+.accordion-collapse { transition: height 0.2s ease; }
+
+/* ── Form controls ── */
+.sidebar .form-group { margin-bottom: 8px; }
+.sidebar .control-label, .sidebar .form-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.64rem;
+    font-weight: 500;
+    color: var(--pv-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+}
+.sidebar .form-control, .sidebar .form-select {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.82rem;
+    padding: 6px 10px;
     border-radius: 6px;
-    letter-spacing: 0.01em;
+    background-color: var(--pv-bg-deep) !important;
+    border: 1px solid var(--pv-border-subtle);
+    color: var(--pv-text) !important;
     transition: all 0.15s ease;
 }
+.sidebar .form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%238891a8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 16px 12px !important;
+}
+.sidebar .form-control:focus, .sidebar .form-select:focus {
+    background-color: var(--pv-bg-deep) !important;
+    border-color: var(--pv-accent) !important;
+    box-shadow: 0 0 0 2px var(--pv-accent-glow) !important;
+}
+.sidebar .form-control::placeholder { color: var(--pv-text-dim); }
+
+/* ── Buttons ── */
+.sidebar .btn {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 6px;
+    letter-spacing: 0.02em;
+    transition: all 0.2s ease;
+}
 .sidebar .btn-primary {
-    background: var(--pyvis-accent);
-    border-color: var(--pyvis-accent);
+    background: var(--pv-accent);
+    border-color: var(--pv-accent);
+    color: var(--pv-bg-deep);
 }
 .sidebar .btn-primary:hover {
-    background: var(--pyvis-accent-hover);
-    border-color: var(--pyvis-accent-hover);
+    background: var(--pv-accent-hover);
+    border-color: var(--pv-accent-hover);
+    box-shadow: 0 0 18px rgba(34, 211, 238, 0.2);
+}
+.sidebar .btn-success {
+    background: var(--pv-success);
+    border-color: var(--pv-success);
+    color: var(--pv-bg-deep);
+}
+.sidebar .btn-success:hover {
+    box-shadow: 0 0 18px rgba(52, 211, 153, 0.2);
+}
+.sidebar .btn-warning {
+    background: var(--pv-warning);
+    border-color: var(--pv-warning);
+    color: var(--pv-bg-deep);
+}
+.sidebar .btn-warning:hover {
+    box-shadow: 0 0 18px rgba(251, 191, 36, 0.2);
+}
+.sidebar .btn-danger {
+    background: var(--pv-danger);
+    border-color: var(--pv-danger);
+    color: #fff;
+}
+.sidebar .btn-danger:hover {
+    box-shadow: 0 0 18px rgba(248, 113, 113, 0.2);
 }
 .sidebar .btn-outline-secondary {
-    border-color: var(--pyvis-border);
-    color: var(--pyvis-text-muted);
+    background: transparent;
+    border-color: var(--pv-border);
+    color: var(--pv-text-muted);
+}
+.sidebar .btn-outline-secondary:hover {
+    background: var(--pv-bg-hover);
+    border-color: var(--pv-text-dim);
+    color: var(--pv-text);
 }
 .sidebar .btn-sm {
-    font-size: 0.75rem;
-    padding: 4px 10px;
+    font-size: 0.72rem;
+    padding: 5px 10px;
 }
 
-/* Verbatim output blocks */
+/* ── Verbatim output ── */
 .sidebar .shiny-text-output {
-    font-family: 'DM Mono', 'Fira Code', monospace;
-    font-size: 0.75rem;
-    line-height: 1.5;
-    background: #f1f5f9;
-    border: 1px solid var(--pyvis-border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    line-height: 1.6;
+    background: var(--pv-bg-deep);
+    border: 1px solid var(--pv-border-subtle);
     border-radius: 6px;
-    padding: 8px 10px;
+    padding: 10px 12px;
     max-height: 200px;
     overflow-y: auto;
     white-space: pre-wrap;
     word-break: break-word;
+    color: var(--pv-text-muted);
 }
 
-/* Event checkboxes — compact grid */
+/* ── Event checkboxes ── */
 .sidebar .shiny-input-checkboxgroup .shiny-options-group {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 2px 8px;
+    gap: 1px 8px;
 }
 .sidebar .shiny-input-checkboxgroup .checkbox label {
-    font-size: 0.78rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--pv-text-muted);
     padding-left: 4px;
 }
+.sidebar input[type="checkbox"] { accent-color: var(--pv-accent); }
 
-/* Theme toggle */
-#theme { max-width: 120px; }
+/* ── Theme toggle ── */
+#theme { max-width: 110px; }
 
-/* Page title */
-.navbar .navbar-brand, header h1 {
-    font-weight: 600;
-    font-size: 1.1rem;
-    letter-spacing: -0.01em;
+/* ── Network toolbar & status ── */
+.pyvis-toolbar {
+    background: var(--pv-bg-surface) !important;
+    border-color: var(--pv-border) !important;
+    color: var(--pv-text) !important;
+}
+.pyvis-toolbar input,
+.pyvis-toolbar select,
+.pyvis-toolbar button {
+    font-family: 'Outfit', sans-serif !important;
+    background: var(--pv-bg-deep) !important;
+    color: var(--pv-text) !important;
+    border-color: var(--pv-border) !important;
+}
+.pyvis-toolbar button:hover {
+    background: var(--pv-bg-hover) !important;
+}
+.pyvis-toolbar-separator {
+    background: var(--pv-border) !important;
+}
+.pyvis-status {
+    background: var(--pv-bg-surface) !important;
+    color: var(--pv-text-muted) !important;
+    border-color: var(--pv-border) !important;
 }
 
-/* Smooth accordion transitions */
-.accordion-collapse { transition: height 0.2s ease; }
+/* ── Scrollbar ── */
+.sidebar ::-webkit-scrollbar { width: 5px; }
+.sidebar ::-webkit-scrollbar-track { background: transparent; }
+.sidebar ::-webkit-scrollbar-thumb { background: var(--pv-border); border-radius: 4px; }
+.sidebar ::-webkit-scrollbar-thumb:hover { background: var(--pv-text-dim); }
 """
 
 
@@ -434,7 +570,7 @@ app_ui = ui.page_sidebar(
     ui.sidebar(
         ui.tags.style(CUSTOM_CSS),
         ui.div(
-            ui.input_select("theme", "Theme", choices=["light", "dark"], selected="light"),
+            ui.input_select("theme", "Theme", choices=["light", "dark"], selected="dark"),
             class_="mb-2",
         ),
         ui.navset_pill(
@@ -446,7 +582,7 @@ app_ui = ui.page_sidebar(
         ),
         width=380,
     ),
-    output_pyvis_network("network", height="calc(100vh - 40px)", fill=True),
+    output_pyvis_network("network", height="calc(100vh - 40px)", fill=True, theme="dark"),
     title="PyVis Shiny Demo",
     fillable=True,
 )
@@ -475,7 +611,7 @@ def server(input, output, session):
 
     # ── Initial network render ────────────────────────────────────────
 
-    @render_pyvis_network
+    @render_pyvis_network(theme="dark")
     def network():
         net = Network(heading="")
         for n in INITIAL_NODES:
