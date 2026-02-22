@@ -79,6 +79,7 @@ pyvis = [
     "templates/*",
     "templates/lib/**/*",
     "shiny/*.js",
+    "shiny/*.css",
 ]
 
 [tool.pytest.ini_options]

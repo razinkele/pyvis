@@ -1,7 +1,7 @@
 # Include package data
 recursive-include pyvis/templates *
 recursive-include pyvis/lib *
-recursive-include pyvis/shiny *.js
+recursive-include pyvis/shiny *.js *.css
 
 # Include documentation
 include README.md
