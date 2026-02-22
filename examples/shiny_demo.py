@@ -231,7 +231,7 @@ def server(input, output, session):
     # ── Theme switching ───────────────────────────────────────────────
 
     @reactive.effect
-    @reactive.event(input.theme)
+    @reactive.event(input.theme, ignore_init=True)
     def _switch_theme():
         ctrl.set_theme(input.theme())
 
