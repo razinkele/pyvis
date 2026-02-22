@@ -295,6 +295,8 @@ def output_pyvis_network(
         "events": events,
     }
 
+    # data-pyvis-config is also available for debugging/inspection;
+    # the primary config path is via the JSON payload in transform().
     return ui.div(
         *_get_pyvis_dependency(),
         id=resolved_id,
@@ -487,6 +489,7 @@ if SHINY_AVAILABLE:
                 "command": command,
                 "args": args or {}
             }
+            # send_custom_message is synchronous in Shiny for Python
             self.session.send_custom_message("pyvis-command", message)
         
         # === Selection Methods ===
