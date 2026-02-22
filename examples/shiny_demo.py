@@ -46,15 +46,15 @@ INITIAL_EDGES = [
     {"from": 1, "to": 4, "title": "framework"},
     {"from": 1, "to": 5, "title": "framework"},
     {"from": 1, "to": 7, "title": "wraps"},
+    {"from": 1, "to": 10, "title": "library"},
     {"from": 2, "to": 6, "title": "framework"},
     {"from": 2, "to": 8, "title": "library"},
     {"from": 2, "to": 9, "title": "library"},
     {"from": 3, "to": 2, "title": "superset"},
+    {"from": 3, "to": 6, "title": "framework"},
     {"from": 7, "to": 8, "title": "uses"},
-    {"from": 4, "to": 1, "title": "language"},
-    {"from": 1, "to": 10, "title": "library"},
-    {"from": 9, "to": 2, "title": "language"},
-    {"from": 6, "to": 2, "title": "language"},
+    {"from": 4, "to": 2, "title": "depends"},
+    {"from": 10, "to": 9, "title": "uses"},
 ]
 
 # Node IDs for select dropdowns -- built from initial data
