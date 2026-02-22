@@ -8,7 +8,8 @@ Demonstrates ~80% of the PyVis Shiny API across 4 tabs:
   4. Queries     -- query methods and batch operations
 
 Architecture:
-  - ui.page_sidebar with ui.navset_pill_list in the sidebar
+  - ui.page_sidebar with ui.navset_pill (horizontal) in the sidebar
+  - Accordion panels within each tab for organized, collapsible sections
   - The network output stays in the main content area (always visible)
   - Sidebar controls swap per tab while the vis.js instance persists
 
@@ -73,68 +74,290 @@ ALL_EVENTS = [
 ]
 
 
+# ── Custom CSS ────────────────────────────────────────────────────────
+
+CUSTOM_CSS = """
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+
+:root {
+    --pyvis-accent: #2563eb;
+    --pyvis-accent-hover: #1d4ed8;
+    --pyvis-sidebar-bg: #f8fafc;
+    --pyvis-border: #e2e8f0;
+    --pyvis-text: #1e293b;
+    --pyvis-text-muted: #64748b;
+    --pyvis-section-bg: #ffffff;
+}
+
+body { font-family: 'DM Sans', system-ui, sans-serif !important; }
+
+/* Sidebar refinement */
+.bslib-sidebar-layout > .sidebar {
+    background: var(--pyvis-sidebar-bg) !important;
+    border-right: 1px solid var(--pyvis-border) !important;
+}
+
+/* Tab pills — compact horizontal row */
+.sidebar .nav-pills {
+    gap: 4px;
+    padding: 0 0 12px 0;
+    border-bottom: 1px solid var(--pyvis-border);
+    margin-bottom: 12px;
+}
+.sidebar .nav-pills .nav-link {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    padding: 6px 10px;
+    border-radius: 6px;
+    color: var(--pyvis-text-muted);
+    transition: all 0.15s ease;
+}
+.sidebar .nav-pills .nav-link.active {
+    background: var(--pyvis-accent) !important;
+    color: #fff !important;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+}
+.sidebar .nav-pills .nav-link:not(.active):hover {
+    background: #e2e8f0;
+    color: var(--pyvis-text);
+}
+
+/* Accordion styling */
+.sidebar .accordion {
+    --bs-accordion-border-color: var(--pyvis-border);
+    --bs-accordion-border-radius: 8px;
+    --bs-accordion-btn-padding-x: 12px;
+    --bs-accordion-btn-padding-y: 10px;
+    --bs-accordion-body-padding-x: 12px;
+    --bs-accordion-body-padding-y: 10px;
+}
+.sidebar .accordion-item {
+    background: var(--pyvis-section-bg);
+    border-radius: 8px !important;
+    margin-bottom: 8px;
+    border: 1px solid var(--pyvis-border);
+    overflow: hidden;
+}
+.sidebar .accordion-button {
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--pyvis-text);
+    background: var(--pyvis-section-bg);
+    padding: 10px 12px;
+}
+.sidebar .accordion-button:not(.collapsed) {
+    color: var(--pyvis-accent);
+    background: #f0f5ff;
+    box-shadow: none;
+}
+.sidebar .accordion-button::after {
+    width: 14px; height: 14px;
+    background-size: 14px;
+}
+.sidebar .accordion-body {
+    padding: 10px 12px 12px;
+}
+
+/* Compact form controls */
+.sidebar .form-group { margin-bottom: 8px; }
+.sidebar .control-label, .sidebar .form-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--pyvis-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 3px;
+}
+.sidebar .form-control, .sidebar .form-select {
+    font-size: 0.84rem;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--pyvis-border);
+}
+.sidebar .form-control:focus, .sidebar .form-select:focus {
+    border-color: var(--pyvis-accent);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+/* Buttons */
+.sidebar .btn {
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 7px 12px;
+    border-radius: 6px;
+    letter-spacing: 0.01em;
+    transition: all 0.15s ease;
+}
+.sidebar .btn-primary {
+    background: var(--pyvis-accent);
+    border-color: var(--pyvis-accent);
+}
+.sidebar .btn-primary:hover {
+    background: var(--pyvis-accent-hover);
+    border-color: var(--pyvis-accent-hover);
+}
+.sidebar .btn-outline-secondary {
+    border-color: var(--pyvis-border);
+    color: var(--pyvis-text-muted);
+}
+.sidebar .btn-sm {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+}
+
+/* Verbatim output blocks */
+.sidebar .shiny-text-output {
+    font-family: 'DM Mono', 'Fira Code', monospace;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    background: #f1f5f9;
+    border: 1px solid var(--pyvis-border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Event checkboxes — compact grid */
+.sidebar .shiny-input-checkboxgroup .shiny-options-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 8px;
+}
+.sidebar .shiny-input-checkboxgroup .checkbox label {
+    font-size: 0.78rem;
+    padding-left: 4px;
+}
+
+/* Theme toggle */
+#theme { max-width: 120px; }
+
+/* Page title */
+.navbar .navbar-brand, header h1 {
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+}
+
+/* Smooth accordion transitions */
+.accordion-collapse { transition: height 0.2s ease; }
+"""
+
+
 # ── UI ────────────────────────────────────────────────────────────────
 
 def _tab_editor():
     """Tab 1: Node/edge editor controls."""
     return ui.nav_panel(
         "Editor",
-        ui.h5("Add Node"),
-        ui.input_text("add_label", "Label", placeholder="New node..."),
-        ui.input_text("add_color", "Color (hex)", value="#9b59b6"),
-        ui.input_select("add_shape", "Shape", choices=SHAPES, selected="dot"),
-        ui.input_numeric("add_size", "Size", value=25, min=5, max=100),
-        ui.input_action_button("btn_add_node", "Add Node", class_="btn-primary w-100 mb-3"),
-        ui.hr(),
-        ui.h5("Add Edge"),
-        ui.input_select("edge_from", "From", choices=INITIAL_NODE_CHOICES),
-        ui.input_select("edge_to", "To", choices=INITIAL_NODE_CHOICES),
-        ui.input_action_button("btn_add_edge", "Add Edge", class_="btn-primary w-100 mb-3"),
-        ui.hr(),
-        ui.h5("Selected Node"),
-        ui.output_text_verbatim("selected_info"),
-        ui.hr(),
-        ui.h5("Edit Selected"),
-        ui.input_text("edit_label", "Label"),
-        ui.input_text("edit_color", "Color (hex)", value="#e74c3c"),
-        ui.input_action_button("btn_update", "Update Node", class_="btn-warning w-100 mb-2"),
-        ui.input_action_button("btn_remove", "Remove Node", class_="btn-danger w-100"),
+        ui.accordion(
+            ui.accordion_panel(
+                "Add Node",
+                ui.input_text("add_label", "Label", placeholder="New node..."),
+                ui.layout_columns(
+                    ui.input_text("add_color", "Color", value="#9b59b6"),
+                    ui.input_select("add_shape", "Shape", choices=SHAPES, selected="dot"),
+                    col_widths=[6, 6],
+                ),
+                ui.input_numeric("add_size", "Size", value=25, min=5, max=100),
+                ui.input_action_button("btn_add_node", "Add Node", class_="btn-primary w-100"),
+                icon=ui.tags.i(class_="fa fa-plus-circle"),
+            ),
+            ui.accordion_panel(
+                "Add Edge",
+                ui.input_select("edge_from", "From", choices=INITIAL_NODE_CHOICES),
+                ui.input_select("edge_to", "To", choices=INITIAL_NODE_CHOICES),
+                ui.input_action_button("btn_add_edge", "Add Edge", class_="btn-primary w-100"),
+                icon=ui.tags.i(class_="fa fa-link"),
+            ),
+            ui.accordion_panel(
+                "Selected Node",
+                ui.output_text_verbatim("selected_info"),
+                ui.input_text("edit_label", "New Label"),
+                ui.input_text("edit_color", "New Color", value="#e74c3c"),
+                ui.layout_columns(
+                    ui.input_action_button("btn_update", "Update", class_="btn-warning w-100"),
+                    ui.input_action_button("btn_remove", "Remove", class_="btn-danger w-100"),
+                    col_widths=[6, 6],
+                ),
+                icon=ui.tags.i(class_="fa fa-mouse-pointer"),
+            ),
+            id="editor_acc",
+            open=["Add Node"],
+            multiple=True,
+        ),
     )
 
 
 def _tab_clustering():
     """Tab 2: Clustering and physics/viewport controls."""
     return ui.nav_panel(
-        "Clustering",
-        ui.h5("Cluster by Connection"),
-        ui.input_select("cluster_node", "Node", choices=INITIAL_NODE_CHOICES),
-        ui.input_action_button("btn_cluster_conn", "Cluster", class_="btn-info w-100 mb-3"),
-        ui.hr(),
-        ui.h5("Cluster by Hub Size"),
-        ui.input_numeric("hubsize", "Min connections", value=3, min=1, max=20),
-        ui.input_action_button("btn_cluster_hub", "Cluster Hubs", class_="btn-info w-100 mb-3"),
-        ui.hr(),
-        ui.input_action_button("btn_open_cluster", "Open Selected Cluster", class_="w-100 mb-3"),
-        ui.hr(),
-        ui.h5("Physics"),
-        ui.layout_columns(
-            ui.input_action_button("btn_start_phys", "Start", class_="btn-success w-100"),
-            ui.input_action_button("btn_stop_phys", "Stop", class_="btn-secondary w-100"),
-            col_widths=[6, 6],
+        "Cluster",
+        ui.accordion(
+            ui.accordion_panel(
+                "Clustering",
+                ui.input_select("cluster_node", "Cluster around", choices=INITIAL_NODE_CHOICES),
+                ui.input_action_button("btn_cluster_conn", "Cluster by Connection", class_="btn-primary w-100 mb-2"),
+                ui.layout_columns(
+                    ui.input_numeric("hubsize", "Hub min.", value=3, min=1, max=20),
+                    ui.div(
+                        ui.input_action_button("btn_cluster_hub", "Cluster", class_="btn-primary w-100"),
+                        class_="d-flex align-items-end",
+                    ),
+                    col_widths=[6, 6],
+                ),
+                ui.input_action_button("btn_open_cluster", "Open Selected Cluster",
+                                       class_="btn-outline-secondary w-100 mt-2"),
+                icon=ui.tags.i(class_="fa fa-object-group"),
+            ),
+            ui.accordion_panel(
+                "Physics",
+                ui.layout_columns(
+                    ui.input_action_button("btn_start_phys", "Start", class_="btn-success w-100"),
+                    ui.input_action_button("btn_stop_phys", "Stop", class_="btn-outline-secondary w-100"),
+                    col_widths=[6, 6],
+                ),
+                ui.layout_columns(
+                    ui.input_numeric("stabilize_iter", "Iterations", value=100, min=10, max=2000),
+                    ui.div(
+                        ui.input_action_button("btn_stabilize", "Stabilize", class_="btn-primary w-100"),
+                        class_="d-flex align-items-end",
+                    ),
+                    col_widths=[6, 6],
+                ),
+                icon=ui.tags.i(class_="fa fa-atom"),
+            ),
+            ui.accordion_panel(
+                "Viewport",
+                ui.input_action_button("btn_fit", "Fit All", class_="btn-primary w-100 mb-2"),
+                ui.layout_columns(
+                    ui.input_select("focus_node", "Focus", choices=INITIAL_NODE_CHOICES),
+                    ui.div(
+                        ui.input_action_button("btn_focus", "Go", class_="btn-primary w-100"),
+                        class_="d-flex align-items-end",
+                    ),
+                    col_widths=[8, 4],
+                ),
+                ui.layout_columns(
+                    ui.input_numeric("move_x", "X", value=0),
+                    ui.input_numeric("move_y", "Y", value=0),
+                    ui.div(
+                        ui.input_action_button("btn_move", "Move", class_="btn-primary w-100"),
+                        class_="d-flex align-items-end",
+                    ),
+                    col_widths=[4, 4, 4],
+                ),
+                icon=ui.tags.i(class_="fa fa-expand-arrows-alt"),
+            ),
+            id="cluster_acc",
+            open=["Clustering"],
+            multiple=True,
         ),
-        ui.input_numeric("stabilize_iter", "Stabilize iterations", value=100, min=10, max=2000),
-        ui.input_action_button("btn_stabilize", "Stabilize", class_="w-100 mb-3"),
-        ui.hr(),
-        ui.h5("Viewport"),
-        ui.input_action_button("btn_fit", "Fit All", class_="w-100 mb-2"),
-        ui.input_select("focus_node", "Focus node", choices=INITIAL_NODE_CHOICES),
-        ui.input_action_button("btn_focus", "Focus", class_="btn-primary w-100 mb-3"),
-        ui.layout_columns(
-            ui.input_numeric("move_x", "X", value=0),
-            ui.input_numeric("move_y", "Y", value=0),
-            col_widths=[6, 6],
-        ),
-        ui.input_action_button("btn_move", "Move To", class_="w-100"),
     )
 
 
@@ -142,17 +365,28 @@ def _tab_events():
     """Tab 3: Event explorer."""
     return ui.nav_panel(
         "Events",
-        ui.h5("Event Filter"),
-        ui.input_checkbox_group(
-            "event_filter",
-            None,
-            choices=ALL_EVENTS,
-            selected=["click", "selectNode", "deselectNode", "doubleClick"],
+        ui.accordion(
+            ui.accordion_panel(
+                "Event Filter",
+                ui.input_checkbox_group(
+                    "event_filter",
+                    None,
+                    choices=ALL_EVENTS,
+                    selected=["click", "selectNode", "deselectNode", "doubleClick"],
+                ),
+                ui.input_action_button("btn_clear_log", "Clear Log",
+                                       class_="btn-outline-secondary w-100 mt-1"),
+                icon=ui.tags.i(class_="fa fa-filter"),
+            ),
+            ui.accordion_panel(
+                "Event Log",
+                ui.output_text_verbatim("event_log"),
+                icon=ui.tags.i(class_="fa fa-stream"),
+            ),
+            id="events_acc",
+            open=["Event Log"],
+            multiple=True,
         ),
-        ui.input_action_button("btn_clear_log", "Clear Log", class_="btn-secondary w-100 mb-3"),
-        ui.hr(),
-        ui.h5("Event Log"),
-        ui.output_text_verbatim("event_log"),
     )
 
 
@@ -160,34 +394,57 @@ def _tab_queries():
     """Tab 4: Queries and batch operations."""
     return ui.nav_panel(
         "Queries",
-        ui.h5("Query Network"),
-        ui.input_action_button("btn_get_positions", "Get Positions", class_="w-100 mb-1"),
-        ui.input_action_button("btn_get_selection", "Get Selection", class_="w-100 mb-1"),
-        ui.input_action_button("btn_get_scale", "Get Scale", class_="w-100 mb-1"),
-        ui.input_action_button("btn_get_view", "Get View Position", class_="w-100 mb-1"),
-        ui.input_action_button("btn_get_all", "Get All Data", class_="w-100 mb-3"),
-        ui.hr(),
-        ui.h5("Batch Operations"),
-        ui.input_action_button("btn_rand_colors", "Randomize Colors", class_="btn-warning w-100 mb-2"),
-        ui.input_action_button("btn_add_random5", "Add 5 Random Nodes", class_="btn-success w-100 mb-3"),
-        ui.hr(),
-        ui.h5("Response"),
-        ui.output_text_verbatim("query_response"),
+        ui.accordion(
+            ui.accordion_panel(
+                "Query Network",
+                ui.layout_columns(
+                    ui.input_action_button("btn_get_positions", "Positions", class_="btn-outline-secondary w-100 btn-sm"),
+                    ui.input_action_button("btn_get_selection", "Selection", class_="btn-outline-secondary w-100 btn-sm"),
+                    col_widths=[6, 6],
+                ),
+                ui.layout_columns(
+                    ui.input_action_button("btn_get_scale", "Scale", class_="btn-outline-secondary w-100 btn-sm"),
+                    ui.input_action_button("btn_get_view", "View Pos.", class_="btn-outline-secondary w-100 btn-sm"),
+                    col_widths=[6, 6],
+                ),
+                ui.input_action_button("btn_get_all", "Get All Data", class_="btn-primary w-100 mt-1"),
+                icon=ui.tags.i(class_="fa fa-search"),
+            ),
+            ui.accordion_panel(
+                "Batch Operations",
+                ui.input_action_button("btn_rand_colors", "Randomize Colors",
+                                       class_="btn-warning w-100 mb-2"),
+                ui.input_action_button("btn_add_random5", "Add 5 Random Nodes",
+                                       class_="btn-success w-100"),
+                icon=ui.tags.i(class_="fa fa-bolt"),
+            ),
+            ui.accordion_panel(
+                "Response",
+                ui.output_text_verbatim("query_response"),
+                icon=ui.tags.i(class_="fa fa-terminal"),
+            ),
+            id="queries_acc",
+            open=["Query Network", "Response"],
+            multiple=True,
+        ),
     )
 
 
 app_ui = ui.page_sidebar(
     ui.sidebar(
-        ui.input_select("theme", "Theme", choices=["light", "dark"], selected="light"),
-        ui.hr(),
-        ui.navset_pill_list(
+        ui.tags.style(CUSTOM_CSS),
+        ui.div(
+            ui.input_select("theme", "Theme", choices=["light", "dark"], selected="light"),
+            class_="mb-2",
+        ),
+        ui.navset_pill(
             _tab_editor(),
             _tab_clustering(),
             _tab_events(),
             _tab_queries(),
             id="active_tab",
         ),
-        width=320,
+        width=380,
     ),
     output_pyvis_network("network", height="calc(100vh - 40px)", fill=True),
     title="PyVis Shiny Demo",
