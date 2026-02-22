@@ -80,3 +80,40 @@ def test_add_numpy_nodes():
     g = Network()
     g.add_nodes(np.array([1,2,3,4]))
     assert g.get_nodes() == [1,2,3,4]
+
+
+def test_get_network_json():
+    """Test that get_network_json returns structured data for Shiny."""
+    net = Network()
+    net.add_node(1, label="A", color="red")
+    net.add_node(2, label="B", color="blue")
+    net.add_edge(1, 2, weight=3)
+
+    data = net.get_network_json()
+
+    assert isinstance(data, dict)
+    assert "nodes" in data
+    assert "edges" in data
+    assert "options" in data
+    assert "height" in data
+    assert "width" in data
+    assert "heading" in data
+    assert len(data["nodes"]) == 2
+    assert len(data["edges"]) == 1
+    # Options should be a parsed dict, not a JSON string
+    assert isinstance(data["options"], dict)
+
+
+def test_get_network_json_with_groups():
+    """Test get_network_json includes groups and feature flags."""
+    net = Network()
+    net.add_node(1, label="A", group="team1")
+    net.set_group("team1", color="green", shape="box")
+
+    data = net.get_network_json()
+
+    assert "groups" in data
+    assert "team1" in data["groups"]
+    assert data["neighborhood_highlight"] == False
+    assert data["select_menu"] == False
+    assert data["filter_menu"] == False

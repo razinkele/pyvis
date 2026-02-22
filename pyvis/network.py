@@ -503,6 +503,41 @@ class Network:
             return (self.nodes, self.edges, self.heading, self.height,
                     self.width, self.options.to_json())
 
+    def get_network_json(self) -> dict:
+        """
+        Return structured network data as a dictionary for Shiny rendering.
+
+        Unlike generate_html(), this returns raw data that JavaScript can
+        use to create a vis.Network directly — no HTML template involved.
+
+        Returns:
+            dict with keys: nodes, edges, options, heading, height, width,
+            groups, legend, neighborhood_highlight, select_menu, filter_menu,
+            edge_attribute_edit, directed, bgcolor
+        """
+        nodes, edges, heading, height, width, options = self.get_network_data()
+
+        # Parse options to dict if it's a JSON string
+        if isinstance(options, str):
+            options = json.loads(options)
+
+        return {
+            "nodes": nodes,
+            "edges": edges,
+            "options": options,
+            "heading": heading,
+            "height": height,
+            "width": width,
+            "groups": self.groups,
+            "legend": self.legend,
+            "neighborhood_highlight": self.neighborhood_highlight,
+            "select_menu": self.select_menu,
+            "filter_menu": self.filter_menu,
+            "edge_attribute_edit": self.edge_attribute_edit,
+            "directed": self.directed,
+            "bgcolor": self.bgcolor,
+        }
+
     def save_graph(self, name):
         """
         Save the graph as html in the current directory with name.
