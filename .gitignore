@@ -129,6 +129,7 @@ dmypy.json
 # IDE specific
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
