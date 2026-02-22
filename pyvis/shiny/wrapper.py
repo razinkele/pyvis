@@ -79,6 +79,7 @@ def server(input, output, session):
 ```
 """
 
+import json as _json
 import os
 from pathlib import Path
 from typing import Optional, Dict, Any, Union, List
@@ -132,6 +133,7 @@ __all__ = [
     'network_get_positions',
     'network_get_selection',
     'network_get_data',
+    'network_update_data',
 ]
 
 
@@ -139,17 +141,36 @@ __all__ = [
 _BINDINGS_PATH = Path(__file__).parent
 
 
-def _get_pyvis_dependency() -> 'HTMLDependency':
-    """Create HTMLDependency for PyVis Shiny bindings."""
+def _get_pyvis_dependency() -> 'List[HTMLDependency]':
+    """Create HTMLDependencies for vis-network and PyVis Shiny bindings.
+
+    Returns a list of two HTMLDependency objects:
+    - vis-network: the vis.js library (JS + CSS)
+    - pyvis-shiny: our custom output binding and styles
+    """
     if not SHINY_AVAILABLE:
         raise ImportError("Shiny is required for this functionality")
-    
-    return HTMLDependency(
-        name="pyvis-shiny",
-        version="1.0.0",
-        source={"subdir": str(_BINDINGS_PATH)},
-        script={"src": "bindings.js"},
-    )
+
+    from pyvis.vis_config import VIS_NETWORK_VERSION, LOCAL_LIB_DIR
+
+    vis_lib_path = Path(__file__).resolve().parent.parent / "templates" / "lib" / LOCAL_LIB_DIR
+
+    return [
+        HTMLDependency(
+            name="vis-network",
+            version=VIS_NETWORK_VERSION,
+            source={"subdir": str(vis_lib_path)},
+            script={"src": "vis-network.min.js"},
+            stylesheet={"href": "vis-network.min.css"},
+        ),
+        HTMLDependency(
+            name="pyvis-shiny",
+            version="1.0.0",
+            source={"subdir": str(_BINDINGS_PATH)},
+            script={"src": "bindings.js"},
+            stylesheet={"href": "styles.css"},
+        ),
+    ]
 
 
 def render_network(network: 'PyVisNetwork', height: str = "600px", width: str = "100%") -> 'Tag':
@@ -210,28 +231,44 @@ def render_network(network: 'PyVisNetwork', height: str = "600px", width: str = 
 
 
 def output_pyvis_network(
-    id: str, 
-    height: str = "600px", 
+    id: str,
+    height: str = "600px",
     width: str = "100%",
+    theme: str = "light",
+    show_toolbar: bool = True,
+    show_search: bool = True,
+    show_layout_switcher: bool = True,
+    show_export: bool = True,
+    show_status: bool = True,
+    fill: bool = False,
+    events: Optional[List[str]] = None,
     **kwargs
 ) -> 'Tag':
     """
     Create a PyVis network output placeholder for Shiny.
-    
+
     This creates a container that will be populated by render_pyvis_network.
     Events from the network (clicks, selections) are automatically sent
     to Shiny inputs.
-    
+
     Args:
-        id: The output ID. Must match the function name decorated with 
+        id: The output ID. Must match the function name decorated with
             @render_pyvis_network.
         height: Height of the network container (default: "600px").
         width: Width of the network container (default: "100%").
+        theme: Color theme, "light" or "dark" (default: "light").
+        show_toolbar: Show the toolbar panel (default: True).
+        show_search: Show node search input (default: True).
+        show_layout_switcher: Show layout toggle (default: True).
+        show_export: Show export button (default: True).
+        show_status: Show status bar (default: True).
+        fill: Whether the container should fill its parent (default: False).
+        events: List of event names to bind, or None for all (default: None).
         **kwargs: Additional attributes to pass to the container div.
-        
+
     Returns:
         A Shiny UI element for the network output.
-        
+
     Example:
         ```python
         app_ui = ui.page_fluid(
@@ -244,14 +281,26 @@ def output_pyvis_network(
         raise ImportError(
             "The 'shiny' package is required. Install with 'pip install shiny'."
         )
-    
+
     resolved_id = resolve_id(id)
-    
+
+    config = {
+        "theme": theme,
+        "showToolbar": show_toolbar,
+        "showSearch": show_search,
+        "showLayoutSwitcher": show_layout_switcher,
+        "showExport": show_export,
+        "showStatus": show_status,
+        "fill": fill,
+        "events": events,
+    }
+
     return ui.div(
-        _get_pyvis_dependency(),
+        *_get_pyvis_dependency(),
         id=resolved_id,
         class_="pyvis-network-output shiny-html-output",
         style=f"width: {width}; height: {height}; min-height: 200px;",
+        data_pyvis_config=_json.dumps(config),
         **kwargs
     )
 
@@ -262,83 +311,118 @@ if SHINY_AVAILABLE:
     class render_pyvis_network(Renderer[PyVisNetwork]):
         """
         Decorator to render a PyVis Network in Shiny.
-        
+
         The decorated function should return a PyVis Network instance.
         The network will be rendered with event bindings that send
         click/selection events back to Shiny.
-        
+
         Args:
             height: Height of the rendered network (default: "600px").
             width: Width of the rendered network (default: "100%").
-            
+            theme: Color theme, "light" or "dark" (default: "light").
+            show_toolbar: Show the toolbar panel (default: True).
+            show_search: Show node search input (default: True).
+            show_layout_switcher: Show layout toggle (default: True).
+            show_export: Show export button (default: True).
+            show_status: Show status bar (default: True).
+            fill: Whether the container should fill its parent (default: False).
+            events: List of event names to bind, or None for all (default: None).
+
         Example:
             ```python
             @render_pyvis_network
             def my_network():
                 net = Network()
                 net.add_node(1, label="Node 1")
-                net.add_node(2, label="Node 2") 
+                net.add_node(2, label="Node 2")
                 net.add_edge(1, 2)
                 return net
-            
+
             # Or with custom dimensions:
             @render_pyvis_network(height="800px")
             def my_network():
                 ...
             ```
         """
-        
+
         height: str = "600px"
         width: str = "100%"
-        
+
         def __init__(
-            self, 
+            self,
             _fn=None,
             *,
             height: str = "600px",
-            width: str = "100%"
+            width: str = "100%",
+            theme: str = "light",
+            show_toolbar: bool = True,
+            show_search: bool = True,
+            show_layout_switcher: bool = True,
+            show_export: bool = True,
+            show_status: bool = True,
+            fill: bool = False,
+            events: Optional[List[str]] = None,
         ):
             self.height = height
             self.width = width
+            self.theme = theme
+            self.show_toolbar = show_toolbar
+            self.show_search = show_search
+            self.show_layout_switcher = show_layout_switcher
+            self.show_export = show_export
+            self.show_status = show_status
+            self.fill = fill
+            self.events = events
             super().__init__(_fn)
-        
+
         def auto_output_ui(self, id: str = "") -> 'Tag':
             """Generate the output UI for Shiny Express mode."""
             return output_pyvis_network(
                 id or self.output_id,
                 height=self.height,
-                width=self.width
+                width=self.width,
+                theme=self.theme,
+                show_toolbar=self.show_toolbar,
+                show_search=self.show_search,
+                show_layout_switcher=self.show_layout_switcher,
+                show_export=self.show_export,
+                show_status=self.show_status,
+                fill=self.fill,
+                events=self.events,
             )
-        
+
         async def transform(self, value: PyVisNetwork) -> Jsonifiable:
             """
             Transform a PyVis Network into JSON-serializable data.
-            
-            The network HTML is generated and packaged with metadata
-            for the JavaScript output binding.
+
+            Returns the network data as a dict (nodes, edges, options, etc.)
+            along with a ``config`` key containing UI configuration. The
+            JavaScript output binding uses this to create a vis.Network
+            directly in the DOM (no iframe).
             """
             if value is None:
                 return None
-                
+
             if not isinstance(value, PyVisNetwork):
                 raise TypeError(
                     f"Expected a pyvis.network.Network, got {type(value).__name__}. "
                     "Make sure your render function returns a Network instance."
                 )
-            
-            # Generate HTML, using inline resources for iframe compatibility
-            original_resources = value.cdn_resources
-            if value.cdn_resources == "local":
-                value.cdn_resources = "in_line"
-            
-            html_content = value.generate_html()
-            value.cdn_resources = original_resources
-            
-            return {
-                "html": html_content,
-                "height": self.height,
-                "width": self.width,
+
+            data = value.get_network_json()
+
+            data["config"] = {
+                "theme": self.theme,
+                "showToolbar": self.show_toolbar,
+                "showSearch": self.show_search,
+                "showLayoutSwitcher": self.show_layout_switcher,
+                "showExport": self.show_export,
+                "showStatus": self.show_status,
+                "fill": self.fill,
+                "events": self.events,
             }
+
+            return data
 
 else:
     # Fallback when Shiny is not available
@@ -398,18 +482,12 @@ if SHINY_AVAILABLE:
         
         def _send_command(self, command: str, args: Optional[Dict[str, Any]] = None):
             """Send a command to the network via custom message."""
-            import asyncio
-            
             message = {
                 "outputId": self.output_id,
                 "command": command,
                 "args": args or {}
             }
-            
-            # Use send_custom_message to communicate with JS
-            asyncio.create_task(
-                self.session.send_custom_message("pyvis-command", message)
-            )
+            self.session.send_custom_message("pyvis-command", message)
         
         # === Selection Methods ===
         
@@ -723,6 +801,20 @@ if SHINY_AVAILABLE:
             """
             self._send_command("getAllData")
 
+        # === Diff-based Update ===
+
+        def update_data(self, nodes: List[Dict[str, Any]], edges: List[Dict[str, Any]]):
+            """Send complete node/edge data for diff-based update.
+
+            The JavaScript side will diff the incoming data against the current
+            DataSet and apply only the necessary add/update/remove operations.
+
+            Args:
+                nodes: Full list of node dicts (each must have an 'id' key).
+                edges: Full list of edge dicts (each must have 'from'/'to' keys).
+            """
+            self._send_command("updateData", {"nodes": nodes, "edges": edges})
+
 else:
     
     class PyVisNetworkController:
@@ -736,22 +828,21 @@ else:
 # =============================================================================
 
 def _send_network_command(
-    session: 'Session', 
-    output_id: str, 
-    command: str, 
+    session: 'Session',
+    output_id: str,
+    command: str,
     args: Optional[Dict] = None
 ):
     """Helper to send command to network."""
     if not SHINY_AVAILABLE:
         raise ImportError("Shiny is required")
-    
-    import asyncio
+
     message = {
         "outputId": output_id,
         "command": command,
         "args": args or {}
     }
-    asyncio.create_task(session.send_custom_message("pyvis-command", message))
+    session.send_custom_message("pyvis-command", message)
 
 
 def network_select_nodes(
@@ -907,6 +998,29 @@ def network_get_selection(session: 'Session', output_id: str):
 def network_get_data(session: 'Session', output_id: str):
     """Request all network data (response: input.{output_id}_response_allData)."""
     _send_network_command(session, output_id, "getAllData")
+
+
+def network_update_data(
+    session: 'Session',
+    output_id: str,
+    nodes: List[Dict[str, Any]],
+    edges: List[Dict[str, Any]],
+):
+    """Send complete node/edge data for diff-based update.
+
+    The JavaScript side will diff the incoming data against the current
+    DataSet and apply only the necessary add/update/remove operations.
+
+    Args:
+        session: The Shiny session object.
+        output_id: The ID of the network output.
+        nodes: Full list of node dicts (each must have an 'id' key).
+        edges: Full list of edge dicts (each must have 'from'/'to' keys).
+    """
+    _send_network_command(session, output_id, "updateData", {
+        "nodes": nodes,
+        "edges": edges,
+    })
 
 
 # =============================================================================

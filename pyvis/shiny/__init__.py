@@ -153,6 +153,7 @@ from .wrapper import (
     network_get_positions,
     network_get_selection,
     network_get_data,
+    network_update_data,
 )
 
 __all__ = [
@@ -187,4 +188,5 @@ __all__ = [
     'network_get_positions',
     'network_get_selection',
     'network_get_data',
+    'network_update_data',
 ]
