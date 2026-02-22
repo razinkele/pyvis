@@ -117,3 +117,7 @@ def test_get_network_json_with_groups():
     assert data["neighborhood_highlight"] == False
     assert data["select_menu"] == False
     assert data["filter_menu"] == False
+    assert data["edge_attribute_edit"] == False
+    assert data["directed"] == False
+    assert data["bgcolor"] == "#ffffff"
+    assert data["legend"] is None
