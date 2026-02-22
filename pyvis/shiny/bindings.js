@@ -1,507 +1,694 @@
 /**
- * PyVis Network Output Binding for Shiny for Python
- * 
- * This provides a proper Shiny output binding for vis.js networks,
- * enabling two-way communication between Python and JavaScript.
- * 
- * Features:
- * - Network events sent to Shiny inputs (click, select, hover, etc.)
- * - Python can control the network via custom message handlers
- * - Supports clustering, physics control, viewport manipulation
+ * PyVis Network Output Binding for Shiny for Python (v3.0)
+ *
+ * Direct DOM rendering - no iframe. vis.js Network created directly
+ * in the output div. Commands and events use direct object access.
  */
 
 if (typeof Shiny !== 'undefined') {
 
-    // Store references to network instances by output ID
+    // Global registry of network instances
     window.pyvisNetworks = window.pyvisNetworks || {};
 
-    class PyVisNetworkOutputBinding extends Shiny.OutputBinding {
-        
+    // Debounce utility
+    function pyvisDebounce(fn, delay) {
+        let timer;
+        return function(...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+
+    class PyVisOutputBinding extends Shiny.OutputBinding {
+
         find(scope) {
-            return scope.find(".pyvis-network-output");
+            return scope.find('.pyvis-network-output');
         }
 
         renderValue(el, payload) {
             if (!payload) {
-                el.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No network data</p>';
+                el.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No network data</p>';
                 return;
             }
 
-            const { html, height, width } = payload;
             const outputId = el.id;
-            
-            // Create iframe to isolate the vis.js network
-            const iframe = document.createElement('iframe');
-            iframe.style.width = width || '100%';
-            iframe.style.height = height || '600px';
-            iframe.style.border = 'none';
-            iframe.srcdoc = html;
-            
-            // Clear existing content and add new iframe
+            const config = payload.config || {};
+            const theme = config.theme || 'light';
+            const showToolbar = config.showToolbar !== false;
+            const showSearch = config.showSearch !== false;
+            const showLayoutSwitcher = config.showLayoutSwitcher !== false;
+            const showExport = config.showExport !== false;
+            const showStatus = config.showStatus !== false;
+            const fill = config.fill || false;
+            const enabledEvents = config.events || null; // null = all
+
+            // Clean up previous instance
+            if (window.pyvisNetworks[outputId]) {
+                const prev = window.pyvisNetworks[outputId];
+                if (prev.resizeObserver) prev.resizeObserver.disconnect();
+                if (prev.network) prev.network.destroy();
+            }
+
+            // Build container HTML
             el.innerHTML = '';
-            el.appendChild(iframe);
-            
-            iframe.onload = () => {
-                const iframeWindow = iframe.contentWindow;
-                
-                // Store reference for later access
-                window.pyvisNetworks[outputId] = {
-                    iframe: iframe,
-                    window: iframeWindow
-                };
-                
-                // Inject comprehensive event handlers
-                const injectScript = `
-                    (function() {
-                        var checkNetwork = setInterval(function() {
-                            if (typeof network !== 'undefined' && network !== null) {
-                                clearInterval(checkNetwork);
-                                
-                                // Store globally in iframe for access
-                                window.pyvisNetwork = network;
-                                window.pyvisNodes = nodes;
-                                window.pyvisEdges = edges;
-                                
-                                // ========================================
-                                // NETWORK EVENTS -> SHINY INPUTS
-                                // ========================================
-                                
-                                // Click event
-                                network.on('click', function(params) {
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'click',
-                                            outputId: '${outputId}',
-                                            nodes: params.nodes,
-                                            edges: params.edges,
-                                            pointer: params.pointer,
-                                            items: params.items || []
-                                        }
-                                    }, '*');
-                                });
-                                
-                                // Double click
-                                network.on('doubleClick', function(params) {
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'doubleClick',
-                                            outputId: '${outputId}',
-                                            nodes: params.nodes,
-                                            edges: params.edges,
-                                            pointer: params.pointer
-                                        }
-                                    }, '*');
-                                });
-                                
-                                // Right click (context menu)
-                                network.on('oncontext', function(params) {
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'contextMenu',
-                                            outputId: '${outputId}',
-                                            nodes: params.nodes,
-                                            edges: params.edges,
-                                            pointer: params.pointer
-                                        }
-                                    }, '*');
-                                });
-                                
-                                // Node selection
-                                network.on('selectNode', function(params) {
-                                    var nodeData = params.nodes.length > 0 ? nodes.get(params.nodes[0]) : null;
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'selectNode',
-                                            outputId: '${outputId}',
-                                            nodeId: params.nodes[0],
-                                            nodeIds: params.nodes,
-                                            nodeData: nodeData,
-                                            edges: params.edges
-                                        }
-                                    }, '*');
-                                });
-                                
-                                // Node deselection
-                                network.on('deselectNode', function(params) {
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'deselectNode',
-                                            outputId: '${outputId}',
-                                            previousSelection: params.previousSelection
-                                        }
-                                    }, '*');
-                                });
-                                
-                                // Edge selection
-                                network.on('selectEdge', function(params) {
-                                    var edgeData = params.edges.length > 0 ? edges.get(params.edges[0]) : null;
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'selectEdge',
-                                            outputId: '${outputId}',
-                                            edgeId: params.edges[0],
-                                            edgeIds: params.edges,
-                                            edgeData: edgeData
-                                        }
-                                    }, '*');
-                                });
-                                
-                                // Edge deselection
-                                network.on('deselectEdge', function(params) {
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'deselectEdge',
-                                            outputId: '${outputId}',
-                                            previousSelection: params.previousSelection
-                                        }
-                                    }, '*');
-                                });
-                                
-                                // Drag events
-                                network.on('dragStart', function(params) {
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'dragStart',
-                                            outputId: '${outputId}',
-                                            nodes: params.nodes
-                                        }
-                                    }, '*');
-                                });
-                                
-                                network.on('dragEnd', function(params) {
-                                    var positions = network.getPositions(params.nodes);
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'dragEnd',
-                                            outputId: '${outputId}',
-                                            nodes: params.nodes,
-                                            positions: positions
-                                        }
-                                    }, '*');
-                                });
-                                
-                                // Hover events (if hover is enabled)
-                                network.on('hoverNode', function(params) {
-                                    var nodeData = nodes.get(params.node);
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'hoverNode',
-                                            outputId: '${outputId}',
-                                            nodeId: params.node,
-                                            nodeData: nodeData
-                                        }
-                                    }, '*');
-                                });
-                                
-                                network.on('blurNode', function(params) {
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'blurNode',
-                                            outputId: '${outputId}',
-                                            nodeId: params.node
-                                        }
-                                    }, '*');
-                                });
-                                
-                                network.on('hoverEdge', function(params) {
-                                    var edgeData = edges.get(params.edge);
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'hoverEdge',
-                                            outputId: '${outputId}',
-                                            edgeId: params.edge,
-                                            edgeData: edgeData
-                                        }
-                                    }, '*');
-                                });
-                                
-                                network.on('blurEdge', function(params) {
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'blurEdge',
-                                            outputId: '${outputId}',
-                                            edgeId: params.edge
-                                        }
-                                    }, '*');
-                                });
-                                
-                                // Zoom event
-                                network.on('zoom', function(params) {
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'zoom',
-                                            outputId: '${outputId}',
-                                            direction: params.direction,
-                                            scale: params.scale,
-                                            pointer: params.pointer
-                                        }
-                                    }, '*');
-                                });
-                                
-                                // Physics/stabilization events
-                                network.on('stabilizationProgress', function(params) {
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'stabilizationProgress',
-                                            outputId: '${outputId}',
-                                            iterations: params.iterations,
-                                            total: params.total
-                                        }
-                                    }, '*');
-                                });
-                                
-                                network.on('stabilizationIterationsDone', function() {
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'stabilized',
-                                            outputId: '${outputId}'
-                                        }
-                                    }, '*');
-                                });
-                                
-                                // Animation finished
-                                network.on('animationFinished', function() {
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'animationFinished',
-                                            outputId: '${outputId}'
-                                        }
-                                    }, '*');
-                                });
-                                
-                                // Config change (if configurator is enabled)
-                                network.on('configChange', function(options) {
-                                    window.parent.postMessage({
-                                        pyvisEvent: {
-                                            type: 'configChange',
-                                            outputId: '${outputId}',
-                                            options: JSON.stringify(options)
-                                        }
-                                    }, '*');
-                                });
-                                
-                                // Send ready event
-                                window.parent.postMessage({
-                                    pyvisEvent: {
-                                        type: 'ready',
-                                        outputId: '${outputId}',
-                                        nodeCount: nodes.length,
-                                        edgeCount: edges.length
-                                    }
-                                }, '*');
-                                
-                                console.log('PyVis Shiny bindings initialized for: ${outputId}');
-                            }
-                        }, 100);
-                    })();
-                `;
-                
-                const script = iframeWindow.document.createElement('script');
-                script.textContent = injectScript;
-                iframeWindow.document.body.appendChild(script);
+            el.style.height = payload.height || '600px';
+            el.style.width = payload.width || '100%';
+
+            const container = document.createElement('div');
+            container.className = 'pyvis-container pyvis-theme-' + theme + (fill ? ' pyvis-fill' : '');
+            container.style.height = '100%';
+            container.style.width = '100%';
+
+            // Heading
+            if (payload.heading) {
+                const heading = document.createElement('h3');
+                heading.className = 'pyvis-heading';
+                heading.textContent = payload.heading;
+                container.appendChild(heading);
+            }
+
+            // Toolbar
+            var searchInput = null, searchCount = null, layoutSelect = null;
+            if (showToolbar) {
+                const toolbar = document.createElement('div');
+                toolbar.className = 'pyvis-toolbar';
+
+                // Search
+                if (showSearch) {
+                    const searchGroup = document.createElement('div');
+                    searchGroup.className = 'pyvis-search';
+
+                    searchInput = document.createElement('input');
+                    searchInput.type = 'text';
+                    searchInput.placeholder = 'Search nodes...';
+
+                    searchCount = document.createElement('span');
+                    searchCount.className = 'pyvis-search-count';
+
+                    searchGroup.appendChild(searchInput);
+                    searchGroup.appendChild(searchCount);
+                    toolbar.appendChild(searchGroup);
+                }
+
+                // Separator
+                if (showSearch && (showLayoutSwitcher || showExport)) {
+                    const sep = document.createElement('div');
+                    sep.className = 'pyvis-toolbar-separator';
+                    toolbar.appendChild(sep);
+                }
+
+                // Layout switcher
+                if (showLayoutSwitcher) {
+                    layoutSelect = document.createElement('select');
+                    layoutSelect.className = 'pyvis-layout-select';
+                    var layouts = [
+                        { value: 'barnesHut', label: 'BarnesHut' },
+                        { value: 'forceAtlas2Based', label: 'ForceAtlas2' },
+                        { value: 'repulsion', label: 'Repulsion' },
+                        { value: 'hierarchicalUD', label: 'Hierarchical Down' },
+                        { value: 'hierarchicalLR', label: 'Hierarchical Right' },
+                        { value: 'none', label: 'No Physics' }
+                    ];
+                    layouts.forEach(function(l) {
+                        var opt = document.createElement('option');
+                        opt.value = l.value;
+                        opt.textContent = l.label;
+                        layoutSelect.appendChild(opt);
+                    });
+                    toolbar.appendChild(layoutSelect);
+                }
+
+                // Export buttons
+                if (showExport) {
+                    var sep2 = document.createElement('div');
+                    sep2.className = 'pyvis-toolbar-separator';
+                    toolbar.appendChild(sep2);
+
+                    var exportPng = document.createElement('button');
+                    exportPng.className = 'pyvis-btn';
+                    exportPng.textContent = 'Export PNG';
+                    exportPng.dataset.action = 'exportPng';
+                    toolbar.appendChild(exportPng);
+
+                    var exportJson = document.createElement('button');
+                    exportJson.className = 'pyvis-btn';
+                    exportJson.textContent = 'Export JSON';
+                    exportJson.dataset.action = 'exportJson';
+                    toolbar.appendChild(exportJson);
+                }
+
+                container.appendChild(toolbar);
+            }
+
+            // Network canvas
+            var canvasDiv = document.createElement('div');
+            canvasDiv.className = 'pyvis-network-canvas';
+            container.appendChild(canvasDiv);
+
+            // Status bar
+            var statusLeft = null, statusRight = null;
+            if (showStatus) {
+                var statusBar = document.createElement('div');
+                statusBar.className = 'pyvis-status';
+                statusLeft = document.createElement('span');
+                statusRight = document.createElement('span');
+                statusBar.appendChild(statusLeft);
+                statusBar.appendChild(statusRight);
+                container.appendChild(statusBar);
+            }
+
+            el.appendChild(container);
+
+            // Create vis.js DataSets and Network
+            var nodesDataSet = new vis.DataSet(payload.nodes);
+            var edgesDataSet = new vis.DataSet(payload.edges);
+            var data = { nodes: nodesDataSet, edges: edgesDataSet };
+
+            var options = payload.options || {};
+            if (typeof options === 'string') {
+                options = JSON.parse(options);
+            }
+
+            var network = new vis.Network(canvasDiv, data, options);
+
+            // Store reference
+            var ref = {
+                network: network,
+                nodes: nodesDataSet,
+                edges: edgesDataSet,
+                container: container,
+                canvasDiv: canvasDiv,
+                outputId: outputId,
+                resizeObserver: null
             };
+            window.pyvisNetworks[outputId] = ref;
+
+            // Update status bar
+            function updateStatus() {
+                if (statusLeft) {
+                    statusLeft.textContent = nodesDataSet.length + ' nodes, ' + edgesDataSet.length + ' edges';
+                }
+            }
+            updateStatus();
+            nodesDataSet.on('*', updateStatus);
+            edgesDataSet.on('*', updateStatus);
+
+            // === EVENTS ===
+            function shouldBind(eventName) {
+                return !enabledEvents || enabledEvents.indexOf(eventName) !== -1;
+            }
+
+            if (shouldBind('click')) {
+                network.on('click', function(params) {
+                    Shiny.setInputValue(outputId + '_click', {
+                        nodes: params.nodes,
+                        edges: params.edges,
+                        pointer: params.pointer
+                    }, {priority: 'event'});
+                });
+            }
+
+            if (shouldBind('doubleClick')) {
+                network.on('doubleClick', function(params) {
+                    Shiny.setInputValue(outputId + '_doubleClick', {
+                        nodes: params.nodes,
+                        edges: params.edges,
+                        pointer: params.pointer
+                    }, {priority: 'event'});
+                });
+            }
+
+            if (shouldBind('contextMenu')) {
+                network.on('oncontext', function(params) {
+                    Shiny.setInputValue(outputId + '_contextMenu', {
+                        nodes: network.getNodeAt(params.pointer.DOM),
+                        edges: network.getEdgeAt(params.pointer.DOM),
+                        pointer: params.pointer
+                    }, {priority: 'event'});
+                });
+            }
+
+            if (shouldBind('selectNode')) {
+                network.on('selectNode', function(params) {
+                    var nodeId = params.nodes[0];
+                    Shiny.setInputValue(outputId + '_selectNode', {
+                        nodeId: nodeId,
+                        nodeIds: params.nodes,
+                        nodeData: nodesDataSet.get(nodeId),
+                        connectedNodes: network.getConnectedNodes(nodeId),
+                        connectedEdges: network.getConnectedEdges(nodeId),
+                        edges: params.edges
+                    }, {priority: 'event'});
+                });
+            }
+
+            if (shouldBind('deselectNode')) {
+                network.on('deselectNode', function(params) {
+                    Shiny.setInputValue(outputId + '_deselectNode', {
+                        previousSelection: params.previousSelection
+                    }, {priority: 'event'});
+                });
+            }
+
+            if (shouldBind('selectEdge')) {
+                network.on('selectEdge', function(params) {
+                    var edgeId = params.edges[0];
+                    Shiny.setInputValue(outputId + '_selectEdge', {
+                        edgeId: edgeId,
+                        edgeIds: params.edges,
+                        edgeData: edgesDataSet.get(edgeId)
+                    }, {priority: 'event'});
+                });
+            }
+
+            if (shouldBind('deselectEdge')) {
+                network.on('deselectEdge', function(params) {
+                    Shiny.setInputValue(outputId + '_deselectEdge', {
+                        previousSelection: params.previousSelection
+                    }, {priority: 'event'});
+                });
+            }
+
+            if (shouldBind('dragStart')) {
+                network.on('dragStart', function(params) {
+                    Shiny.setInputValue(outputId + '_dragStart', {
+                        nodes: params.nodes
+                    }, {priority: 'event'});
+                });
+            }
+
+            if (shouldBind('dragEnd')) {
+                network.on('dragEnd', function(params) {
+                    Shiny.setInputValue(outputId + '_dragEnd', {
+                        nodes: params.nodes,
+                        positions: network.getPositions(params.nodes)
+                    }, {priority: 'event'});
+                });
+            }
+
+            // Debounced events
+            if (shouldBind('hoverNode')) {
+                network.on('hoverNode', pyvisDebounce(function(params) {
+                    Shiny.setInputValue(outputId + '_hoverNode', {
+                        nodeId: params.node,
+                        nodeData: nodesDataSet.get(params.node)
+                    }, {priority: 'event'});
+                }, 100));
+            }
+
+            if (shouldBind('blurNode')) {
+                network.on('blurNode', function(params) {
+                    Shiny.setInputValue(outputId + '_blurNode', {
+                        nodeId: params.node
+                    }, {priority: 'event'});
+                });
+            }
+
+            if (shouldBind('hoverEdge')) {
+                network.on('hoverEdge', pyvisDebounce(function(params) {
+                    Shiny.setInputValue(outputId + '_hoverEdge', {
+                        edgeId: params.edge,
+                        edgeData: edgesDataSet.get(params.edge)
+                    }, {priority: 'event'});
+                }, 100));
+            }
+
+            if (shouldBind('blurEdge')) {
+                network.on('blurEdge', function(params) {
+                    Shiny.setInputValue(outputId + '_blurEdge', {
+                        edgeId: params.edge
+                    }, {priority: 'event'});
+                });
+            }
+
+            if (shouldBind('zoom')) {
+                network.on('zoom', pyvisDebounce(function(params) {
+                    Shiny.setInputValue(outputId + '_zoom', {
+                        direction: params.direction,
+                        scale: params.scale
+                    }, {priority: 'event'});
+                }, 100));
+            }
+
+            if (shouldBind('stabilizationProgress')) {
+                network.on('stabilizationProgress', pyvisDebounce(function(params) {
+                    Shiny.setInputValue(outputId + '_stabilizationProgress', {
+                        iterations: params.iterations,
+                        total: params.total
+                    }, {priority: 'event'});
+                }, 200));
+            }
+
+            if (shouldBind('stabilized')) {
+                network.on('stabilizationIterationsDone', function() {
+                    Shiny.setInputValue(outputId + '_stabilized', {
+                        timestamp: Date.now()
+                    }, {priority: 'event'});
+                });
+            }
+
+            if (shouldBind('animationFinished')) {
+                network.on('animationFinished', function() {
+                    Shiny.setInputValue(outputId + '_animationFinished', {
+                        timestamp: Date.now()
+                    }, {priority: 'event'});
+                });
+            }
+
+            // Ready event (always sent)
+            Shiny.setInputValue(outputId + '_ready', {
+                nodeCount: nodesDataSet.length,
+                edgeCount: edgesDataSet.length,
+                timestamp: Date.now()
+            }, {priority: 'event'});
+
+            // === SEARCH ===
+            if (searchInput) {
+                var originalColors = {};
+
+                searchInput.addEventListener('input', pyvisDebounce(function() {
+                    var query = searchInput.value.trim().toLowerCase();
+
+                    if (!query) {
+                        // Restore all
+                        var updates = [];
+                        Object.keys(originalColors).forEach(function(id) {
+                            updates.push({ id: id, color: originalColors[id], opacity: 1.0 });
+                        });
+                        if (updates.length) nodesDataSet.update(updates);
+                        originalColors = {};
+                        searchCount.textContent = '';
+                        network.unselectAll();
+                        return;
+                    }
+
+                    var allNodes = nodesDataSet.get();
+                    var matches = [];
+                    var dims = [];
+
+                    allNodes.forEach(function(node) {
+                        var label = (node.label || '').toLowerCase();
+                        var title = (node.title || '').toLowerCase();
+                        var id = String(node.id).toLowerCase();
+
+                        if (label.indexOf(query) !== -1 || title.indexOf(query) !== -1 || id.indexOf(query) !== -1) {
+                            matches.push(node);
+                        } else {
+                            dims.push(node);
+                        }
+                    });
+
+                    // Save originals and dim non-matches
+                    var updates = [];
+                    dims.forEach(function(node) {
+                        if (!originalColors[node.id]) {
+                            originalColors[node.id] = node.color;
+                        }
+                        updates.push({ id: node.id, opacity: 0.15 });
+                    });
+                    matches.forEach(function(node) {
+                        if (originalColors[node.id]) {
+                            updates.push({ id: node.id, color: originalColors[node.id], opacity: 1.0 });
+                            delete originalColors[node.id];
+                        } else {
+                            updates.push({ id: node.id, opacity: 1.0 });
+                        }
+                    });
+                    if (updates.length) nodesDataSet.update(updates);
+
+                    searchCount.textContent = matches.length + '/' + allNodes.length;
+
+                    // Select first match
+                    if (matches.length > 0) {
+                        network.selectNodes([matches[0].id]);
+                        network.focus(matches[0].id, { scale: 1.2, animation: true });
+                    }
+                }, 200));
+
+                searchInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        searchInput.value = '';
+                        searchInput.dispatchEvent(new Event('input'));
+                    }
+                });
+            }
+
+            // === LAYOUT SWITCHER ===
+            if (layoutSelect) {
+                layoutSelect.addEventListener('change', function() {
+                    var val = layoutSelect.value;
+                    var newOptions;
+
+                    if (val === 'none') {
+                        newOptions = {
+                            physics: { enabled: false },
+                            layout: { hierarchical: false }
+                        };
+                    } else if (val === 'hierarchicalUD') {
+                        newOptions = {
+                            physics: { enabled: true },
+                            layout: {
+                                hierarchical: {
+                                    enabled: true,
+                                    direction: 'UD',
+                                    sortMethod: 'directed'
+                                }
+                            }
+                        };
+                    } else if (val === 'hierarchicalLR') {
+                        newOptions = {
+                            physics: { enabled: true },
+                            layout: {
+                                hierarchical: {
+                                    enabled: true,
+                                    direction: 'LR',
+                                    sortMethod: 'directed'
+                                }
+                            }
+                        };
+                    } else {
+                        newOptions = {
+                            layout: { hierarchical: false },
+                            physics: {
+                                enabled: true,
+                                solver: val
+                            }
+                        };
+                    }
+                    network.setOptions(newOptions);
+                });
+            }
+
+            // === EXPORT ===
+            if (showExport) {
+                container.addEventListener('click', function(e) {
+                    var btn = e.target.closest('.pyvis-btn');
+                    if (!btn) return;
+
+                    if (btn.dataset.action === 'exportPng') {
+                        var canvas = canvasDiv.querySelector('canvas');
+                        if (canvas) {
+                            var link = document.createElement('a');
+                            link.download = 'network.png';
+                            link.href = canvas.toDataURL('image/png');
+                            link.click();
+                        }
+                    } else if (btn.dataset.action === 'exportJson') {
+                        var exportData = {
+                            nodes: nodesDataSet.get(),
+                            edges: edgesDataSet.get(),
+                            positions: network.getPositions()
+                        };
+                        var blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
+                        var link = document.createElement('a');
+                        link.download = 'network.json';
+                        link.href = URL.createObjectURL(blob);
+                        link.click();
+                        URL.revokeObjectURL(link.href);
+                    }
+                });
+            }
+
+            // === RESIZE OBSERVER ===
+            var resizeHandler = pyvisDebounce(function() {
+                network.setSize(canvasDiv.offsetWidth + 'px', canvasDiv.offsetHeight + 'px');
+                network.redraw();
+            }, 150);
+
+            var resizeObserver = new ResizeObserver(resizeHandler);
+            resizeObserver.observe(el);
+            ref.resizeObserver = resizeObserver;
+
+            // Scale info in status bar
+            if (statusRight) {
+                network.on('zoom', pyvisDebounce(function() {
+                    statusRight.textContent = 'Zoom: ' + (network.getScale() * 100).toFixed(0) + '%';
+                }, 100));
+                statusRight.textContent = 'Zoom: 100%';
+            }
+
+            console.log('PyVis Shiny v3: initialized ' + outputId + ' (' + nodesDataSet.length + ' nodes, ' + edgesDataSet.length + ' edges)');
         }
     }
 
     // Register the output binding
     Shiny.outputBindings.register(
-        new PyVisNetworkOutputBinding(),
-        "pyvis-network-output"
+        new PyVisOutputBinding(),
+        'pyvis-network-output'
     );
 
-    // ========================================
-    // MESSAGE HANDLER: SHINY -> NETWORK
-    // ========================================
-    // This allows Python to send commands to the network
-    
+    // === COMMAND HANDLER ===
     Shiny.addCustomMessageHandler('pyvis-command', function(message) {
-        const { outputId, command, args } = message;
-        const networkRef = window.pyvisNetworks[outputId];
-        
-        if (!networkRef || !networkRef.window) {
-            console.warn('PyVis network not found:', outputId);
+        var outputId = message.outputId;
+        var command = message.command;
+        var args = message.args || {};
+        var ref = window.pyvisNetworks[outputId];
+
+        if (!ref || !ref.network) {
+            console.warn('PyVis: network not found for', outputId);
             return;
         }
-        
-        const iframeWindow = networkRef.window;
-        
-        // Execute command in iframe context
-        try {
-            const execScript = `
-                (function() {
-                    if (typeof network === 'undefined') return;
-                    
-                    var cmd = '${command}';
-                    var args = ${JSON.stringify(args || {})};
-                    
-                    switch(cmd) {
-                        // Selection commands
-                        case 'selectNodes':
-                            network.selectNodes(args.nodeIds || [], args.highlightEdges !== false);
-                            break;
-                        case 'selectEdges':
-                            network.selectEdges(args.edgeIds || []);
-                            break;
-                        case 'unselectAll':
-                            network.unselectAll();
-                            break;
-                        
-                        // Viewport commands
-                        case 'fit':
-                            network.fit(args);
-                            break;
-                        case 'focus':
-                            network.focus(args.nodeId, args.options || {});
-                            break;
-                        case 'moveTo':
-                            network.moveTo(args);
-                            break;
-                        
-                        // Physics commands
-                        case 'startSimulation':
-                            network.startSimulation();
-                            break;
-                        case 'stopSimulation':
-                            network.stopSimulation();
-                            break;
-                        case 'stabilize':
-                            network.stabilize(args.iterations || 100);
-                            break;
-                        
-                        // Data manipulation
-                        case 'addNode':
-                            nodes.add(args.node);
-                            break;
-                        case 'addNodes':
-                            nodes.add(args.nodes);
-                            break;
-                        case 'updateNode':
-                            nodes.update(args.node);
-                            break;
-                        case 'removeNode':
-                            nodes.remove(args.nodeId);
-                            break;
-                        case 'addEdge':
-                            edges.add(args.edge);
-                            break;
-                        case 'addEdges':
-                            edges.add(args.edges);
-                            break;
-                        case 'updateEdge':
-                            edges.update(args.edge);
-                            break;
-                        case 'removeEdge':
-                            edges.remove(args.edgeId);
-                            break;
-                        
-                        // Clustering
-                        case 'cluster':
-                            network.cluster(args);
-                            break;
-                        case 'clusterByConnection':
-                            network.clusterByConnection(args.nodeId, args.options);
-                            break;
-                        case 'clusterByHubsize':
-                            network.clusterByHubsize(args.hubsize, args.options);
-                            break;
-                        case 'openCluster':
-                            network.openCluster(args.nodeId);
-                            break;
-                        
-                        // Options
-                        case 'setOptions':
-                            network.setOptions(args.options);
-                            break;
-                        
-                        // Get data (sends response back)
-                        case 'getPositions':
-                            var positions = network.getPositions(args.nodeIds);
-                            window.parent.postMessage({
-                                pyvisResponse: {
-                                    type: 'positions',
-                                    outputId: '${outputId}',
-                                    data: positions
-                                }
-                            }, '*');
-                            break;
-                        case 'getSelection':
-                            var selection = network.getSelection();
-                            window.parent.postMessage({
-                                pyvisResponse: {
-                                    type: 'selection',
-                                    outputId: '${outputId}',
-                                    data: selection
-                                }
-                            }, '*');
-                            break;
-                        case 'getScale':
-                            var scale = network.getScale();
-                            window.parent.postMessage({
-                                pyvisResponse: {
-                                    type: 'scale',
-                                    outputId: '${outputId}',
-                                    data: scale
-                                }
-                            }, '*');
-                            break;
-                        case 'getViewPosition':
-                            var pos = network.getViewPosition();
-                            window.parent.postMessage({
-                                pyvisResponse: {
-                                    type: 'viewPosition',
-                                    outputId: '${outputId}',
-                                    data: pos
-                                }
-                            }, '*');
-                            break;
-                        case 'getAllData':
-                            window.parent.postMessage({
-                                pyvisResponse: {
-                                    type: 'allData',
-                                    outputId: '${outputId}',
-                                    data: {
-                                        nodes: nodes.get(),
-                                        edges: edges.get(),
-                                        positions: network.getPositions(),
-                                        scale: network.getScale(),
-                                        viewPosition: network.getViewPosition()
-                                    }
-                                }
-                            }, '*');
-                            break;
-                            
-                        default:
-                            console.warn('Unknown pyvis command:', cmd);
-                    }
-                })();
-            `;
-            
-            const script = iframeWindow.document.createElement('script');
-            script.textContent = execScript;
-            iframeWindow.document.body.appendChild(script);
-            
-        } catch (e) {
-            console.error('Error executing pyvis command:', e);
+
+        var network = ref.network;
+        var nodes = ref.nodes;
+        var edges = ref.edges;
+
+        switch (command) {
+            // Selection
+            case 'selectNodes':
+                network.selectNodes(args.nodeIds || [], args.highlightEdges !== false);
+                break;
+            case 'selectEdges':
+                network.selectEdges(args.edgeIds || []);
+                break;
+            case 'unselectAll':
+                network.unselectAll();
+                break;
+
+            // Viewport
+            case 'fit':
+                network.fit(args);
+                break;
+            case 'focus':
+                network.focus(args.nodeId, args.options || {});
+                break;
+            case 'moveTo':
+                network.moveTo(args);
+                break;
+
+            // Physics
+            case 'startSimulation':
+                network.startSimulation();
+                break;
+            case 'stopSimulation':
+                network.stopSimulation();
+                break;
+            case 'stabilize':
+                network.stabilize(args.iterations || 100);
+                break;
+
+            // Data manipulation
+            case 'addNode':
+                nodes.add(args.node);
+                break;
+            case 'addNodes':
+                nodes.add(args.nodes);
+                break;
+            case 'updateNode':
+                nodes.update(args.node);
+                break;
+            case 'removeNode':
+                nodes.remove(args.nodeId);
+                break;
+            case 'addEdge':
+                edges.add(args.edge);
+                break;
+            case 'addEdges':
+                edges.add(args.edges);
+                break;
+            case 'updateEdge':
+                edges.update(args.edge);
+                break;
+            case 'removeEdge':
+                edges.remove(args.edgeId);
+                break;
+
+            // Batch update with diff
+            case 'updateData':
+                if (args.nodes) {
+                    var currentIds = {};
+                    nodes.getIds().forEach(function(id) { currentIds[id] = true; });
+                    var newIds = {};
+                    args.nodes.forEach(function(n) { newIds[n.id] = true; });
+                    // Remove deleted
+                    Object.keys(currentIds).forEach(function(id) {
+                        if (!newIds[id]) nodes.remove(id);
+                    });
+                    // Add/update
+                    nodes.update(args.nodes);
+                }
+                if (args.edges) {
+                    var currentEdgeIds = {};
+                    edges.getIds().forEach(function(id) { currentEdgeIds[id] = true; });
+                    var newEdgeIds = {};
+                    args.edges.forEach(function(e) { newEdgeIds[e.id] = true; });
+                    Object.keys(currentEdgeIds).forEach(function(id) {
+                        if (!newEdgeIds[id]) edges.remove(id);
+                    });
+                    edges.update(args.edges);
+                }
+                break;
+
+            // Clustering
+            case 'cluster':
+                network.cluster(args);
+                break;
+            case 'clusterByConnection':
+                network.clusterByConnection(args.nodeId, args.options);
+                break;
+            case 'clusterByHubsize':
+                network.clusterByHubsize(args.hubsize, args.options);
+                break;
+            case 'openCluster':
+                network.openCluster(args.nodeId);
+                break;
+
+            // Options
+            case 'setOptions':
+                network.setOptions(args.options);
+                break;
+
+            // Queries - responses sent back as Shiny inputs
+            case 'getPositions':
+                Shiny.setInputValue(outputId + '_response_positions',
+                    network.getPositions(args.nodeIds), {priority: 'event'});
+                break;
+            case 'getSelection':
+                Shiny.setInputValue(outputId + '_response_selection',
+                    network.getSelection(), {priority: 'event'});
+                break;
+            case 'getScale':
+                Shiny.setInputValue(outputId + '_response_scale',
+                    network.getScale(), {priority: 'event'});
+                break;
+            case 'getViewPosition':
+                Shiny.setInputValue(outputId + '_response_viewPosition',
+                    network.getViewPosition(), {priority: 'event'});
+                break;
+            case 'getAllData':
+                Shiny.setInputValue(outputId + '_response_allData', {
+                    nodes: nodes.get(),
+                    edges: edges.get(),
+                    positions: network.getPositions(),
+                    scale: network.getScale(),
+                    viewPosition: network.getViewPosition()
+                }, {priority: 'event'});
+                break;
+
+            default:
+                console.warn('PyVis: unknown command', command);
         }
     });
 
-    // Global message handler for events from network iframes
-    window.addEventListener('message', function(event) {
-        // Handle events
-        if (event.data && event.data.pyvisEvent) {
-            const eventData = event.data.pyvisEvent;
-            const inputName = eventData.outputId + '_' + eventData.type;
-            Shiny.setInputValue(inputName, eventData, {priority: 'event'});
-        }
-        
-        // Handle responses (for get* commands)
-        if (event.data && event.data.pyvisResponse) {
-            const responseData = event.data.pyvisResponse;
-            const inputName = responseData.outputId + '_response_' + responseData.type;
-            Shiny.setInputValue(inputName, responseData.data, {priority: 'event'});
-        }
-    });
-
-    console.log('PyVis Shiny bindings registered (v2.0 with commands)');
+    console.log('PyVis Shiny bindings v3.0 registered');
 }
-
