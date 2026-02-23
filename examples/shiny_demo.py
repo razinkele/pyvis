@@ -1,11 +1,12 @@
 """
 PyVis + Shiny Multi-Tab Demo -- Full API Showcase
 
-Demonstrates ~80% of the PyVis Shiny API across 4 tabs:
+Demonstrates ~90% of the PyVis Shiny API across 5 tabs:
   1. Editor     -- add/edit/remove nodes and edges
   2. Clustering  -- cluster operations, physics, viewport
   3. Events      -- live event log with filtering
   4. Queries     -- query methods and batch operations
+  5. Styles      -- typed options: physics solvers, node/edge styling
 
 Architecture:
   - ui.page_sidebar with ui.navset_pill (horizontal) in the sidebar
@@ -24,6 +25,11 @@ import datetime
 from shiny import App, ui, render, reactive
 from pyvis.network import Network
 from pyvis.shiny import output_pyvis_network, render_pyvis_network, PyVisNetworkController
+from pyvis.types import (
+    NetworkOptions, NodeOptions, EdgeOptions, PhysicsOptions,
+    BarnesHut, ForceAtlas2Based, Repulsion as RepulsionOpts,
+    EdgeSmooth, InteractionOptions,
+)
 
 
 # ── Initial graph data ────────────────────────────────────────────────
@@ -566,6 +572,49 @@ def _tab_queries():
     )
 
 
+def _tab_styles():
+    """Tab 5: Typed options for physics, node style, and edge style."""
+    return ui.nav_panel(
+        "Styles",
+        ui.accordion(
+            ui.accordion_panel(
+                "Physics Solver",
+                ui.input_select("solver", "Solver", {
+                    "barnesHut": "Barnes-Hut",
+                    "forceAtlas2Based": "Force Atlas 2",
+                    "repulsion": "Repulsion",
+                }),
+                ui.input_slider("gravity", "Gravity", -10000, 0, -2000, step=500),
+                ui.input_action_button("apply_physics", "Apply Physics",
+                                       class_="btn-sm btn-outline-info w-100 mt-2"),
+            ),
+            ui.accordion_panel(
+                "Node Style",
+                ui.input_select("node_shape", "Shape", {
+                    "dot": "Dot", "star": "Star", "triangle": "Triangle",
+                    "square": "Square", "diamond": "Diamond",
+                }),
+                ui.input_numeric("node_size", "Size", 20, min=5, max=60),
+                ui.input_action_button("apply_nodes", "Apply Node Style",
+                                       class_="btn-sm btn-outline-info w-100 mt-2"),
+            ),
+            ui.accordion_panel(
+                "Edge Style",
+                ui.input_select("edge_smooth", "Smooth Type", {
+                    "dynamic": "Dynamic", "continuous": "Continuous",
+                    "discrete": "Discrete", "curvedCW": "Curved CW",
+                    "curvedCCW": "Curved CCW",
+                }),
+                ui.input_slider("edge_width", "Width", 1, 10, 2),
+                ui.input_action_button("apply_edges", "Apply Edge Style",
+                                       class_="btn-sm btn-outline-info w-100 mt-2"),
+            ),
+            id="acc_styles",
+            open=["Physics Solver"],
+        ),
+    )
+
+
 app_ui = ui.page_sidebar(
     ui.sidebar(
         ui.tags.style(CUSTOM_CSS),
@@ -578,6 +627,7 @@ app_ui = ui.page_sidebar(
             _tab_clustering(),
             _tab_events(),
             _tab_queries(),
+            _tab_styles(),
             id="active_tab",
         ),
         width=380,
@@ -1006,6 +1056,41 @@ def server(input, output, session):
     @render.text
     def query_response():
         return last_query_response()
+
+    # ── Tab 5: Styles (Typed Options) ────────────────────────────────
+    @reactive.effect
+    @reactive.event(input.apply_physics)
+    def _apply_physics():
+        solver = input.solver()
+        grav = input.gravity()
+        physics_kwargs = {"solver": solver}
+        if solver == "barnesHut":
+            physics_kwargs["barnesHut"] = BarnesHut(gravitationalConstant=grav)
+        elif solver == "forceAtlas2Based":
+            physics_kwargs["forceAtlas2Based"] = ForceAtlas2Based(gravitationalConstant=grav // 100)
+        elif solver == "repulsion":
+            physics_kwargs["repulsion"] = RepulsionOpts(nodeDistance=abs(grav) // 10)
+        opts = NetworkOptions(physics=PhysicsOptions(**physics_kwargs))
+        ctrl.set_options(opts.to_dict())
+
+    @reactive.effect
+    @reactive.event(input.apply_nodes)
+    def _apply_nodes():
+        opts = NetworkOptions(
+            nodes=NodeOptions(shape=input.node_shape(), size=input.node_size()),
+        )
+        ctrl.set_options(opts.to_dict())
+
+    @reactive.effect
+    @reactive.event(input.apply_edges)
+    def _apply_edges():
+        opts = NetworkOptions(
+            edges=EdgeOptions(
+                smooth=EdgeSmooth(enabled=True, type=input.edge_smooth()),
+                width=input.edge_width(),
+            ),
+        )
+        ctrl.set_options(opts.to_dict())
 
 
 app = App(app_ui, server)
