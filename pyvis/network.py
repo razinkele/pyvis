@@ -710,7 +710,6 @@ class Network:
                 DeprecationWarning,
                 stacklevel=2
             )
-        print(name)
         if notebook:
             # Ensure template is loaded for notebook mode
             if self.template is None:
