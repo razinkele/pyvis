@@ -187,6 +187,7 @@ ctrl = PyVisNetworkController("my_network", session)
 | `add_edges(edges)` | Add multiple edges | List of edge dicts |
 | `update_edge(edge)` | Update edge | Edge dict with `id` and properties |
 | `remove_edge(edge_id)` | Remove edge | Edge ID |
+| `update_data(nodes, edges)` | Diff-based full update | Complete node/edge lists |
 
 ### Clustering Commands
 

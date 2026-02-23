@@ -10,6 +10,7 @@ Complete reference for the PyVis library — interactive network visualization i
   - [Constructor](#constructor)
   - [Adding Nodes](#adding-nodes)
   - [Adding Edges](#adding-edges)
+  - [Modifying Nodes & Edges](#modifying-nodes--edges)
   - [Querying the Graph](#querying-the-graph)
   - [Configuration](#configuration)
   - [Output & Display](#output--display)
@@ -209,6 +210,108 @@ num_edges() -> int
 ```
 
 Returns the number of edges in the network.
+
+---
+
+### Modifying Nodes & Edges
+
+#### `update_node`
+
+```python
+update_node(
+    n_id: Union[str, int],
+    options=None,
+    **kwargs,
+)
+```
+
+Update attributes of an existing node. The node ID cannot be changed.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `n_id` | `str\|int` | *required* | ID of the node to update |
+| `options` | `NodeOptions\|None` | `None` | Typed options (when provided, `**kwargs` are ignored) |
+| `**kwargs` | | | Attributes to update: `label`, `color`, `size`, `shape`, etc. |
+
+Raises `ValueError` if the node does not exist or if `id` is passed in kwargs.
+
+**Example:**
+```python
+net.update_node(1, label="New Label", color="red")
+
+# Or with typed options:
+from pyvis.types import NodeOptions
+net.update_node(1, options=NodeOptions(label="New Label", color="red"))
+```
+
+#### `update_edge`
+
+```python
+update_edge(
+    source: Union[str, int],
+    dest: Union[str, int],
+    options=None,
+    **kwargs,
+)
+```
+
+Update attributes of an existing edge. The `from`/`to` endpoints cannot be changed — remove the edge and add a new one instead.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `source` | `str\|int` | *required* | Source node ID |
+| `dest` | `str\|int` | *required* | Destination node ID |
+| `options` | `EdgeOptions\|None` | `None` | Typed options (when provided, `**kwargs` are ignored) |
+| `**kwargs` | | | Attributes to update: `color`, `width`, `label`, `dashes`, etc. |
+
+Raises `ValueError` if the edge does not exist. For undirected graphs, matches regardless of direction.
+
+**Example:**
+```python
+net.update_edge(1, 2, color="red", width=3)
+```
+
+#### `remove_node`
+
+```python
+remove_node(n_id: Union[str, int])
+```
+
+Remove a node and **all edges connected to it**.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `n_id` | `str\|int` | ID of the node to remove |
+
+Raises `ValueError` if the node does not exist.
+
+**Example:**
+```python
+net.remove_node(1)  # Also removes edges (1,2), (1,3), etc.
+```
+
+#### `remove_edge`
+
+```python
+remove_edge(
+    source: Union[str, int],
+    dest: Union[str, int],
+)
+```
+
+Remove an edge between two nodes. For undirected graphs, matches regardless of direction.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `source` | `str\|int` | Source node ID |
+| `dest` | `str\|int` | Destination node ID |
+
+Raises `ValueError` if the edge does not exist.
+
+**Example:**
+```python
+net.remove_edge(1, 2)
+```
 
 ---
 
@@ -1160,6 +1263,7 @@ from pyvis.types import NetworkOptions, ManipulationOptions
 net.set_options(NetworkOptions(
     manipulation=ManipulationOptions(enabled=True, initiallyActive=False),
 ))
+```
 
 ---
 
