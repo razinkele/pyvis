@@ -143,6 +143,9 @@ dmypy.json
 ehthumbs.db
 Thumbs.db
 
+# Planning docs
+docs/plans/
+
 # Project specific
 pyvis/full_graph.txt
 pyvis/output.txt
