@@ -172,7 +172,7 @@ See the [Shiny Integration Guide](docs/SHINY_INTEGRATION_GUIDE.md) for complete 
 pytest pyvis/tests/ --ignore=pyvis/tests/test_html.py -v
 ```
 
-229 tests covering core network operations, typed options, Shiny integration, and regression tests for edge cases.
+192 tests covering core network operations, typed options, Shiny integration, and regression tests for edge cases.
 
 ## Project Structure
 
@@ -181,13 +181,11 @@ pyvis/
     network.py          # Main Network class
     node.py             # Node representation
     edge.py             # Edge representation
-    options.py          # Legacy options (vis.js compatible)
-    physics.py          # Physics simulation options
     types/              # Type-safe dataclass options (46 classes)
     shiny/              # Shiny for Python integration
         wrapper.py      # Controller, standalone functions, rendering
         pyvis_network/  # JavaScript binding (vis-network 9.1.2)
-    tests/              # 206 tests across 15 modules
+    tests/              # 192 tests across 15 modules
 ```
 
 ## License
