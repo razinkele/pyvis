@@ -479,9 +479,13 @@ class Network:
         :param edges: A list of tuples, each tuple consists of source of edge,
                       edge destination and and optional width.
 
-        :type arrowStrikethrough: list of tuples
+        :type edges: list of tuples
         """
         for edge in edges:
+            if len(edge) < 2:
+                raise ValueError(
+                    f"Edge tuple must have at least 2 elements (source, dest), got {edge}"
+                )
             # if incoming tuple contains a weight
             if len(edge) == 3:
                 self.add_edge(edge[0], edge[1], width=edge[2])

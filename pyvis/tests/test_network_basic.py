@@ -3,6 +3,7 @@ import os
 
 import networkx as nx
 import numpy as np
+import pytest
 
 from ..network import Network
 
@@ -361,3 +362,26 @@ class TestPhysicsMethodsNoSelf:
         net.force_atlas_2based()
         fa = net.options.physics.forceAtlas2Based
         assert not hasattr(fa, 'self')
+
+
+class TestAddEdgesValidation:
+    """add_edges() should validate edge tuple length."""
+
+    def test_single_element_tuple_raises(self):
+        net = Network()
+        net.add_node(1, label="A")
+        with pytest.raises(ValueError, match="at least 2"):
+            net.add_edges([(1,)])
+
+    def test_empty_tuple_raises(self):
+        net = Network()
+        with pytest.raises(ValueError, match="at least 2"):
+            net.add_edges([()])
+
+    def test_valid_tuples_work(self):
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_node(3, label="C")
+        net.add_edges([(1, 2), (2, 3, 5)])
+        assert len(net.edges) == 2
