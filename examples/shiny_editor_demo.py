@@ -17,6 +17,7 @@ Run:
 from shiny import App, ui, render, reactive
 from pyvis.network import Network
 from pyvis.shiny import output_pyvis_network, render_pyvis_network, PyVisNetworkController
+from pyvis.types import NetworkOptions, ManipulationOptions
 
 
 # ── Initial graph data ───────────────────────────────────────────────
@@ -307,6 +308,10 @@ def server(input, output, session):
             net.add_edge(e["from"], e["to"], id=e["id"],
                          width=e.get("width", 1), color=e.get("color"),
                          label=e.get("label"))
+        # Enable vis.js native manipulation toolbar (add/edit/delete on canvas)
+        net.set_options(NetworkOptions(
+            manipulation=ManipulationOptions(enabled=True, initiallyActive=False),
+        ))
         return net
 
     # ── Refresh edge dropdowns ───────────────────────────────────────
