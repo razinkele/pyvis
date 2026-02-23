@@ -616,32 +616,34 @@ if SHINY_AVAILABLE:
         
         # === Data Manipulation Methods ===
         
-        def add_node(self, node: Dict[str, Any]):
-            """
-            Add a new node to the network.
-            
+        def add_node(self, node):
+            """Add a new node. Accepts dict or typed NodeOptions (must include 'id' in dict, or set id separately).
+
             Args:
-                node: Node data dict with at least 'id', optionally 
-                      'label', 'color', 'shape', etc.
+                node: Node data dict or typed NodeOptions with at least 'id',
+                      optionally 'label', 'color', 'shape', etc.
             """
+            if hasattr(node, 'to_dict'):
+                node = node.to_dict()
             self._send_command("addNode", {"node": node})
         
-        def add_nodes(self, nodes: List[Dict[str, Any]]):
-            """
-            Add multiple nodes to the network.
-            
+        def add_nodes(self, nodes):
+            """Add multiple nodes. Accepts list of dicts or typed NodeOptions.
+
             Args:
-                nodes: List of node data dicts
+                nodes: List of node data dicts or typed NodeOptions
             """
+            nodes = [n.to_dict() if hasattr(n, 'to_dict') else n for n in nodes]
             self._send_command("addNodes", {"nodes": nodes})
         
-        def update_node(self, node: Dict[str, Any]):
-            """
-            Update an existing node's properties.
-            
+        def update_node(self, node):
+            """Update an existing node. Accepts dict or typed NodeOptions.
+
             Args:
-                node: Node data dict with 'id' and properties to update
+                node: Node data dict or typed NodeOptions with 'id' and properties to update
             """
+            if hasattr(node, 'to_dict'):
+                node = node.to_dict()
             self._send_command("updateNode", {"node": node})
         
         def remove_node(self, node_id: Any):
@@ -653,32 +655,34 @@ if SHINY_AVAILABLE:
             """
             self._send_command("removeNode", {"nodeId": node_id})
         
-        def add_edge(self, edge: Dict[str, Any]):
-            """
-            Add a new edge to the network.
-            
+        def add_edge(self, edge):
+            """Add a new edge. Accepts dict or typed EdgeOptions.
+
             Args:
-                edge: Edge data dict with 'from', 'to', and optionally
-                      'id', 'label', 'color', etc.
+                edge: Edge data dict or typed EdgeOptions with 'from', 'to',
+                      and optionally 'id', 'label', 'color', etc.
             """
+            if hasattr(edge, 'to_dict'):
+                edge = edge.to_dict()
             self._send_command("addEdge", {"edge": edge})
         
-        def add_edges(self, edges: List[Dict[str, Any]]):
-            """
-            Add multiple edges to the network.
-            
+        def add_edges(self, edges):
+            """Add multiple edges. Accepts list of dicts or typed EdgeOptions.
+
             Args:
-                edges: List of edge data dicts
+                edges: List of edge data dicts or typed EdgeOptions
             """
+            edges = [e.to_dict() if hasattr(e, 'to_dict') else e for e in edges]
             self._send_command("addEdges", {"edges": edges})
         
-        def update_edge(self, edge: Dict[str, Any]):
-            """
-            Update an existing edge's properties.
-            
+        def update_edge(self, edge):
+            """Update an existing edge. Accepts dict or typed EdgeOptions.
+
             Args:
-                edge: Edge data dict with 'id' and properties to update
+                edge: Edge data dict or typed EdgeOptions with 'id' and properties to update
             """
+            if hasattr(edge, 'to_dict'):
+                edge = edge.to_dict()
             self._send_command("updateEdge", {"edge": edge})
         
         def remove_edge(self, edge_id: Any):
@@ -760,13 +764,14 @@ if SHINY_AVAILABLE:
         
         # === Options Methods ===
         
-        def set_options(self, options: Dict[str, Any]):
-            """
-            Update network options.
-            
+        def set_options(self, options):
+            """Update network options. Accepts dict or typed NetworkOptions.
+
             Args:
-                options: vis.js network options dict
+                options: vis.js network options dict or typed NetworkOptions
             """
+            if hasattr(options, 'to_dict'):
+                options = options.to_dict()
             self._send_command("setOptions", {"options": options})
         
         # === Query Methods (responses come back as inputs) ===
