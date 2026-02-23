@@ -33,6 +33,7 @@ Complete reference for the PyVis library — interactive network visualization i
   - [Standalone Functions](#standalone-functions)
   - [Shiny Module](#shiny-module)
   - [Events Reference](#events-reference)
+  - [Native Manipulation (Shiny)](#native-manipulation-shiny)
 - [Internal Classes](#internal-classes)
   - [Node](#node)
   - [Edge](#edge)
@@ -1138,7 +1139,7 @@ class ConfigureOptions(OptionsBase):
 
 #### ManipulationOptions
 
-Add/edit/delete node/edge toolbar.
+Add/edit/delete node/edge toolbar. When `enabled=True` in a Shiny context, the JavaScript bindings automatically inject modal dialogs for editing node and edge attributes on the canvas. See [Native Manipulation (Shiny)](#native-manipulation-shiny) for details.
 
 ```python
 @dataclass
@@ -1151,6 +1152,14 @@ class ManipulationOptions(OptionsBase):
     deleteNode: Optional[bool] = None
     deleteEdge: Optional[bool] = None
 ```
+
+**Example (Shiny):**
+```python
+from pyvis.types import NetworkOptions, ManipulationOptions
+
+net.set_options(NetworkOptions(
+    manipulation=ManipulationOptions(enabled=True, initiallyActive=False),
+))
 
 ---
 
@@ -1409,6 +1418,42 @@ def server(input, output, session):
 | `set_options` | `(options)` | Update options (dict or typed) |
 | `set_theme` | `(theme: str)` | Switch theme (`"light"` / `"dark"`) |
 
+#### Manipulation Commands
+
+Low-level commands for controlling the native manipulation toolbar behavior. Sent via `_send_command()`.
+
+| Command | Arguments | Description |
+|---------|-----------|-------------|
+| `toggleManipulation` | `{"enabled": bool}` | Show/hide the manipulation toolbar (uses CSS toggling to preserve toolbar state) |
+| `setEdgeEditMode` | `{"mode": "attributes"\|"links"}` | Switch edge editing between attribute modal and link reconnection modal |
+| `setNodeTemplateMode` | `{"enabled": bool}` | When enabled, the Add Node modal shows clickable template chips from existing node shapes |
+
+**Example:**
+```python
+ctrl = PyVisNetworkController("network", session)
+
+# Toggle manipulation toolbar off
+ctrl._send_command("toggleManipulation", {"enabled": False})
+
+# Switch edge editing to link reconnection mode
+ctrl._send_command("setEdgeEditMode", {"mode": "links"})
+
+# Enable template-from-existing for Add Node
+ctrl._send_command("setNodeTemplateMode", {"enabled": True})
+```
+
+> **Note:** These commands require `ManipulationOptions(enabled=True)` to be set on the network. The `toggleManipulation` command uses CSS display toggling rather than `network.setOptions()` to avoid vis.js rebuilding and losing the toolbar DOM.
+
+#### Custom JavaScript Execution
+
+For app-level DOM operations (e.g., toggling body CSS classes for theme switching), use the `pyvis-run-js` custom message handler:
+
+```python
+await session.send_custom_message("pyvis-run-js", {
+    "js": "document.body.classList.add('app-light');"
+})
+```
+
 #### Query Methods
 
 Query methods are asynchronous — they send a request and the response arrives as a Shiny input.
@@ -1580,6 +1625,59 @@ Network events are automatically sent as Shiny inputs using the pattern `input.{
 | `input.{id}_response_scale` | Zoom scale (number) |
 | `input.{id}_response_viewPosition` | Camera position `{x, y}` |
 | `input.{id}_response_allData` | Full data `{nodes: [...], edges: [...], positions: {...}, view: {...}}` |
+
+---
+
+### Native Manipulation (Shiny)
+
+When `ManipulationOptions(enabled=True)` is set on a network rendered in Shiny, the JavaScript bindings automatically create on-canvas modal dialogs for adding and editing nodes and edges. No additional Python code is needed for the basic modal functionality.
+
+#### How It Works
+
+The vis.js manipulation toolbar provides buttons: **Add Node**, **Add Edge**, **Edit** (when a node/edge is selected), and **Delete Selected**. The Shiny bindings intercept these callbacks and show styled modal dialogs instead of requiring programmatic handling.
+
+#### Node Edit Modal
+
+Shown when adding a new node (click Add Node → click canvas) or editing an existing one (select node → Edit). Fields:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| Label | text | `"new"` | Node display label |
+| Color | color picker | `#97c2fc` | Node background color |
+| Shape | select | `dot` | `dot`, `ellipse`, `box`, `diamond`, `star`, `triangle`, `square` |
+| Size | number | `25` | Node size (5–100) |
+
+When **Template from Existing** mode is active (via `setNodeTemplateMode`), the Add Node modal also displays a row of clickable chips representing each unique shape+color+size combination found in the current graph. Clicking a chip pre-fills the Color, Shape, and Size fields.
+
+#### Edge Attributes Modal
+
+Shown when editing an edge in "attributes" mode (the default). Fields:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| Label | text | `""` | Edge label |
+| Color | color picker | `#848484` | Edge color |
+| Width | number | `1` | Edge width (0.1–20) |
+| Dashes | checkbox | `false` | Dashed line style |
+| Arrows | select | `none` | `none`, `to`, `from`, `middle`, `both` |
+| Font Size | number | `14` | Label font size (8–48) |
+
+#### Edge Links Modal
+
+Shown when editing an edge in "links" mode (via `setEdgeEditMode`). Allows reconnecting an edge's endpoints:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| From | select | Source node (dropdown of all nodes) |
+| To | select | Target node (dropdown of all nodes) |
+
+#### Delete Confirmation
+
+When deleting nodes or edges, a browser `confirm()` dialog is shown with the count of items to be deleted.
+
+#### Theming
+
+All modals use CSS variables (`--pyvis-bg`, `--pyvis-border`, `--pyvis-text`, `--pyvis-accent`, etc.) and automatically adapt to the current theme (light/dark).
 
 ---
 

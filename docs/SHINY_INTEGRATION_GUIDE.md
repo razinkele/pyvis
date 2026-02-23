@@ -12,6 +12,7 @@ The integration provides:
 4. **Real-time Data Updates**: Add/remove/update nodes and edges dynamically
 5. **Clustering Support**: Create and manage clusters from Python
 6. **Physics Control**: Start, stop, and stabilize the physics simulation
+7. **Native Manipulation Modals**: On-canvas Add/Edit Node and Edge dialogs with template-from-existing support
 
 ## Installation
 
@@ -201,6 +202,15 @@ ctrl = PyVisNetworkController("my_network", session)
 | Method | Description | Parameters |
 |--------|-------------|------------|
 | `set_options(options)` | Update options | vis.js options dict |
+| `set_theme(theme)` | Switch theme | `"light"` or `"dark"` |
+
+### Manipulation Commands
+
+| Command (via `_send_command`) | Description | Arguments |
+|-------------------------------|-------------|-----------|
+| `toggleManipulation` | Show/hide manipulation toolbar | `{"enabled": bool}` |
+| `setEdgeEditMode` | Switch edge edit mode | `{"mode": "attributes"\|"links"}` |
+| `setNodeTemplateMode` | Toggle template chips in Add Node modal | `{"enabled": bool}` |
 
 ### Query Commands (Responses come as inputs)
 
@@ -362,6 +372,109 @@ def server(input, output, session):
     )
 ```
 
+## Native Manipulation (On-Canvas Editing)
+
+When `ManipulationOptions(enabled=True)` is set, the Shiny bindings auto-inject modal dialogs for adding/editing nodes and edges directly on the canvas.
+
+### Basic Setup
+
+```python
+from pyvis.types import NetworkOptions, ManipulationOptions
+
+@render_pyvis_network(theme="dark")
+def network():
+    net = Network()
+    net.add_node(1, label="Node 1", color="#e74c3c", shape="dot")
+    net.add_node(2, label="Node 2", color="#3498db", shape="star")
+    net.add_edge(1, 2)
+    net.set_options(NetworkOptions(
+        manipulation=ManipulationOptions(enabled=True, initiallyActive=False),
+    ))
+    return net
+```
+
+Click the **Edit** pencil button on the toolbar to activate the manipulation toolbar, which provides: Add Node, Add Edge, Edit (node/edge), and Delete Selected.
+
+### Manipulation Commands
+
+Use `PyVisNetworkController._send_command()` to control manipulation behavior:
+
+```python
+ctrl = PyVisNetworkController("network", session)
+```
+
+#### Toggle Manipulation On/Off
+
+```python
+@reactive.effect
+@reactive.event(input.manipulation_enabled, ignore_init=True)
+def _on_manipulation_toggle():
+    ctrl._send_command("toggleManipulation", {
+        "enabled": input.manipulation_enabled()
+    })
+```
+
+> Uses CSS display toggling (not `network.setOptions()`) to preserve the toolbar DOM and avoid vis.js rebuild issues.
+
+#### Edge Edit Mode
+
+Switch between editing edge attributes (color, width, dashes, arrows) via a modal, or reconnecting edge endpoints (from/to nodes) via a dropdown modal:
+
+```python
+@reactive.effect
+@reactive.event(input.edge_edit_mode, ignore_init=True)
+def _on_edge_edit_mode():
+    ctrl._send_command("setEdgeEditMode", {
+        "mode": input.edge_edit_mode()  # "attributes" or "links"
+    })
+```
+
+#### Template from Existing
+
+When enabled, the Add Node modal shows clickable chips for each unique shape+color+size combination in the current graph. Clicking a chip pre-fills the form fields:
+
+```python
+@reactive.effect
+@reactive.event(input.node_template_mode, ignore_init=True)
+def _on_node_template_mode():
+    ctrl._send_command("setNodeTemplateMode", {
+        "enabled": input.node_template_mode()
+    })
+```
+
+### App-Level Theme Toggle
+
+To toggle both the Shiny app theme and the pyvis network theme:
+
+```python
+@reactive.effect
+@reactive.event(input.dark_mode, ignore_init=True)
+async def _on_theme_toggle():
+    is_dark = input.dark_mode()
+    ctrl.set_theme("dark" if is_dark else "light")
+    js = (
+        "document.body.classList.remove('app-light');"
+        if is_dark else
+        "document.body.classList.add('app-light');"
+    )
+    await session.send_custom_message("pyvis-run-js", {"js": js})
+```
+
+### Complete Editor Demo
+
+See `examples/shiny_editor_demo.py` for a full working example with all switches:
+- Dark/Light theme toggle (app + network)
+- Native manipulation on/off
+- Template from existing shapes
+- Edge edit mode (attributes vs links)
+- Sidebar-based node/edge editing panels
+
+```bash
+shiny run examples/shiny_editor_demo.py
+```
+
+---
+
 ## Tips and Best Practices
 
 1. **Enable Hover Events**: To receive hover events, enable hover in network options:
@@ -390,13 +503,14 @@ def server(input, output, session):
 pyvis/shiny/
 ├── __init__.py      # Exports all functions
 ├── wrapper.py       # Python wrapper code
-└── bindings.js      # JavaScript output binding
+├── bindings.js      # JavaScript output binding (includes manipulation modals)
+└── styles.css       # CSS for toolbar, modals, and template chips (theme-aware)
 ```
 
-## Demo Application
+## Demo Applications
 
-Run the advanced demo to see all features in action:
+Run the editor demo with all manipulation features:
 
 ```bash
-shiny run shiny_advanced_demo.py
+shiny run examples/shiny_editor_demo.py
 ```
