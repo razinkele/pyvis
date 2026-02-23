@@ -147,8 +147,12 @@ Thumbs.db
 pyvis/full_graph.txt
 pyvis/output.txt
 pyvis/example.html
+pyvis/make.bat
+
+# Generated HTML output (keep only Jinja templates)
 *.html
 !pyvis/templates/*.html
-!docs/*.html
-!notebooks/*.html
-pyvis/make.bat
+
+# Generated screenshots / images from demo testing
+*.png
+!pyvis/source/**/*.png
