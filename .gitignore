@@ -156,6 +156,9 @@ pyvis/make.bat
 *.html
 !pyvis/templates/*.html
 
+# Conda build artifacts
+conda-bld/
+
 # Generated screenshots / images from demo testing
 *.png
 !pyvis/source/**/*.png

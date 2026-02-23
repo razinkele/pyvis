@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide covers installing the optimized PyVis library (v0.3.0) with 100x performance improvements in your Miniconda environment.
+This guide covers installing the optimized PyVis library (v4.0.0) with 100x performance improvements in your Miniconda environment.
 
 ---
 
@@ -161,7 +161,7 @@ python test_new_features.py
 ### Expected Output
 
 ```
-PyVis version: 0.3.0
+PyVis version: 4.0.0
 ✓ Network created successfully
 ✓ Network length: 0
 ✓ Iterator protocol: yes
@@ -185,14 +185,14 @@ pip install build
 python -m build
 
 # This creates:
-# - dist/pyvis-0.3.0-py3-none-any.whl
-# - dist/pyvis-0.3.0.tar.gz
+# - dist/pyvis-4.0.0-py3-none-any.whl
+# - dist/pyvis-4.0.0.tar.gz
 ```
 
 ### Install from Wheel
 
 ```bash
-pip install dist/pyvis-0.3.0-py3-none-any.whl
+pip install dist/pyvis-4.0.0-py3-none-any.whl
 ```
 
 ### Create Conda Package (Advanced)
@@ -319,7 +319,7 @@ conda activate production
 # Build and install wheel
 cd pyvis-master
 python -m build
-pip install dist/pyvis-0.3.0-py3-none-any.whl
+pip install dist/pyvis-4.0.0-py3-none-any.whl
 ```
 
 ---
@@ -426,5 +426,5 @@ You'll have access to:
 
 ---
 
-*Installation guide for PyVis v0.3.0 (Optimized)*
+*Installation guide for PyVis v4.0.0 (Optimized)*
 *Updated: 2025-12-10*

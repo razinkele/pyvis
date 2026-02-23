@@ -97,7 +97,7 @@ pip install -e .
 
 ```python
 import pyvis
-print(pyvis.__version__)  # Should show: 0.3.0
+print(pyvis.__version__)  # Should show: 4.0.0
 
 from pyvis.network import Network, CDN_REMOTE
 net = Network(cdn_resources=CDN_REMOTE)
@@ -171,4 +171,4 @@ pip install -e ".[all]"
 
 ---
 
-*Quick Install Guide - PyVis v0.3.0*
+*Quick Install Guide - PyVis v4.0.0*
