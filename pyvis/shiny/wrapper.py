@@ -133,6 +133,9 @@ __all__ = [
     'network_open_cluster',
     'network_set_options',
     'network_set_theme',
+    'network_toggle_manipulation',
+    'network_set_edge_edit_mode',
+    'network_set_node_template_mode',
     'network_get_positions',
     'network_get_selection',
     'network_get_data',
@@ -827,6 +830,41 @@ if SHINY_AVAILABLE:
             """
             self._send_command("setTheme", {"theme": theme})
 
+        # === Manipulation ===
+
+        def toggle_manipulation(self, enabled: bool) -> None:
+            """Show or hide the native manipulation toolbar.
+
+            Uses CSS display toggling to preserve the toolbar DOM and avoid
+            vis.js rebuild issues. Requires ManipulationOptions(enabled=True).
+
+            Args:
+                enabled: True to show the toolbar, False to hide it.
+            """
+            self._send_command("toggleManipulation", {"enabled": enabled})
+
+        def set_edge_edit_mode(self, mode: str) -> None:
+            """Switch edge editing between attribute modal and link reconnection.
+
+            Args:
+                mode: "attributes" to edit edge properties (color, width, dashes,
+                      arrows) via a modal, or "links" to reconnect edge endpoints
+                      (from/to nodes) via a dropdown modal.
+            """
+            self._send_command("setEdgeEditMode", {"mode": mode})
+
+        def set_node_template_mode(self, enabled: bool) -> None:
+            """Toggle template-from-existing mode for the Add Node modal.
+
+            When enabled, the Add Node modal displays clickable chips for each
+            unique shape+color+size combination found in the current graph.
+            Clicking a chip pre-fills the Color, Shape, and Size fields.
+
+            Args:
+                enabled: True to show template chips, False for default behavior.
+            """
+            self._send_command("setNodeTemplateMode", {"enabled": enabled})
+
         # === Diff-based Update ===
 
         def update_data(self, nodes: List[Dict[str, Any]], edges: List[Dict[str, Any]]):
@@ -1028,6 +1066,39 @@ def network_set_theme(session: 'Session', output_id: str, theme: str):
         theme: "light" or "dark"
     """
     _send_network_command(session, output_id, "setTheme", {"theme": theme})
+
+
+def network_toggle_manipulation(session: 'Session', output_id: str, enabled: bool):
+    """Show or hide the native manipulation toolbar.
+
+    Args:
+        session: The Shiny session object.
+        output_id: The ID of the network output.
+        enabled: True to show the toolbar, False to hide it.
+    """
+    _send_network_command(session, output_id, "toggleManipulation", {"enabled": enabled})
+
+
+def network_set_edge_edit_mode(session: 'Session', output_id: str, mode: str):
+    """Switch edge editing between attribute modal and link reconnection.
+
+    Args:
+        session: The Shiny session object.
+        output_id: The ID of the network output.
+        mode: "attributes" or "links"
+    """
+    _send_network_command(session, output_id, "setEdgeEditMode", {"mode": mode})
+
+
+def network_set_node_template_mode(session: 'Session', output_id: str, enabled: bool):
+    """Toggle template-from-existing mode for the Add Node modal.
+
+    Args:
+        session: The Shiny session object.
+        output_id: The ID of the network output.
+        enabled: True to show template chips, False for default behavior.
+    """
+    _send_network_command(session, output_id, "setNodeTemplateMode", {"enabled": enabled})
 
 
 def network_get_positions(

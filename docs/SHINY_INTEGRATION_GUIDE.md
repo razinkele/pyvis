@@ -204,13 +204,13 @@ ctrl = PyVisNetworkController("my_network", session)
 | `set_options(options)` | Update options | vis.js options dict |
 | `set_theme(theme)` | Switch theme | `"light"` or `"dark"` |
 
-### Manipulation Commands
+### Manipulation Methods
 
-| Command (via `_send_command`) | Description | Arguments |
-|-------------------------------|-------------|-----------|
-| `toggleManipulation` | Show/hide manipulation toolbar | `{"enabled": bool}` |
-| `setEdgeEditMode` | Switch edge edit mode | `{"mode": "attributes"\|"links"}` |
-| `setNodeTemplateMode` | Toggle template chips in Add Node modal | `{"enabled": bool}` |
+| Method | Description | Parameters |
+|--------|-------------|------------|
+| `toggle_manipulation(enabled)` | Show/hide manipulation toolbar | `bool` |
+| `set_edge_edit_mode(mode)` | Switch edge edit mode | `"attributes"` or `"links"` |
+| `set_node_template_mode(enabled)` | Toggle template chips in Add Node modal | `bool` |
 
 ### Query Commands (Responses come as inputs)
 
@@ -397,7 +397,7 @@ Click the **Edit** pencil button on the toolbar to activate the manipulation too
 
 ### Manipulation Commands
 
-Use `PyVisNetworkController._send_command()` to control manipulation behavior:
+Use `PyVisNetworkController` methods to control manipulation behavior:
 
 ```python
 ctrl = PyVisNetworkController("network", session)
@@ -409,9 +409,7 @@ ctrl = PyVisNetworkController("network", session)
 @reactive.effect
 @reactive.event(input.manipulation_enabled, ignore_init=True)
 def _on_manipulation_toggle():
-    ctrl._send_command("toggleManipulation", {
-        "enabled": input.manipulation_enabled()
-    })
+    ctrl.toggle_manipulation(input.manipulation_enabled())
 ```
 
 > Uses CSS display toggling (not `network.setOptions()`) to preserve the toolbar DOM and avoid vis.js rebuild issues.
@@ -424,9 +422,7 @@ Switch between editing edge attributes (color, width, dashes, arrows) via a moda
 @reactive.effect
 @reactive.event(input.edge_edit_mode, ignore_init=True)
 def _on_edge_edit_mode():
-    ctrl._send_command("setEdgeEditMode", {
-        "mode": input.edge_edit_mode()  # "attributes" or "links"
-    })
+    ctrl.set_edge_edit_mode(input.edge_edit_mode())  # "attributes" or "links"
 ```
 
 #### Template from Existing
@@ -437,9 +433,7 @@ When enabled, the Add Node modal shows clickable chips for each unique shape+col
 @reactive.effect
 @reactive.event(input.node_template_mode, ignore_init=True)
 def _on_node_template_mode():
-    ctrl._send_command("setNodeTemplateMode", {
-        "enabled": input.node_template_mode()
-    })
+    ctrl.set_node_template_mode(input.node_template_mode())
 ```
 
 ### App-Level Theme Toggle

@@ -350,7 +350,7 @@ def server(input, output, session):
     @reactive.event(input.manipulation_enabled, ignore_init=True)
     def _on_manipulation_toggle():
         enabled = input.manipulation_enabled()
-        ctrl._send_command("toggleManipulation", {"enabled": enabled})
+        ctrl.toggle_manipulation(enabled)
 
     # ── Edge edit mode toggle ────────────────────────────────────────
 
@@ -358,7 +358,7 @@ def server(input, output, session):
     @reactive.event(input.edge_edit_mode, ignore_init=True)
     def _on_edge_edit_mode():
         mode = input.edge_edit_mode()
-        ctrl._send_command("setEdgeEditMode", {"mode": mode})
+        ctrl.set_edge_edit_mode(mode)
 
     # ── Node template mode toggle ─────────────────────────────────────
 
@@ -366,7 +366,7 @@ def server(input, output, session):
     @reactive.event(input.node_template_mode, ignore_init=True)
     def _on_node_template_mode():
         enabled = input.node_template_mode()
-        ctrl._send_command("setNodeTemplateMode", {"enabled": enabled})
+        ctrl.set_node_template_mode(enabled)
 
     # ── Render initial network ───────────────────────────────────────
 

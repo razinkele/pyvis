@@ -151,6 +151,9 @@ from .wrapper import (
     network_open_cluster,
     network_set_options,
     network_set_theme,
+    network_toggle_manipulation,
+    network_set_edge_edit_mode,
+    network_set_node_template_mode,
     network_get_positions,
     network_get_selection,
     network_get_data,
@@ -161,7 +164,7 @@ __all__ = [
     # Core rendering
     'render_network',
     'output_pyvis_network',
-    'render_pyvis_network', 
+    'render_pyvis_network',
     # Module
     'pyvis_network_ui',
     'pyvis_network_server',
@@ -187,6 +190,9 @@ __all__ = [
     'network_open_cluster',
     'network_set_options',
     'network_set_theme',
+    'network_toggle_manipulation',
+    'network_set_edge_edit_mode',
+    'network_set_node_template_mode',
     'network_get_positions',
     'network_get_selection',
     'network_get_data',

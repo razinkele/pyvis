@@ -1418,31 +1418,31 @@ def server(input, output, session):
 | `set_options` | `(options)` | Update options (dict or typed) |
 | `set_theme` | `(theme: str)` | Switch theme (`"light"` / `"dark"`) |
 
-#### Manipulation Commands
+#### Manipulation Methods
 
-Low-level commands for controlling the native manipulation toolbar behavior. Sent via `_send_command()`.
+Methods for controlling the native manipulation toolbar behavior. Require `ManipulationOptions(enabled=True)`.
 
-| Command | Arguments | Description |
-|---------|-----------|-------------|
-| `toggleManipulation` | `{"enabled": bool}` | Show/hide the manipulation toolbar (uses CSS toggling to preserve toolbar state) |
-| `setEdgeEditMode` | `{"mode": "attributes"\|"links"}` | Switch edge editing between attribute modal and link reconnection modal |
-| `setNodeTemplateMode` | `{"enabled": bool}` | When enabled, the Add Node modal shows clickable template chips from existing node shapes |
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `toggle_manipulation` | `(enabled: bool)` | Show/hide the manipulation toolbar (uses CSS toggling to preserve toolbar state) |
+| `set_edge_edit_mode` | `(mode: str)` | Switch edge editing: `"attributes"` (modal) or `"links"` (reconnect) |
+| `set_node_template_mode` | `(enabled: bool)` | When enabled, Add Node modal shows clickable template chips from existing node shapes |
 
 **Example:**
 ```python
 ctrl = PyVisNetworkController("network", session)
 
 # Toggle manipulation toolbar off
-ctrl._send_command("toggleManipulation", {"enabled": False})
+ctrl.toggle_manipulation(False)
 
 # Switch edge editing to link reconnection mode
-ctrl._send_command("setEdgeEditMode", {"mode": "links"})
+ctrl.set_edge_edit_mode("links")
 
 # Enable template-from-existing for Add Node
-ctrl._send_command("setNodeTemplateMode", {"enabled": True})
+ctrl.set_node_template_mode(True)
 ```
 
-> **Note:** These commands require `ManipulationOptions(enabled=True)` to be set on the network. The `toggleManipulation` command uses CSS display toggling rather than `network.setOptions()` to avoid vis.js rebuilding and losing the toolbar DOM.
+> **Note:** The `toggle_manipulation` method uses CSS display toggling rather than `network.setOptions()` to avoid vis.js rebuilding and losing the toolbar DOM.
 
 #### Custom JavaScript Execution
 
@@ -1520,6 +1520,14 @@ network_open_cluster(session, output_id, cluster_node_id)
 ```python
 network_set_options(session, output_id, options)
 network_set_theme(session, output_id, theme: str)
+```
+
+#### Manipulation
+
+```python
+network_toggle_manipulation(session, output_id, enabled: bool)
+network_set_edge_edit_mode(session, output_id, mode: str)
+network_set_node_template_mode(session, output_id, enabled: bool)
 ```
 
 #### Queries
