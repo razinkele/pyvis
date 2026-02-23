@@ -6,7 +6,6 @@ These simulations control how nodes interact and position themselves in the
 network visualization.
 """
 
-import json
 from .base import JSONSerializable
 
 __all__ = ['Physics']
