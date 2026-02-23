@@ -7,7 +7,7 @@ name = "pyvis"
 version = "0.3.0"
 description = "A Python network graph visualization library - Optimized Edition"
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.8"
 license = {text = "BSD"}
 authors = [
     {name = "Jose Unpingco", email = "datascience@westhealth.org"}
@@ -23,8 +23,6 @@ classifiers = [
     "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -92,7 +90,7 @@ python_functions = "test_*"
 
 [tool.black]
 line-length = 100
-target-version = ['py36', 'py37', 'py38', 'py39', 'py310', 'py311']
+target-version = ['py38', 'py39', 'py310', 'py311']
 include = '\.pyi?$'
 exclude = '''
 /(
@@ -109,7 +107,7 @@ exclude = '''
 '''
 
 [tool.mypy]
-python_version = "3.6"
+python_version = "3.8"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false

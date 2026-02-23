@@ -21,7 +21,6 @@ from jinja2 import Environment, FileSystemLoader
 from .edge import Edge
 from .node import Node
 from .options import Options, Configure
-from .types.base import OptionsBase
 from .utils import check_html
 from . import vis_config
 
@@ -1179,6 +1178,13 @@ class Network:
 
         Args:
             options: JSON string, dict, Options object, or NetworkOptions instance.
+
+        .. warning::
+            Passing a NetworkOptions, dict, or JSON string replaces the internal
+            Options object with a plain dict. After this call, legacy helper methods
+            like ``barnes_hut()``, ``toggle_physics()``, ``repulsion()``, etc.
+            will no longer work. Use the typed options API exclusively once you
+            call this method with non-Options input.
         """
         if hasattr(options, 'to_dict'):
             self.options = options.to_dict()

@@ -951,23 +951,31 @@ def network_stabilize(session: 'Session', output_id: str, iterations: int = 100)
     _send_network_command(session, output_id, "stabilize", {"iterations": iterations})
 
 
-def network_add_node(session: 'Session', output_id: str, node: Dict[str, Any]):
-    """Add a node to the network."""
+def network_add_node(session: 'Session', output_id: str, node):
+    """Add a node to the network. Accepts dict or typed NodeOptions."""
+    if hasattr(node, 'to_dict'):
+        node = node.to_dict()
     _send_network_command(session, output_id, "addNode", {"node": node})
 
 
-def network_add_edge(session: 'Session', output_id: str, edge: Dict[str, Any]):
-    """Add an edge to the network."""
+def network_add_edge(session: 'Session', output_id: str, edge):
+    """Add an edge to the network. Accepts dict or typed EdgeOptions."""
+    if hasattr(edge, 'to_dict'):
+        edge = edge.to_dict()
     _send_network_command(session, output_id, "addEdge", {"edge": edge})
 
 
-def network_update_node(session: 'Session', output_id: str, node: Dict[str, Any]):
-    """Update a node's properties."""
+def network_update_node(session: 'Session', output_id: str, node):
+    """Update a node's properties. Accepts dict or typed NodeOptions."""
+    if hasattr(node, 'to_dict'):
+        node = node.to_dict()
     _send_network_command(session, output_id, "updateNode", {"node": node})
 
 
-def network_update_edge(session: 'Session', output_id: str, edge: Dict[str, Any]):
-    """Update an edge's properties."""
+def network_update_edge(session: 'Session', output_id: str, edge):
+    """Update an edge's properties. Accepts dict or typed EdgeOptions."""
+    if hasattr(edge, 'to_dict'):
+        edge = edge.to_dict()
     _send_network_command(session, output_id, "updateEdge", {"edge": edge})
 
 
@@ -1001,8 +1009,10 @@ def network_open_cluster(session: 'Session', output_id: str, cluster_node_id: An
     _send_network_command(session, output_id, "openCluster", {"nodeId": cluster_node_id})
 
 
-def network_set_options(session: 'Session', output_id: str, options: Dict[str, Any]):
-    """Update network options."""
+def network_set_options(session: 'Session', output_id: str, options):
+    """Update network options. Accepts dict or typed NetworkOptions."""
+    if hasattr(options, 'to_dict'):
+        options = options.to_dict()
     _send_network_command(session, output_id, "setOptions", {"options": options})
 
 

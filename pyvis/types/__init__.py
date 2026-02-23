@@ -11,6 +11,7 @@ from .nodes import (
     NodeFixed, NodeChosen, NodeIcon, NodeImage,
     NodeImagePadding, NodeMargin, NodeShapeProperties,
     NodeWidthConstraint, NodeHeightConstraint,
+    NodeShape,
 )
 from .edges import (
     EdgeOptions, EdgeColor, EdgeChosen, EdgeArrows, ArrowConfig,
@@ -19,9 +20,13 @@ from .edges import (
 from .physics import (
     PhysicsOptions, BarnesHut, ForceAtlas2Based, Repulsion,
     HierarchicalRepulsion, Stabilization, Wind,
+    PhysicsSolver,
 )
 from .interaction import InteractionOptions, KeyboardOptions, KeyboardSpeed
-from .layout import LayoutOptions, HierarchicalLayout
+from .layout import (
+    LayoutOptions, HierarchicalLayout,
+    HierarchicalDirection, HierarchicalSortMethod, HierarchicalShakeTowards,
+)
 from .configure import ConfigureOptions
 from .manipulation import ManipulationOptions
 from .network import NetworkOptions
@@ -35,17 +40,18 @@ __all__ = [
     'NodeOptions', 'NodeColor', 'ColorHighlight', 'ColorHover',
     'NodeFixed', 'NodeChosen', 'NodeIcon', 'NodeImage',
     'NodeImagePadding', 'NodeMargin', 'NodeShapeProperties',
-    'NodeWidthConstraint', 'NodeHeightConstraint',
+    'NodeWidthConstraint', 'NodeHeightConstraint', 'NodeShape',
     # Edge
     'EdgeOptions', 'EdgeColor', 'EdgeChosen', 'EdgeArrows', 'ArrowConfig',
     'EdgeSmooth', 'EdgeSelfReference', 'EdgeEndPointOffset', 'EdgeWidthConstraint',
     # Physics
     'PhysicsOptions', 'BarnesHut', 'ForceAtlas2Based', 'Repulsion',
-    'HierarchicalRepulsion', 'Stabilization', 'Wind',
+    'HierarchicalRepulsion', 'Stabilization', 'Wind', 'PhysicsSolver',
     # Interaction
     'InteractionOptions', 'KeyboardOptions', 'KeyboardSpeed',
     # Layout
     'LayoutOptions', 'HierarchicalLayout',
+    'HierarchicalDirection', 'HierarchicalSortMethod', 'HierarchicalShakeTowards',
     # Configure & Manipulation
     'ConfigureOptions', 'ManipulationOptions',
     # Network
