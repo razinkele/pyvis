@@ -20,5 +20,5 @@ class Node:
         self.options["id"] = n_id
         self.options["label"] = label
         self.options["shape"] = shape
-        if font_color:
+        if font_color is not None and font_color is not False:
             self.options["font"] = dict(color=font_color)

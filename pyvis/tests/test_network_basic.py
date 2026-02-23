@@ -521,3 +521,13 @@ class TestPhysicsMethodsExplicitParams:
         assert fa.springConstant == 0.1
         assert fa.damping == 0.5
         assert fa.avoidOverlap == 1
+
+
+class TestFontColorEmptyString:
+    """font_color='' (empty string) should still set the font dict."""
+
+    def test_empty_string_sets_font(self):
+        from pyvis.node import Node
+        n = Node(1, "dot", "A", font_color="")
+        assert "font" in n.options
+        assert n.options["font"]["color"] == ""
