@@ -71,7 +71,7 @@ Repository = "https://github.com/WestHealth/pyvis"
 Changelog = "https://github.com/WestHealth/pyvis/blob/master/CHANGELOG.md"
 
 [tool.setuptools]
-packages = ["pyvis", "pyvis.shiny", "pyvis.tests"]
+packages = ["pyvis", "pyvis.shiny", "pyvis.types", "pyvis.tests"]
 include-package-data = true
 
 [tool.setuptools.package-data]
