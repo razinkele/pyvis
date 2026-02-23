@@ -190,6 +190,281 @@ if (typeof Shiny !== 'undefined') {
                 options = JSON.parse(options);
             }
 
+            // === MANIPULATION MODALS ===
+            if (options.manipulation && options.manipulation.enabled) {
+                // Container must be positioned for absolute overlay
+                container.style.position = 'relative';
+
+                // --- Create Node Modal ---
+                var nodeOverlay = document.createElement('div');
+                nodeOverlay.className = 'pyvis-modal-overlay';
+                nodeOverlay.id = outputId + '-node-modal';
+                nodeOverlay.style.display = 'none';
+                nodeOverlay.innerHTML =
+                    '<div class="pyvis-modal">' +
+                        '<div class="pyvis-modal-header">' +
+                            '<h3 id="' + outputId + '-node-modal-title">Add Node</h3>' +
+                            '<button class="pyvis-modal-close" data-action="close">&times;</button>' +
+                        '</div>' +
+                        '<div class="pyvis-modal-body">' +
+                            '<div class="pyvis-modal-field">' +
+                                '<label>Label</label>' +
+                                '<input type="text" id="' + outputId + '-node-label" placeholder="Node label">' +
+                            '</div>' +
+                            '<div class="pyvis-modal-field">' +
+                                '<label>Color</label>' +
+                                '<input type="color" id="' + outputId + '-node-color" value="#97c2fc">' +
+                            '</div>' +
+                            '<div class="pyvis-modal-field">' +
+                                '<label>Shape</label>' +
+                                '<select id="' + outputId + '-node-shape">' +
+                                    '<option value="dot">Dot</option>' +
+                                    '<option value="ellipse">Ellipse</option>' +
+                                    '<option value="box">Box</option>' +
+                                    '<option value="diamond">Diamond</option>' +
+                                    '<option value="star">Star</option>' +
+                                    '<option value="triangle">Triangle</option>' +
+                                    '<option value="square">Square</option>' +
+                                '</select>' +
+                            '</div>' +
+                            '<div class="pyvis-modal-field">' +
+                                '<label>Size</label>' +
+                                '<input type="number" id="' + outputId + '-node-size" value="25" min="5" max="100">' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="pyvis-modal-actions">' +
+                            '<button class="pyvis-btn-cancel" data-action="cancel">Cancel</button>' +
+                            '<button class="pyvis-btn-save" data-action="save">Save</button>' +
+                        '</div>' +
+                    '</div>';
+                container.appendChild(nodeOverlay);
+
+                // --- Create Edge Modal ---
+                var edgeOverlay = document.createElement('div');
+                edgeOverlay.className = 'pyvis-modal-overlay';
+                edgeOverlay.id = outputId + '-edge-modal';
+                edgeOverlay.style.display = 'none';
+                edgeOverlay.innerHTML =
+                    '<div class="pyvis-modal">' +
+                        '<div class="pyvis-modal-header">' +
+                            '<h3>Edit Edge</h3>' +
+                            '<button class="pyvis-modal-close" data-action="close">&times;</button>' +
+                        '</div>' +
+                        '<div class="pyvis-modal-body">' +
+                            '<div class="pyvis-modal-field">' +
+                                '<label>Label</label>' +
+                                '<input type="text" id="' + outputId + '-edge-label" placeholder="Edge label">' +
+                            '</div>' +
+                            '<div class="pyvis-modal-field">' +
+                                '<label>Color</label>' +
+                                '<input type="color" id="' + outputId + '-edge-color" value="#848484">' +
+                            '</div>' +
+                            '<div class="pyvis-modal-field">' +
+                                '<label>Width</label>' +
+                                '<input type="number" id="' + outputId + '-edge-width" value="1" min="0.1" max="20" step="0.1">' +
+                            '</div>' +
+                            '<div class="pyvis-modal-field">' +
+                                '<label>Dashes</label>' +
+                                '<input type="checkbox" id="' + outputId + '-edge-dashes">' +
+                            '</div>' +
+                            '<div class="pyvis-modal-field">' +
+                                '<label>Arrows</label>' +
+                                '<select id="' + outputId + '-edge-arrows">' +
+                                    '<option value="none">None</option>' +
+                                    '<option value="to">To</option>' +
+                                    '<option value="from">From</option>' +
+                                    '<option value="middle">Middle</option>' +
+                                    '<option value="both">Both (To + From)</option>' +
+                                '</select>' +
+                            '</div>' +
+                            '<div class="pyvis-modal-field">' +
+                                '<label>Font Size</label>' +
+                                '<input type="number" id="' + outputId + '-edge-fontsize" value="14" min="8" max="48">' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="pyvis-modal-actions">' +
+                            '<button class="pyvis-btn-cancel" data-action="cancel">Cancel</button>' +
+                            '<button class="pyvis-btn-save" data-action="save">Save</button>' +
+                        '</div>' +
+                    '</div>';
+                container.appendChild(edgeOverlay);
+
+                // --- Modal helpers ---
+                var manipCallback = null;
+                var manipNodeData = null;
+                var manipEdgeData = null;
+
+                function getEl(suffix) {
+                    return document.getElementById(outputId + '-' + suffix);
+                }
+
+                function closeModals() {
+                    nodeOverlay.style.display = 'none';
+                    edgeOverlay.style.display = 'none';
+                    manipCallback = null;
+                    manipNodeData = null;
+                    manipEdgeData = null;
+                }
+
+                function openNodeModal(nodeData, callback, title) {
+                    manipNodeData = nodeData;
+                    manipCallback = callback;
+                    getEl('node-modal-title').textContent = title || 'Add Node';
+                    getEl('node-label').value = nodeData.label || '';
+                    // Extract color — vis.js may store as string or { background: ... }
+                    var color = '#97c2fc';
+                    if (nodeData.color) {
+                        if (typeof nodeData.color === 'string') {
+                            color = nodeData.color;
+                        } else if (nodeData.color.background) {
+                            color = nodeData.color.background;
+                        }
+                    }
+                    getEl('node-color').value = color;
+                    getEl('node-shape').value = nodeData.shape || 'dot';
+                    getEl('node-size').value = nodeData.size || 25;
+                    nodeOverlay.style.display = 'flex';
+                    getEl('node-label').focus();
+                }
+
+                function saveNode() {
+                    if (!manipNodeData || !manipCallback) return;
+                    manipNodeData.label = getEl('node-label').value || 'new';
+                    manipNodeData.color = getEl('node-color').value;
+                    manipNodeData.shape = getEl('node-shape').value;
+                    manipNodeData.size = parseInt(getEl('node-size').value, 10) || 25;
+                    var cb = manipCallback;
+                    var nd = manipNodeData;
+                    closeModals();
+                    cb(nd);
+                }
+
+                function openEdgeModal(edgeData, callback) {
+                    manipEdgeData = edgeData;
+                    manipCallback = callback;
+                    getEl('edge-label').value = edgeData.label || '';
+                    // Extract color
+                    var color = '#848484';
+                    if (edgeData.color) {
+                        if (typeof edgeData.color === 'string') {
+                            color = edgeData.color;
+                        } else if (edgeData.color.color) {
+                            color = edgeData.color.color;
+                        }
+                    }
+                    getEl('edge-color').value = color;
+                    getEl('edge-width').value = edgeData.width || 1;
+                    getEl('edge-dashes').checked = !!edgeData.dashes;
+                    // Determine arrow setting
+                    var arrows = 'none';
+                    if (edgeData.arrows) {
+                        var a = edgeData.arrows;
+                        if (typeof a === 'string') {
+                            arrows = a;
+                        } else {
+                            var hasTo = a.to && (a.to === true || a.to.enabled);
+                            var hasFrom = a.from && (a.from === true || a.from.enabled);
+                            var hasMiddle = a.middle && (a.middle === true || a.middle.enabled);
+                            if (hasTo && hasFrom) arrows = 'both';
+                            else if (hasTo) arrows = 'to';
+                            else if (hasFrom) arrows = 'from';
+                            else if (hasMiddle) arrows = 'middle';
+                        }
+                    }
+                    getEl('edge-arrows').value = arrows;
+                    getEl('edge-fontsize').value = (edgeData.font && edgeData.font.size) || 14;
+                    edgeOverlay.style.display = 'flex';
+                    getEl('edge-label').focus();
+                }
+
+                function saveEdge() {
+                    if (!manipEdgeData || !manipCallback) return;
+                    var updatedEdge = { id: manipEdgeData.id };
+                    updatedEdge.label = getEl('edge-label').value;
+                    updatedEdge.color = { color: getEl('edge-color').value };
+                    updatedEdge.width = parseFloat(getEl('edge-width').value) || 1;
+                    updatedEdge.dashes = getEl('edge-dashes').checked;
+                    var arrowVal = getEl('edge-arrows').value;
+                    if (arrowVal === 'none') {
+                        updatedEdge.arrows = { to: { enabled: false }, from: { enabled: false }, middle: { enabled: false } };
+                    } else if (arrowVal === 'to') {
+                        updatedEdge.arrows = { to: { enabled: true }, from: { enabled: false }, middle: { enabled: false } };
+                    } else if (arrowVal === 'from') {
+                        updatedEdge.arrows = { to: { enabled: false }, from: { enabled: true }, middle: { enabled: false } };
+                    } else if (arrowVal === 'middle') {
+                        updatedEdge.arrows = { to: { enabled: false }, from: { enabled: false }, middle: { enabled: true } };
+                    } else if (arrowVal === 'both') {
+                        updatedEdge.arrows = { to: { enabled: true }, from: { enabled: true }, middle: { enabled: false } };
+                    }
+                    updatedEdge.font = { size: parseInt(getEl('edge-fontsize').value, 10) || 14 };
+                    // Update via DataSet directly, then tell vis.js we handled it
+                    edgesDataSet.update(updatedEdge);
+                    var cb = manipCallback;
+                    closeModals();
+                    cb(null);
+                }
+
+                // --- Click-outside and button handlers ---
+                nodeOverlay.addEventListener('click', function(e) {
+                    if (e.target === nodeOverlay) closeModals();
+                    var action = e.target.dataset && e.target.dataset.action;
+                    if (action === 'close' || action === 'cancel') closeModals();
+                    if (action === 'save') saveNode();
+                });
+                edgeOverlay.addEventListener('click', function(e) {
+                    if (e.target === edgeOverlay) closeModals();
+                    var action = e.target.dataset && e.target.dataset.action;
+                    if (action === 'close' || action === 'cancel') closeModals();
+                    if (action === 'save') saveEdge();
+                });
+
+                // Esc key closes modals
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') closeModals();
+                });
+
+                // Enter key saves in modals
+                nodeOverlay.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') saveNode();
+                });
+                edgeOverlay.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') saveEdge();
+                });
+
+                // --- Wire up vis.js manipulation callbacks ---
+                options.manipulation = Object.assign({}, options.manipulation, {
+                    addNode: function(nodeData, callback) {
+                        openNodeModal(nodeData, callback, 'Add Node');
+                    },
+                    editNode: function(nodeData, callback) {
+                        openNodeModal(nodeData, callback, 'Edit Node');
+                    },
+                    addEdge: function(edgeData, callback) {
+                        // vis.js handles the drawing — just confirm
+                        callback(edgeData);
+                    },
+                    editEdge: {
+                        editWithoutDrag: function(edgeData, callback) {
+                            openEdgeModal(edgeData, callback);
+                        }
+                    },
+                    deleteNode: function(data, callback) {
+                        if (confirm('Delete ' + data.nodes.length + ' node(s) and ' + data.edges.length + ' connected edge(s)?')) {
+                            callback(data);
+                        } else {
+                            callback(null);
+                        }
+                    },
+                    deleteEdge: function(data, callback) {
+                        if (confirm('Delete ' + data.edges.length + ' edge(s)?')) {
+                            callback(data);
+                        } else {
+                            callback(null);
+                        }
+                    }
+                });
+            }
+
             var network = new vis.Network(canvasDiv, data, options);
 
             // Store reference
