@@ -412,52 +412,24 @@ class Network:
 
     def add_edge(self, source: Union[str, int], to: Union[str, int], options=None, **kw_options):
         """
+        Add an edge between two existing nodes.
 
-        Adding edges is done based off of the IDs of the nodes. Order does
-        not matter unless dealing with a directed graph.
+        Order does not matter unless dealing with a directed graph.
 
-        >>> nt.add_edge(0, 1) # adds an edge from node ID 0 to node ID
-        >>> nt.add_edge(0, 1, value = 4) # adds an edge with a width of 4
+        >>> nt.add_edge(0, 1)
+        >>> nt.add_edge(0, 1, value=4)
 
+        :param source: The ID of the source node.
+        :param to: The ID of the destination node.
+        :param options: Typed EdgeOptions instance (optional). When provided,
+                        kw_options are ignored.
+        :param kw_options: Additional vis-network edge options as keyword
+                           arguments (e.g., value, width, title, hidden,
+                           color, arrows, arrowStrikethrough, physics).
 
-        :param arrowStrikethrough: When false, the edge stops at the arrow.
-                                   This can be useful if you have thick lines
-                                   and you want the arrow to end in a point.
-                                   Middle arrows are not affected by this.
-
-        :param from: Edges are between two nodes, one to and one from. This
-                     is where you define the from node. You have to supply
-                     the corresponding node ID. This naturally only applies
-                     to individual edges.
-
-        :param hidden: When true, the edge is not drawn. It is part still part
-                       of the physics simulation however!
-
-        :param physics:	When true, the edge is part of the physics simulation.
-                        When false, it will not act as a spring.
-
-        :param title: The title is shown in a pop-up when the mouse moves over
-                      the edge.
-
-        :param to: Edges are between two nodes, one to and one from. This is
-                   where you define the to node. You have to supply the
-                   corresponding node ID. This naturally only applies to
-                   individual edges.
-
-        :param value: When a value is set, the edges' width will be scaled
-                      using the options in the scaling object defined above.
-
-        :param width: The width of the edge. If value is set, this is not used.
-
-
-        :type arrowStrikethrough: bool
-        :type from: str or num
-        :type hidden: bool
-        :type physics: bool
-        :type title: str
-        :type to: str or num
-        :type value: num
-        :type width: num
+        :type source: str or int
+        :type to: str or int
+        :type options: EdgeOptions, optional
         """
         # Verify nodes exist - O(1) lookup with dict
         if source not in self.node_map:
