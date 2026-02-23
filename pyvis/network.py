@@ -21,6 +21,7 @@ from jinja2 import Environment, FileSystemLoader
 from .edge import Edge
 from .node import Node
 from .options import Options, Configure
+from .types.base import OptionsBase
 from .utils import check_html
 from . import vis_config
 
@@ -207,7 +208,7 @@ class Network:
         """Property to maintain backward compatibility - returns list of node IDs."""
         return list(self.node_map.keys())
 
-    def add_node(self, n_id: Union[str, int], label: Optional[Union[str, int]] = None, shape: str = "dot", color: str = '#97c2fc', **options):
+    def add_node(self, n_id: Union[str, int], label: Optional[Union[str, int]] = None, shape: str = "dot", color: str = '#97c2fc', options=None, **kw_options):
         """
         This method adds a node to the network, given a mandatory node ID.
         Node labels default to node ids if no label is specified during the
@@ -318,16 +319,25 @@ class Network:
         if not isinstance(n_id, (str, int)):
             raise TypeError("Node id must be a string or an integer")
 
-        if label:
-            node_label = label
-        else:
-            node_label = n_id
         if n_id not in self.node_map:
-            if "group" in options:
-                n = Node(n_id, shape, label=node_label, font_color=self.font_color, **options)
+            if options is not None and hasattr(options, 'to_dict'):
+                # Typed path: serialize to dict
+                opts = options.to_dict()
+                opts['id'] = n_id
+                if 'label' not in opts:
+                    opts['label'] = label if label else n_id
+                self.node_map[n_id] = opts
             else:
-                n = Node(n_id, shape, label=node_label, color=color, font_color=self.font_color, **options)
-            self.node_map[n_id] = n.options
+                # Legacy path: unchanged behavior
+                if label:
+                    node_label = label
+                else:
+                    node_label = n_id
+                if "group" in kw_options:
+                    n = Node(n_id, shape, label=node_label, font_color=self.font_color, **kw_options)
+                else:
+                    n = Node(n_id, shape, label=node_label, color=color, font_color=self.font_color, **kw_options)
+                self.node_map[n_id] = n.options
             # Invalidate adjacency list cache
             self._adj_list_cache = None
 
@@ -394,7 +404,7 @@ class Network:
         """
         return len(self.edges)
 
-    def add_edge(self, source: Union[str, int], to: Union[str, int], **options):
+    def add_edge(self, source: Union[str, int], to: Union[str, int], options=None, **kw_options):
         """
 
         Adding edges is done based off of the IDs of the nodes. Order does
@@ -458,8 +468,18 @@ class Network:
             edge_key = tuple(sorted([source, to]))
 
         if edge_key not in self._edge_set:
-            e = Edge(source, to, self.directed, **options)
-            self.edges.append(e.options)
+            if options is not None and hasattr(options, 'to_dict'):
+                # Typed path
+                opts = options.to_dict()
+                opts['from'] = source
+                opts['to'] = to
+                if self.directed and 'arrows' not in opts:
+                    opts['arrows'] = 'to'
+                self.edges.append(opts)
+            else:
+                # Legacy path
+                e = Edge(source, to, self.directed, **kw_options)
+                self.edges.append(e.options)
             self._edge_set.add(edge_key)
             # Invalidate adjacency list cache
             self._adj_list_cache = None
@@ -1155,16 +1175,20 @@ class Network:
         self.options.physics.toggle_stabilization(status)
 
     def set_options(self, options):
-        """
-        Overrides the default options object passed to the VisJS framework.
-        Delegates to the :meth:`options.Options.set` routine.
+        """Set global network options.
 
-        :param options: The string representation of the Javascript-like object
-                        to be used to override default options.
-
-        :type options: str
+        Args:
+            options: JSON string, dict, Options object, or NetworkOptions instance.
         """
-        self.options = self.options.set(options)
+        if hasattr(options, 'to_dict'):
+            self.options = options.to_dict()
+        elif isinstance(options, str):
+            import json as _json
+            self.options = _json.loads(options)
+        elif isinstance(options, dict):
+            self.options = options
+        else:
+            self.options = options
 
     def set_group(self, group_name: str, **options):
         """
