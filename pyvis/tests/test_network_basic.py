@@ -256,6 +256,23 @@ class TestFromNxEdgeWeightBug:
         assert edge.get("width") == 7
 
 
+class TestLayoutRandomSeed:
+    def test_random_seed_zero(self):
+        from pyvis.options import Layout
+        layout = Layout(randomSeed=0)
+        assert layout.randomSeed == 0
+
+    def test_random_seed_none_defaults(self):
+        from pyvis.options import Layout
+        layout = Layout(randomSeed=None)
+        assert layout.randomSeed == 0
+
+    def test_random_seed_explicit(self):
+        from pyvis.options import Layout
+        layout = Layout(randomSeed=42)
+        assert layout.randomSeed == 42
+
+
 class TestFromNxNodeSizeBug:
     """Regression: node_size_transf should be applied exactly once per node."""
 

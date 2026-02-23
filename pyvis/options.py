@@ -112,10 +112,7 @@ class Layout(JSONSerializable):
     """
 
     def __init__(self, randomSeed: Optional[int] = None, improvedLayout: bool = True):
-        if not randomSeed:
-            self.randomSeed = 0
-        else:
-            self.randomSeed = randomSeed
+        self.randomSeed = randomSeed if randomSeed is not None else 0
         self.improvedLayout = improvedLayout
         self.hierarchical = self.Hierarchical(enabled=True)
 
