@@ -332,3 +332,32 @@ class TestFontColor:
         net = Network(font_color=False)
         net.add_node(1, label="A")
         assert "font" not in net.node_map[1]
+
+
+class TestPhysicsMethodsNoSelf:
+    """Physics methods should not pass 'self' in the params dict."""
+
+    def test_barnes_hut_no_self_in_params(self):
+        """barnes_hut should not leak 'self' into physics config."""
+        net = Network()
+        net.barnes_hut(gravity=-5000)
+        bh = net.options.physics.barnesHut
+        assert not hasattr(bh, 'self'), "Physics params contain 'self'"
+
+    def test_repulsion_no_self_in_params(self):
+        net = Network()
+        net.repulsion()
+        rep = net.options.physics.repulsion
+        assert not hasattr(rep, 'self')
+
+    def test_hrepulsion_no_self_in_params(self):
+        net = Network()
+        net.hrepulsion()
+        hrep = net.options.physics.hierarchicalRepulsion
+        assert not hasattr(hrep, 'self')
+
+    def test_force_atlas_no_self_in_params(self):
+        net = Network()
+        net.force_atlas_2based()
+        fa = net.options.physics.forceAtlas2Based
+        assert not hasattr(fa, 'self')

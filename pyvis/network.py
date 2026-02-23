@@ -950,7 +950,7 @@ class Network:
         :type overlap: float
         """
         self._require_options_instance()
-        self.options.physics.use_barnes_hut(locals())
+        self.options.physics.use_barnes_hut({k: v for k, v in locals().items() if k != 'self'})
 
     def repulsion(
             self,
@@ -980,7 +980,7 @@ class Network:
         :type damping: float
         """
         self._require_options_instance()
-        self.options.physics.use_repulsion(locals())
+        self.options.physics.use_repulsion({k: v for k, v in locals().items() if k != 'self'})
 
     def hrepulsion(
             self,
@@ -1010,7 +1010,7 @@ class Network:
         :type damping: float
         """
         self._require_options_instance()
-        self.options.physics.use_hrepulsion(locals())
+        self.options.physics.use_hrepulsion({k: v for k, v in locals().items() if k != 'self'})
 
     def force_atlas_2based(
             self,
@@ -1051,7 +1051,7 @@ class Network:
         :type overlap: float
         """
         self._require_options_instance()
-        self.options.physics.use_force_atlas_2based(locals())
+        self.options.physics.use_force_atlas_2based({k: v for k, v in locals().items() if k != 'self'})
 
     def to_json(self, max_depth=1, **args):
         """
