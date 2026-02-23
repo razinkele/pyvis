@@ -778,8 +778,8 @@ class Network:
 
         """
         self.use_DOT = True
-        file = open(dot, "r")
-        s = str(file.read())
+        with open(dot, "r") as file:
+            s = file.read()
         self.dot_lang = " ".join(s.splitlines())
         self.dot_lang = self.dot_lang.replace('"', '\\"')
 

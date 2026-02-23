@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 
 from ..network import Network
@@ -121,6 +123,32 @@ def test_get_network_json_with_groups():
     assert data["directed"] == False
     assert data["bgcolor"] == "#ffffff"
     assert data["legend"] is None
+
+
+class TestFromDOT:
+    """Tests for from_DOT file handling."""
+
+    def test_from_dot_closes_file(self, tmp_path):
+        """from_DOT should not leak file handles."""
+        dot_file = tmp_path / "test.dot"
+        dot_file.write_text('digraph { A -> B }')
+        net = Network()
+        net.from_DOT(str(dot_file))
+        assert net.use_DOT is True
+        assert "A" in net.dot_lang
+        # File should be closed — verify we can delete it (Windows locks open files)
+        os.remove(str(dot_file))
+
+    def test_from_dot_reads_content(self, tmp_path):
+        """from_DOT should read and flatten the DOT content."""
+        dot_file = tmp_path / "test.dot"
+        dot_file.write_text('digraph sample {\n  A -> B\n  B -> C\n}')
+        net = Network()
+        net.from_DOT(str(dot_file))
+        assert net.use_DOT is True
+        # Content should be flattened to one line
+        assert '\n' not in net.dot_lang
+        assert 'A -> B' in net.dot_lang
 
 
 class TestFalsyLabelBug:
