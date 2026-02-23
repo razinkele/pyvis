@@ -97,3 +97,18 @@ class TestShinyWrapper:
         tag = output_pyvis_network("test_net")
         html = str(tag)
         assert 'vis-network' in html or 'pyvis' in html
+
+
+class TestOptionsBaseTypeCheck:
+    """Shiny wrapper should use isinstance() not hasattr() for typed options."""
+
+    def test_dict_with_to_dict_method_not_treated_as_options(self):
+        """A plain class with to_dict should NOT be an instance of OptionsBase."""
+        class FakeOptions:
+            def to_dict(self):
+                return {"id": 1, "label": "Fake"}
+
+        from pyvis.types.base import OptionsBase
+        fake = FakeOptions()
+        assert not isinstance(fake, OptionsBase)
+        assert hasattr(fake, 'to_dict')

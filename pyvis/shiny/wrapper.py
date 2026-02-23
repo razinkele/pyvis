@@ -105,6 +105,8 @@ except ImportError:
     Tag = None
 
 
+from ..types.base import OptionsBase
+
 __all__ = [
     'render_network',
     'output_pyvis_network', 
@@ -624,7 +626,7 @@ if SHINY_AVAILABLE:
                 node: Node data dict or typed NodeOptions with at least 'id',
                       optionally 'label', 'color', 'shape', etc.
             """
-            if hasattr(node, 'to_dict'):
+            if isinstance(node, OptionsBase):
                 node = node.to_dict()
             self._send_command("addNode", {"node": node})
         
@@ -634,7 +636,7 @@ if SHINY_AVAILABLE:
             Args:
                 nodes: List of node data dicts or typed NodeOptions
             """
-            nodes = [n.to_dict() if hasattr(n, 'to_dict') else n for n in nodes]
+            nodes = [n.to_dict() if isinstance(n, OptionsBase) else n for n in nodes]
             self._send_command("addNodes", {"nodes": nodes})
         
         def update_node(self, node):
@@ -643,7 +645,7 @@ if SHINY_AVAILABLE:
             Args:
                 node: Node data dict or typed NodeOptions with 'id' and properties to update
             """
-            if hasattr(node, 'to_dict'):
+            if isinstance(node, OptionsBase):
                 node = node.to_dict()
             self._send_command("updateNode", {"node": node})
         
@@ -663,7 +665,7 @@ if SHINY_AVAILABLE:
                 edge: Edge data dict or typed EdgeOptions with 'from', 'to',
                       and optionally 'id', 'label', 'color', etc.
             """
-            if hasattr(edge, 'to_dict'):
+            if isinstance(edge, OptionsBase):
                 edge = edge.to_dict()
             self._send_command("addEdge", {"edge": edge})
         
@@ -673,7 +675,7 @@ if SHINY_AVAILABLE:
             Args:
                 edges: List of edge data dicts or typed EdgeOptions
             """
-            edges = [e.to_dict() if hasattr(e, 'to_dict') else e for e in edges]
+            edges = [e.to_dict() if isinstance(e, OptionsBase) else e for e in edges]
             self._send_command("addEdges", {"edges": edges})
         
         def update_edge(self, edge):
@@ -682,7 +684,7 @@ if SHINY_AVAILABLE:
             Args:
                 edge: Edge data dict or typed EdgeOptions with 'id' and properties to update
             """
-            if hasattr(edge, 'to_dict'):
+            if isinstance(edge, OptionsBase):
                 edge = edge.to_dict()
             self._send_command("updateEdge", {"edge": edge})
         
@@ -771,7 +773,7 @@ if SHINY_AVAILABLE:
             Args:
                 options: vis.js network options dict or typed NetworkOptions
             """
-            if hasattr(options, 'to_dict'):
+            if isinstance(options, OptionsBase):
                 options = options.to_dict()
             self._send_command("setOptions", {"options": options})
         
@@ -954,28 +956,28 @@ def network_stabilize(session: 'Session', output_id: str, iterations: int = 100)
 
 def network_add_node(session: 'Session', output_id: str, node):
     """Add a node to the network. Accepts dict or typed NodeOptions."""
-    if hasattr(node, 'to_dict'):
+    if isinstance(node, OptionsBase):
         node = node.to_dict()
     _send_network_command(session, output_id, "addNode", {"node": node})
 
 
 def network_add_edge(session: 'Session', output_id: str, edge):
     """Add an edge to the network. Accepts dict or typed EdgeOptions."""
-    if hasattr(edge, 'to_dict'):
+    if isinstance(edge, OptionsBase):
         edge = edge.to_dict()
     _send_network_command(session, output_id, "addEdge", {"edge": edge})
 
 
 def network_update_node(session: 'Session', output_id: str, node):
     """Update a node's properties. Accepts dict or typed NodeOptions."""
-    if hasattr(node, 'to_dict'):
+    if isinstance(node, OptionsBase):
         node = node.to_dict()
     _send_network_command(session, output_id, "updateNode", {"node": node})
 
 
 def network_update_edge(session: 'Session', output_id: str, edge):
     """Update an edge's properties. Accepts dict or typed EdgeOptions."""
-    if hasattr(edge, 'to_dict'):
+    if isinstance(edge, OptionsBase):
         edge = edge.to_dict()
     _send_network_command(session, output_id, "updateEdge", {"edge": edge})
 
@@ -1012,7 +1014,7 @@ def network_open_cluster(session: 'Session', output_id: str, cluster_node_id: An
 
 def network_set_options(session: 'Session', output_id: str, options):
     """Update network options. Accepts dict or typed NetworkOptions."""
-    if hasattr(options, 'to_dict'):
+    if isinstance(options, OptionsBase):
         options = options.to_dict()
     _send_network_command(session, output_id, "setOptions", {"options": options})
 
