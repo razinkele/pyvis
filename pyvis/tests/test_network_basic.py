@@ -208,6 +208,23 @@ def test_from_nx_no_show_edge_weights_param():
         "show_edge_weights is a dead parameter and should be removed"
 
 
+class TestMixedTypeNodeIds:
+    def test_add_edge_str_int_undirected(self):
+        net = Network(directed=False)
+        net.add_node("a", label="A")
+        net.add_node(1, label="1")
+        net.add_edge("a", 1)
+        assert len(net.edges) == 1
+
+    def test_duplicate_detection_mixed_types(self):
+        net = Network(directed=False)
+        net.add_node("a", label="A")
+        net.add_node(1, label="1")
+        net.add_edge("a", 1)
+        net.add_edge(1, "a")
+        assert len(net.edges) == 1
+
+
 class TestFromNxEdgeWeightBug:
     """Regression: from_nx() should not overwrite existing edge value/width."""
 

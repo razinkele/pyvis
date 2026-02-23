@@ -443,7 +443,7 @@ class Network:
             edge_key = (source, to)
         else:
             # For undirected graphs, use sorted tuple for consistent key
-            edge_key = tuple(sorted([source, to]))
+            edge_key = tuple(sorted([source, to], key=lambda x: (type(x).__name__, x)))
 
         if edge_key not in self._edge_set:
             if options is not None and hasattr(options, 'to_dict'):
