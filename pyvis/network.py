@@ -79,8 +79,8 @@ class Network:
             in_line: insert lib resources as inline script tags.
             remote: pull resources from hash checked cdns.
         :param edge_attribute_edit: Enable a button in the manipulation toolbar to edit edge attributes (color, width, label, etc.)
-        :font_color: The color of the node labels text
-        :layout: Use hierarchical layout if this is set
+        :param font_color: The color of the node labels text
+        :param layout: Use hierarchical layout if this is set
 
         :type height: num or str
         :type width: num or str
@@ -558,7 +558,7 @@ class Network:
         This method gets the data structures supporting the nodes, edges,
         and options and updates the template to write the HTML holding
         the visualization.
-        :type name_html: str
+        :type name: str
         """
         check_html(name)
         # here, check if an href is present in the hover data
@@ -628,7 +628,7 @@ class Network:
         the visualization.
 
         To work with the old local methods local is being deprecated, but not removed.
-        :type name_html: str
+        :type name: str
         @param name: name of the file to save the graph as.
         @param local: Deprecated parameter. Used to be used to determine how the graph needs deploy. Has been removed in favor of using the class cdn_resources instead.
         @param notebook: If true, this object will return the iframe document for use in juptyer notebook.
