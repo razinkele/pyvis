@@ -488,6 +488,239 @@ class TestMixedTypeEdgeDedup:
         assert len(net.edges) == 1
 
 
+class TestUpdateNode:
+    """Tests for update_node() method."""
+
+    def test_update_node_attributes(self):
+        """update_node() should merge new attributes into existing node."""
+        net = Network()
+        net.add_node(1, label="Old", color="blue")
+        net.update_node(1, label="New", color="red")
+        assert net.node_map[1]["label"] == "New"
+        assert net.node_map[1]["color"] == "red"
+
+    def test_update_node_adds_new_attributes(self):
+        """update_node() should add attributes that didn't exist before."""
+        net = Network()
+        net.add_node(1, label="A")
+        net.update_node(1, title="Tooltip text", size=25)
+        assert net.node_map[1]["title"] == "Tooltip text"
+        assert net.node_map[1]["size"] == 25
+        assert net.node_map[1]["label"] == "A"  # unchanged
+
+    def test_update_node_nonexistent_raises(self):
+        """update_node() should raise ValueError for missing node."""
+        net = Network()
+        with pytest.raises(ValueError, match="not found"):
+            net.update_node(99, label="X")
+
+    def test_update_node_protected_id_raises(self):
+        """update_node() should reject attempts to change 'id'."""
+        net = Network()
+        net.add_node(1, label="A")
+        with pytest.raises(ValueError, match="Cannot change node 'id'"):
+            net.update_node(1, id=2)
+
+    def test_update_node_with_typed_options(self):
+        """update_node() should accept a typed NodeOptions instance."""
+        from pyvis.types import NodeOptions
+        net = Network()
+        net.add_node(1, label="A", color="blue")
+        opts = NodeOptions(color="red", size=30)
+        net.update_node(1, options=opts)
+        assert net.node_map[1]["color"] == "red"
+        assert net.node_map[1]["size"] == 30
+
+
+class TestUpdateEdge:
+    """Tests for update_edge() method."""
+
+    def test_update_edge_attributes(self):
+        """update_edge() should merge new attributes into existing edge."""
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_edge(1, 2, width=1)
+        net.update_edge(1, 2, width=5, color="red")
+        assert net.edges[0]["width"] == 5
+        assert net.edges[0]["color"] == "red"
+
+    def test_update_edge_undirected_reverse_order(self):
+        """update_edge() should find edge regardless of argument order (undirected)."""
+        net = Network(directed=False)
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_edge(1, 2, width=1)
+        net.update_edge(2, 1, width=10)
+        assert net.edges[0]["width"] == 10
+
+    def test_update_edge_directed_exact_match(self):
+        """update_edge() on directed graph requires exact from/to match."""
+        net = Network(directed=True)
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_edge(1, 2, width=1)
+        with pytest.raises(ValueError, match="not found"):
+            net.update_edge(2, 1, width=10)  # wrong direction
+
+    def test_update_edge_nonexistent_raises(self):
+        """update_edge() should raise ValueError for missing edge."""
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        with pytest.raises(ValueError, match="not found"):
+            net.update_edge(1, 2, width=5)
+
+    def test_update_edge_protected_from_raises(self):
+        """update_edge() should reject attempts to change 'from'."""
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_edge(1, 2)
+        with pytest.raises(ValueError, match="Cannot change edge"):
+            net.update_edge(1, 2, **{'from': 3})
+
+    def test_update_edge_protected_to_raises(self):
+        """update_edge() should reject attempts to change 'to'."""
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_edge(1, 2)
+        with pytest.raises(ValueError, match="Cannot change edge"):
+            net.update_edge(1, 2, to=3)
+
+    def test_update_edge_with_typed_options(self):
+        """update_edge() should accept a typed EdgeOptions instance."""
+        from pyvis.types import EdgeOptions
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_edge(1, 2)
+        opts = EdgeOptions(color="green", width=4)
+        net.update_edge(1, 2, options=opts)
+        assert net.edges[0]["color"] == "green"
+        assert net.edges[0]["width"] == 4
+
+
+class TestRemoveNode:
+    """Tests for remove_node() method."""
+
+    def test_remove_node_basic(self):
+        """remove_node() should remove the node from node_map."""
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.remove_node(1)
+        assert 1 not in net.node_map
+        assert 2 in net.node_map
+
+    def test_remove_node_removes_connected_edges(self):
+        """remove_node() should remove all edges connected to the node."""
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_node(3, label="C")
+        net.add_edge(1, 2)
+        net.add_edge(1, 3)
+        net.add_edge(2, 3)
+        net.remove_node(1)
+        assert len(net.edges) == 1
+        assert net.edges[0]["from"] == 2
+        assert net.edges[0]["to"] == 3
+
+    def test_remove_node_cleans_edge_set(self):
+        """After remove_node(), re-adding the same edge should work."""
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_edge(1, 2)
+        net.remove_node(1)
+        # Re-add node and edge — should not be blocked by stale _edge_set
+        net.add_node(1, label="A new")
+        net.add_edge(1, 2)
+        assert len(net.edges) == 1
+
+    def test_remove_node_nonexistent_raises(self):
+        """remove_node() should raise ValueError for missing node."""
+        net = Network()
+        with pytest.raises(ValueError, match="not found"):
+            net.remove_node(99)
+
+    def test_remove_node_invalidates_adj_cache(self):
+        """remove_node() should invalidate the adjacency list cache."""
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_edge(1, 2)
+        _ = net.get_adj_list()  # populate cache
+        net.remove_node(1)
+        # Cache should be invalidated, new adj list should not contain node 1
+        adj = net.get_adj_list()
+        assert 1 not in adj
+
+
+class TestRemoveEdge:
+    """Tests for remove_edge() method."""
+
+    def test_remove_edge_basic(self):
+        """remove_edge() should remove the edge from edges list."""
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_edge(1, 2)
+        net.remove_edge(1, 2)
+        assert len(net.edges) == 0
+
+    def test_remove_edge_undirected_reverse_order(self):
+        """remove_edge() should work regardless of argument order (undirected)."""
+        net = Network(directed=False)
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_edge(1, 2)
+        net.remove_edge(2, 1)
+        assert len(net.edges) == 0
+
+    def test_remove_edge_directed_exact_match(self):
+        """remove_edge() on directed graph requires exact from/to match."""
+        net = Network(directed=True)
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_edge(1, 2)
+        with pytest.raises(ValueError, match="not found"):
+            net.remove_edge(2, 1)  # wrong direction
+
+    def test_remove_edge_cleans_edge_set(self):
+        """After remove_edge(), re-adding the same edge should work."""
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_edge(1, 2)
+        net.remove_edge(1, 2)
+        net.add_edge(1, 2)
+        assert len(net.edges) == 1
+
+    def test_remove_edge_nonexistent_raises(self):
+        """remove_edge() should raise ValueError for missing edge."""
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        with pytest.raises(ValueError, match="not found"):
+            net.remove_edge(1, 2)
+
+    def test_remove_edge_preserves_other_edges(self):
+        """remove_edge() should not affect other edges."""
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_node(3, label="C")
+        net.add_edge(1, 2)
+        net.add_edge(2, 3)
+        net.remove_edge(1, 2)
+        assert len(net.edges) == 1
+        assert net.edges[0]["from"] == 2
+        assert net.edges[0]["to"] == 3
+
+
 class TestAddNodesTypedOptions:
     """add_nodes() should accept a list of NodeOptions via options param."""
 

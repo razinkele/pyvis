@@ -526,6 +526,174 @@ class Network:
             else:
                 self.add_edge(edge[0], edge[1])
 
+    def update_node(self, n_id: Union[str, int], options=None, **kwargs):
+        """
+        Update attributes of an existing node.
+
+        >>> nt = Network()
+        >>> nt.add_node(1, label="Old")
+        >>> nt.update_node(1, label="New", color="red")
+
+        :param n_id: The ID of the node to update.
+        :param options: Typed NodeOptions instance (optional). When provided,
+                        kwargs are ignored.
+        :param kwargs: Node attributes to update (label, color, size, etc.).
+
+        :raises ValueError: If the node does not exist or if 'id' is in kwargs.
+        """
+        if n_id not in self.node_map:
+            raise ValueError(f"Node '{n_id}' not found in network")
+
+        if options is not None and hasattr(options, 'to_dict'):
+            if kwargs:
+                warnings.warn(
+                    "Both options= and **kwargs were provided to update_node(). "
+                    "When options= is used, kwargs are ignored.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            attrs = options.to_dict()
+        else:
+            attrs = kwargs
+
+        if 'id' in attrs:
+            raise ValueError(
+                "Cannot change node 'id' via update_node(). "
+                "Remove the node and add a new one instead."
+            )
+
+        self.node_map[n_id].update(attrs)
+
+    def update_edge(self, source: Union[str, int], dest: Union[str, int],
+                    options=None, **kwargs):
+        """
+        Update attributes of an existing edge.
+
+        >>> nt = Network()
+        >>> nt.add_node(1, label="A")
+        >>> nt.add_node(2, label="B")
+        >>> nt.add_edge(1, 2)
+        >>> nt.update_edge(1, 2, color="red", width=3)
+
+        :param source: The source node ID.
+        :param dest: The destination node ID.
+        :param options: Typed EdgeOptions instance (optional). When provided,
+                        kwargs are ignored.
+        :param kwargs: Edge attributes to update (color, width, label, etc.).
+
+        :raises ValueError: If the edge does not exist or if 'from'/'to' is
+                            in kwargs.
+        """
+        if options is not None and hasattr(options, 'to_dict'):
+            if kwargs:
+                warnings.warn(
+                    "Both options= and **kwargs were provided to update_edge(). "
+                    "When options= is used, kwargs are ignored.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            attrs = options.to_dict()
+        else:
+            attrs = kwargs
+
+        for field in ('from', 'to'):
+            if field in attrs:
+                raise ValueError(
+                    f"Cannot change edge '{field}' via update_edge(). "
+                    "Remove the edge and add a new one instead."
+                )
+
+        for edge in self.edges:
+            if self.directed:
+                if edge['from'] == source and edge['to'] == dest:
+                    edge.update(attrs)
+                    self._adj_list_cache = None
+                    return
+            else:
+                if ((edge['from'] == source and edge['to'] == dest) or
+                        (edge['from'] == dest and edge['to'] == source)):
+                    edge.update(attrs)
+                    self._adj_list_cache = None
+                    return
+
+        raise ValueError(
+            f"Edge ({source}, {dest}) not found in network"
+        )
+
+    def remove_node(self, n_id: Union[str, int]):
+        """
+        Remove a node and all edges connected to it.
+
+        >>> nt = Network()
+        >>> nt.add_node(1, label="A")
+        >>> nt.add_node(2, label="B")
+        >>> nt.add_edge(1, 2)
+        >>> nt.remove_node(1)
+
+        :param n_id: The ID of the node to remove.
+
+        :raises ValueError: If the node does not exist.
+        """
+        if n_id not in self.node_map:
+            raise ValueError(f"Node '{n_id}' not found in network")
+
+        del self.node_map[n_id]
+
+        # Remove all edges connected to this node
+        edges_to_keep = []
+        for edge in self.edges:
+            if edge['from'] == n_id or edge['to'] == n_id:
+                # Remove from edge set
+                if self.directed:
+                    edge_key = (edge['from'], edge['to'])
+                else:
+                    edge_key = tuple(sorted(
+                        [edge['from'], edge['to']], key=lambda x: str(x)
+                    ))
+                self._edge_set.discard(edge_key)
+            else:
+                edges_to_keep.append(edge)
+        self.edges = edges_to_keep
+
+        self._adj_list_cache = None
+
+    def remove_edge(self, source: Union[str, int], dest: Union[str, int]):
+        """
+        Remove an edge between two nodes.
+
+        >>> nt = Network()
+        >>> nt.add_node(1, label="A")
+        >>> nt.add_node(2, label="B")
+        >>> nt.add_edge(1, 2)
+        >>> nt.remove_edge(1, 2)
+
+        :param source: The source node ID.
+        :param dest: The destination node ID.
+
+        :raises ValueError: If the edge does not exist.
+        """
+        for i, edge in enumerate(self.edges):
+            if self.directed:
+                match = edge['from'] == source and edge['to'] == dest
+            else:
+                match = ((edge['from'] == source and edge['to'] == dest) or
+                         (edge['from'] == dest and edge['to'] == source))
+            if match:
+                self.edges.pop(i)
+                if self.directed:
+                    edge_key = (source, dest)
+                else:
+                    edge_key = tuple(sorted(
+                        [source, dest], key=lambda x: str(x)
+                    ))
+                self._edge_set.discard(edge_key)
+                self._adj_list_cache = None
+                return
+
+        raise ValueError(
+            f"Edge ({source}, {dest}) not found in network"
+        )
+
     def get_network_data(self):
         """
         Extract relevant information about this network in order to inject into
