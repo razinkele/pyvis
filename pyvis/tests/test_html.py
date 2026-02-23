@@ -1,201 +1,135 @@
-import os
-import unittest
+"""
+Playwright-based tests for pyvis HTML output.
+
+Verifies the same DOM elements that the original Selenium tests checked:
+  1. Basic graph renders #mynetwork + <canvas>, no menus
+  2. select_menu=True renders #select-menu + #select-node
+  3. filter_menu=True renders #filter-menu + dropdowns
+  4. Both menus enabled renders all elements
+"""
+
+from pathlib import Path
+
 import networkx as nx
+import pytest
+from playwright.sync_api import Page, expect
 
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.support.select import Select
-
-from ..network import Network
+from pyvis.network import Network
 
 
-class GraphTests(unittest.TestCase):
-    """
-    Tests to check the basic rendering of the basic network HTML and canvas
-    """
-    # setup service for the chrome driver to be used in test
-    service = ChromeService(executable_path=ChromeDriverManager().install())
-
-    def setUp(self):
-        self.g = Network()
-
-    def test_graph(self):
-        # create simple network and save it in a file
-        self.g.add_nodes([1, 2, 3],
-                         value=[10, 100, 400],
-                         title=["I am node 1", "node 2 here", "and im node 3"],
-                         x=[21.4, 21.4, 21.4], y=[100.2, 223.54, 32.1],
-                         label=["NODE 1", "NODE 2", "NODE 3"],
-                         color=["#00ff1e", "#162347", "#dd4b39"])
-        file_name = "GraphTests.html"
-        self.g.show(file_name)
-
-        # get the saved file path and change it into required format for the driver to read it
-        file_path = os.getcwd()
-        file_path = "file:///" + file_path.replace(os.sep, '/') + "/" + file_name
-
-        # start the web driver, load the file and wait for a few seconds in precaution
-        driver = webdriver.Chrome(service=self.service)
-        driver.get(file_path)
-        driver.implicitly_wait(0.1)
-
-        # test for the main html container and then canvas
-        self.assertIsNotNone(driver.find_element(By.ID, "mynetwork"))
-        self.assertIsNotNone(driver.find_element(By.TAG_NAME, "canvas"))
-
-        # make sure the filter menu and select menu divs are not rendered
-        self.assertFalse(driver.find_elements(By.ID, "select-menu"))
-        self.assertFalse(driver.find_elements(By.ID, "filter-menu"))
-
-        # close the driver and delete the testing file
-        driver.quit()
-        if os.path.exists("./" + file_name):
-            os.remove("./" + file_name)
+# ── Helpers ──────────────────────────────────────────────────────────
 
 
-class SelectMenuTests(unittest.TestCase):
-    """
-    Tests to check the rendering of the network HTML and select menu option
-    """
-    # setup service for the chrome driver to be used in test
-    service = ChromeService(executable_path=ChromeDriverManager().install())
-
-    def setUp(self):
-        self.g = Network(select_menu=True)
-
-    def test_graph(self):
-        # create simple network with select-menu and save it in a file
-        nx_graph = nx.cycle_graph(10)
-        nx_graph.nodes[1]['title'] = 'Number 1'
-        nx_graph.nodes[1]['group'] = 1
-        nx_graph.nodes[3]['title'] = 'I belong to a different group!'
-        nx_graph.nodes[3]['group'] = 10
-        nx_graph.add_node(20, size=20, title='couple', group=2)
-        nx_graph.add_node(21, size=15, title='couple', group=2)
-        nx_graph.add_edge(20, 21, weight=5)
-        nx_graph.add_node(25, size=25, label='lonely', title='lonely node', group=3)
-
-        self.g.from_nx(nx_graph)
-        file_name = "SelectMenuTests.html"
-        self.g.show(file_name)
-
-        # get the saved file path and change it into required format for the driver to read it
-        file_path = os.getcwd()
-        file_path = "file:///" + file_path.replace(os.sep, '/') + "/" + file_name
-
-        # start the web driver, load the file and wait for a few seconds in precaution
-        driver = webdriver.Chrome(service=self.service)
-        driver.get(file_path)
-        driver.implicitly_wait(0.1)
-
-        # test for the main html container and then canvas
-        self.assertIsNotNone(driver.find_element(By.ID, "mynetwork"))
-        self.assertIsNotNone(driver.find_element(By.TAG_NAME, "canvas"))
-        self.assertIsNotNone(driver.find_element(By.ID, "select-menu"))
-        self.assertIsNotNone(driver.find_element(By.ID, "select-node"))
-
-        # make sure the filter menu and select menu divs are not rendered
-        self.assertFalse(driver.find_elements(By.ID, "filter-menu"))
-
-        # close the driver and delete the testing file
-        driver.quit()
-        if os.path.exists("./" + file_name):
-            os.remove("./" + file_name)
+def _make_cycle_graph(net: Network) -> None:
+    """Populate *net* with a cycle graph + extra nodes (shared by 2 tests)."""
+    nx_graph = nx.cycle_graph(10)
+    nx_graph.nodes[1]["title"] = "Number 1"
+    nx_graph.nodes[1]["group"] = 1
+    nx_graph.nodes[3]["title"] = "I belong to a different group!"
+    nx_graph.nodes[3]["group"] = 10
+    nx_graph.add_node(20, size=20, title="couple", group=2)
+    nx_graph.add_node(21, size=15, title="couple", group=2)
+    nx_graph.add_edge(20, 21, weight=5)
+    nx_graph.add_node(25, size=25, label="lonely", title="lonely node", group=3)
+    net.from_nx(nx_graph)
 
 
-class FilterMenuTests(unittest.TestCase):
-    service = ChromeService(executable_path=ChromeDriverManager().install())
-
-    def setUp(self):
-        self.g = Network(filter_menu=True)
-
-    def test_graph(self):
-        nx_graph = nx.cycle_graph(10)
-        nx_graph.nodes[1]['title'] = 'Number 1'
-        nx_graph.nodes[1]['group'] = 1
-        nx_graph.nodes[3]['title'] = 'I belong to a different group!'
-        nx_graph.nodes[3]['group'] = 10
-        nx_graph.add_node(20, size=20, title='couple', group=2)
-        nx_graph.add_node(21, size=15, title='couple', group=2)
-        nx_graph.add_edge(20, 21, weight=5)
-        nx_graph.add_node(25, size=25, label='lonely', title='lonely node', group=3)
-
-        self.g.from_nx(nx_graph)
-        file_name = "FilterMenuTests.html"
-        self.g.show(file_name)
-
-        # get the saved file path and change it into required format for the driver to read it
-        file_path = os.getcwd()
-        file_path = "file:///" + file_path.replace(os.sep, '/') + "/" + file_name
-
-        # start the web driver, load the file and wait for a few seconds in precaution
-        driver = webdriver.Chrome(service=self.service)
-        driver.get(file_path)
-        driver.implicitly_wait(0.1)
-
-        # test for the main html container and then canvas
-        self.assertIsNotNone(driver.find_element(By.ID, "mynetwork"))
-        self.assertIsNotNone(driver.find_element(By.TAG_NAME, "canvas"))
-
-        self.assertIsNotNone(driver.find_element(By.ID, "filter-menu"))
-        self.assertIsNotNone(driver.find_element(By.ID, "select-item"))
-        self.assertIsNotNone(driver.find_element(By.ID, "select-value"))
-        self.assertIsNotNone(driver.find_element(By.ID, "select-property"))
-
-        # make sure the filter menu and select menu divs are not rendered
-        self.assertFalse(driver.find_elements(By.ID, "select-menu"))
-        self.assertFalse(driver.find_elements(By.ID, "select-node"))
-
-        select_element = driver.find_element(By.ID, "select-item")
-        select_object = Select(select_element)
-        self.assertTrue(select_object.options[0].text, "Select a network item")
-        self.assertTrue(select_object.options[1].text, "edge")
-        self.assertTrue(select_object.options[2].text, "node")
-
-        # close the driver and delete the testing file
-        driver.quit()
-        if os.path.exists("./" + file_name):
-            os.remove("./" + file_name)
+def _save_and_open(net: Network, tmp_path: Path, name: str, page: Page) -> None:
+    """Save *net* to an HTML file inside *tmp_path* and navigate *page* to it."""
+    html_file = tmp_path / name
+    net.write_html(str(html_file), open_browser=False)
+    page.goto(html_file.resolve().as_uri())
 
 
-class FilterAndSelectMenuTests(unittest.TestCase):
-    service = ChromeService(executable_path=ChromeDriverManager().install())
+# ── Test classes ─────────────────────────────────────────────────────
 
-    def setUp(self):
-        self.g = Network(filter_menu=True, select_menu=True)
 
-    def test_graph(self):
-        self.g.add_nodes([1, 2, 3],
-                         value=[10, 100, 400],
-                         title=["I am node 1", "node 2 here", "and im node 3"],
-                         x=[21.4, 21.4, 21.4], y=[100.2, 223.54, 32.1],
-                         label=["NODE 1", "NODE 2", "NODE 3"],
-                         color=["#00ff1e", "#162347", "#dd4b39"])
-        file_name = "FilterAndSelectMenuTests.html"
-        self.g.show(file_name)
+class TestGraph:
+    """Basic 3-node network: #mynetwork, <canvas>, no menus."""
 
-        # get the saved file path and change it into required format for the driver to read it
-        file_path = os.getcwd()
-        file_path = "file:///" + file_path.replace(os.sep, '/') + "/" + file_name
+    def test_graph(self, page: Page, tmp_path: Path):
+        net = Network(cdn_resources="in_line")
+        net.add_nodes(
+            [1, 2, 3],
+            value=[10, 100, 400],
+            title=["I am node 1", "node 2 here", "and im node 3"],
+            x=[21.4, 21.4, 21.4],
+            y=[100.2, 223.54, 32.1],
+            label=["NODE 1", "NODE 2", "NODE 3"],
+            color=["#00ff1e", "#162347", "#dd4b39"],
+        )
+        _save_and_open(net, tmp_path, "graph.html", page)
 
-        # start the web driver, load the file and wait for a few seconds in precaution
-        driver = webdriver.Chrome(service=self.service)
-        driver.get(file_path)
-        driver.implicitly_wait(0.1)
+        expect(page.locator("#mynetwork")).to_be_visible()
+        expect(page.locator("canvas")).to_be_visible()
+        expect(page.locator("#select-menu")).to_have_count(0)
+        expect(page.locator("#filter-menu")).to_have_count(0)
 
-        # test for the main html container and then canvas
-        self.assertIsNotNone(driver.find_element(By.ID, "mynetwork"))
-        self.assertIsNotNone(driver.find_element(By.TAG_NAME, "canvas"))
-        self.assertIsNotNone(driver.find_element(By.ID, "select-menu"))
-        self.assertIsNotNone(driver.find_element(By.ID, "select-node"))
-        self.assertIsNotNone(driver.find_element(By.ID, "filter-menu"))
-        self.assertIsNotNone(driver.find_element(By.ID, "select-item"))
-        self.assertIsNotNone(driver.find_element(By.ID, "select-value"))
-        self.assertIsNotNone(driver.find_element(By.ID, "select-property"))
 
-        # close the driver and delete the testing file
-        driver.quit()
-        if os.path.exists("./" + file_name):
-            os.remove("./" + file_name)
+class TestSelectMenu:
+    """Cycle graph with select_menu=True."""
+
+    def test_graph(self, page: Page, tmp_path: Path):
+        net = Network(select_menu=True, cdn_resources="in_line")
+        _make_cycle_graph(net)
+        _save_and_open(net, tmp_path, "select_menu.html", page)
+
+        expect(page.locator("#mynetwork")).to_be_visible()
+        expect(page.locator("canvas")).to_be_visible()
+        expect(page.locator("#select-menu")).to_be_visible()
+        expect(page.locator("#select-node")).to_be_visible()
+        expect(page.locator("#filter-menu")).to_have_count(0)
+
+
+class TestFilterMenu:
+    """Cycle graph with filter_menu=True — checks dropdowns and option text."""
+
+    def test_graph(self, page: Page, tmp_path: Path):
+        net = Network(filter_menu=True, cdn_resources="in_line")
+        _make_cycle_graph(net)
+        _save_and_open(net, tmp_path, "filter_menu.html", page)
+
+        expect(page.locator("#mynetwork")).to_be_visible()
+        expect(page.locator("canvas")).to_be_visible()
+
+        # Filter menu elements present
+        expect(page.locator("#filter-menu")).to_be_visible()
+        expect(page.locator("#select-item")).to_be_visible()
+        expect(page.locator("#select-value")).to_be_visible()
+        expect(page.locator("#select-property")).to_be_visible()
+
+        # Select menu must NOT be present
+        expect(page.locator("#select-menu")).to_have_count(0)
+        expect(page.locator("#select-node")).to_have_count(0)
+
+        # Check dropdown option texts
+        options = page.locator("#select-item option")
+        expect(options.nth(0)).to_have_text("Select a network item")
+        expect(options.nth(1)).to_have_text("edge")
+        expect(options.nth(2)).to_have_text("node")
+
+
+class TestFilterAndSelectMenu:
+    """Both menus enabled: all elements present."""
+
+    def test_graph(self, page: Page, tmp_path: Path):
+        net = Network(filter_menu=True, select_menu=True, cdn_resources="in_line")
+        net.add_nodes(
+            [1, 2, 3],
+            value=[10, 100, 400],
+            title=["I am node 1", "node 2 here", "and im node 3"],
+            x=[21.4, 21.4, 21.4],
+            y=[100.2, 223.54, 32.1],
+            label=["NODE 1", "NODE 2", "NODE 3"],
+            color=["#00ff1e", "#162347", "#dd4b39"],
+        )
+        _save_and_open(net, tmp_path, "both_menus.html", page)
+
+        expect(page.locator("#mynetwork")).to_be_visible()
+        expect(page.locator("canvas")).to_be_visible()
+        expect(page.locator("#select-menu")).to_be_visible()
+        expect(page.locator("#select-node")).to_be_visible()
+        expect(page.locator("#filter-menu")).to_be_visible()
+        expect(page.locator("#select-item")).to_be_visible()
+        expect(page.locator("#select-value")).to_be_visible()
+        expect(page.locator("#select-property")).to_be_visible()
