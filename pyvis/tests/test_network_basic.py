@@ -469,3 +469,4 @@ class TestAddEdgesExtraElementsWarning:
         with pytest.warns(UserWarning, match="Extra elements"):
             net.add_edges([(1, 2, 5, "extra")])
         assert len(net.edges) == 1
+        assert net.edges[0].get("width") == 5
