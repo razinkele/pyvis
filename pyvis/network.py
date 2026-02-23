@@ -958,7 +958,7 @@ class Network:
         :type overlap: float
         """
         self._require_options_instance()
-        self.options.physics.use_barnes_hut({k: v for k, v in locals().items() if k != 'self'})
+        self.options.physics.use_barnes_hut(dict(gravity=gravity, central_gravity=central_gravity, spring_length=spring_length, spring_strength=spring_strength, damping=damping, overlap=overlap))
 
     def repulsion(
             self,
@@ -988,7 +988,7 @@ class Network:
         :type damping: float
         """
         self._require_options_instance()
-        self.options.physics.use_repulsion({k: v for k, v in locals().items() if k != 'self'})
+        self.options.physics.use_repulsion(dict(node_distance=node_distance, central_gravity=central_gravity, spring_length=spring_length, spring_strength=spring_strength, damping=damping))
 
     def hrepulsion(
             self,
@@ -1018,7 +1018,7 @@ class Network:
         :type damping: float
         """
         self._require_options_instance()
-        self.options.physics.use_hrepulsion({k: v for k, v in locals().items() if k != 'self'})
+        self.options.physics.use_hrepulsion(dict(node_distance=node_distance, central_gravity=central_gravity, spring_length=spring_length, spring_strength=spring_strength, damping=damping))
 
     def force_atlas_2based(
             self,
@@ -1059,7 +1059,7 @@ class Network:
         :type overlap: float
         """
         self._require_options_instance()
-        self.options.physics.use_force_atlas_2based({k: v for k, v in locals().items() if k != 'self'})
+        self.options.physics.use_force_atlas_2based(dict(gravity=gravity, central_gravity=central_gravity, spring_length=spring_length, spring_strength=spring_strength, damping=damping, overlap=overlap))
 
     def to_json(self, max_depth=1, **args):
         """

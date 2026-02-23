@@ -470,3 +470,54 @@ class TestAddEdgesExtraElementsWarning:
             net.add_edges([(1, 2, 5, "extra")])
         assert len(net.edges) == 1
         assert net.edges[0].get("width") == 5
+
+
+class TestPhysicsMethodsExplicitParams:
+    """Physics methods should pass exactly their declared parameters."""
+
+    def test_barnes_hut_passes_all_params(self):
+        net = Network()
+        net.barnes_hut(gravity=-5000, central_gravity=0.5, spring_length=100,
+                       spring_strength=0.01, damping=0.1, overlap=1)
+        bh = net.options.physics.barnesHut
+        assert bh.gravitationalConstant == -5000
+        assert bh.centralGravity == 0.5
+        assert bh.springLength == 100
+        assert bh.springConstant == 0.01
+        assert bh.damping == 0.1
+        assert bh.avoidOverlap == 1
+
+    def test_repulsion_passes_all_params(self):
+        net = Network()
+        net.repulsion(node_distance=200, central_gravity=0.5, spring_length=300,
+                      spring_strength=0.1, damping=0.2)
+        rep = net.options.physics.repulsion
+        assert rep.nodeDistance == 200
+        assert rep.centralGravity == 0.5
+        assert rep.springLength == 300
+        assert rep.springConstant == 0.1
+        assert rep.damping == 0.2
+
+    def test_hrepulsion_passes_all_params(self):
+        net = Network()
+        net.hrepulsion(node_distance=200, central_gravity=0.5, spring_length=300,
+                       spring_strength=0.1, damping=0.2)
+        hrep = net.options.physics.hierarchicalRepulsion
+        assert hrep.nodeDistance == 200
+        assert hrep.centralGravity == 0.5
+        assert hrep.springLength == 300
+        assert hrep.springConstant == 0.1
+        assert hrep.damping == 0.2
+
+    def test_force_atlas_passes_all_params(self):
+        net = Network()
+        net.force_atlas_2based(gravity=-100, central_gravity=0.05,
+                               spring_length=200, spring_strength=0.1,
+                               damping=0.5, overlap=1)
+        fa = net.options.physics.forceAtlas2Based
+        assert fa.gravitationalConstant == -100
+        assert fa.centralGravity == 0.05
+        assert fa.springLength == 200
+        assert fa.springConstant == 0.1
+        assert fa.damping == 0.5
+        assert fa.avoidOverlap == 1
