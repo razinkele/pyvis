@@ -343,7 +343,7 @@ class Network:
             # Invalidate adjacency list cache
             self._adj_list_cache = None
 
-    def add_nodes(self, nodes: List[Union[str, int]], **kwargs):
+    def add_nodes(self, nodes: List[Union[str, int]], options=None, **kwargs):
         """
         This method adds multiple nodes to the network from a list.
         Default behavior uses values of 'nodes' for node ID and node label
@@ -370,6 +370,32 @@ class Network:
         for k in kwargs:
             if k not in VALID_BATCH_NODE_ARGS:
                 raise ValueError(f"invalid arg '{k}'")
+
+        # Typed options path
+        if options is not None:
+            if kwargs:
+                warnings.warn(
+                    "Both options= and **kwargs were provided to add_nodes(). "
+                    "When options= is used, kwargs are ignored.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            if hasattr(options, 'to_dict'):
+                # Single options applied to all nodes
+                opts_dict = options.to_dict()
+                for node in nodes:
+                    self.add_node(node, **opts_dict)
+                return
+            elif isinstance(options, list):
+                if len(options) != len(nodes):
+                    raise ValueError(
+                        f"options list length ({len(options)}) does not match "
+                        f"nodes list length ({len(nodes)})"
+                    )
+                for node, opt in zip(nodes, options):
+                    opts_dict = opt.to_dict() if hasattr(opt, 'to_dict') else opt
+                    self.add_node(node, **opts_dict)
+                return
 
         nd = defaultdict(dict)
         for i in range(len(nodes)):

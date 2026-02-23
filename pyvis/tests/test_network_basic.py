@@ -583,3 +583,34 @@ class TestMixedTypeEdgeDedup:
         net.add_edge(1, 2)
         net.add_edge(2, 1)
         assert len(net.edges) == 1
+
+
+class TestAddNodesTypedOptions:
+    """add_nodes() should accept a list of NodeOptions via options param."""
+
+    def test_single_options_applied_to_all(self):
+        from pyvis.types.nodes import NodeOptions
+        net = Network()
+        opts = NodeOptions(shape="star", color="#ff0000")
+        net.add_nodes([1, 2, 3], options=opts)
+        for nid in [1, 2, 3]:
+            assert net.node_map[nid]["shape"] == "star"
+            assert net.node_map[nid]["color"] == "#ff0000"
+
+    def test_list_of_options_per_node(self):
+        from pyvis.types.nodes import NodeOptions
+        net = Network()
+        opts_list = [
+            NodeOptions(shape="star", color="#ff0000"),
+            NodeOptions(shape="box", color="#00ff00"),
+        ]
+        net.add_nodes([1, 2], options=opts_list)
+        assert net.node_map[1]["shape"] == "star"
+        assert net.node_map[2]["shape"] == "box"
+
+    def test_options_list_length_mismatch_raises(self):
+        from pyvis.types.nodes import NodeOptions
+        net = Network()
+        opts_list = [NodeOptions(shape="star")]
+        with pytest.raises(ValueError, match="length"):
+            net.add_nodes([1, 2], options=opts_list)
