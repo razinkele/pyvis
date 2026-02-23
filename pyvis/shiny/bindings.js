@@ -393,7 +393,7 @@ if (typeof Shiny !== 'undefined') {
                             }
                         });
                         // Build chips
-                        templateOpts.innerHTML = '';
+                        templateOpts.textContent = '';
                         templates.forEach(function(t) {
                             var chip = document.createElement('button');
                             chip.type = 'button';
@@ -401,9 +401,11 @@ if (typeof Shiny !== 'undefined') {
                             chip.dataset.shape = t.shape;
                             chip.dataset.color = t.color;
                             chip.dataset.size = t.size;
-                            chip.innerHTML =
-                                '<span class="pyvis-template-swatch" style="background:' + t.color + '"></span>' +
-                                t.shape;
+                            var swatch = document.createElement('span');
+                            swatch.className = 'pyvis-template-swatch';
+                            swatch.style.backgroundColor = t.color;
+                            chip.appendChild(swatch);
+                            chip.appendChild(document.createTextNode(t.shape));
                             chip.addEventListener('click', function() {
                                 // Deselect all chips, select this one
                                 templateOpts.querySelectorAll('.pyvis-template-chip').forEach(function(c) {
@@ -1019,6 +1021,7 @@ if (typeof Shiny !== 'undefined') {
         var nodes = ref.nodes;
         var edges = ref.edges;
 
+        try {
         switch (command) {
             // Selection
             case 'selectNodes':
@@ -1187,6 +1190,9 @@ if (typeof Shiny !== 'undefined') {
 
             default:
                 console.warn('PyVis: unknown command', command);
+        }
+        } catch (e) {
+            console.error('PyVis: command "' + command + '" failed for "' + outputId + '":', e);
         }
     });
 

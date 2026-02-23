@@ -564,7 +564,7 @@ class Network:
 
         self.node_map[n_id].update(attrs)
 
-    def update_edge(self, source: Union[str, int], dest: Union[str, int],
+    def update_edge(self, source: Union[str, int], to: Union[str, int],
                     options=None, **kwargs):
         """
         Update attributes of an existing edge.
@@ -576,7 +576,7 @@ class Network:
         >>> nt.update_edge(1, 2, color="red", width=3)
 
         :param source: The source node ID.
-        :param dest: The destination node ID.
+        :param to: The destination node ID.
         :param options: Typed EdgeOptions instance (optional). When provided,
                         kwargs are ignored.
         :param kwargs: Edge attributes to update (color, width, label, etc.).
@@ -605,19 +605,19 @@ class Network:
 
         for edge in self.edges:
             if self.directed:
-                if edge['from'] == source and edge['to'] == dest:
+                if edge['from'] == source and edge['to'] == to:
                     edge.update(attrs)
                     self._adj_list_cache = None
                     return
             else:
-                if ((edge['from'] == source and edge['to'] == dest) or
-                        (edge['from'] == dest and edge['to'] == source)):
+                if ((edge['from'] == source and edge['to'] == to) or
+                        (edge['from'] == to and edge['to'] == source)):
                     edge.update(attrs)
                     self._adj_list_cache = None
                     return
 
         raise ValueError(
-            f"Edge ({source}, {dest}) not found in network"
+            f"Edge ({source}, {to}) not found in network"
         )
 
     def remove_node(self, n_id: Union[str, int]):
@@ -657,7 +657,7 @@ class Network:
 
         self._adj_list_cache = None
 
-    def remove_edge(self, source: Union[str, int], dest: Union[str, int]):
+    def remove_edge(self, source: Union[str, int], to: Union[str, int]):
         """
         Remove an edge between two nodes.
 
@@ -668,30 +668,30 @@ class Network:
         >>> nt.remove_edge(1, 2)
 
         :param source: The source node ID.
-        :param dest: The destination node ID.
+        :param to: The destination node ID.
 
         :raises ValueError: If the edge does not exist.
         """
         for i, edge in enumerate(self.edges):
             if self.directed:
-                match = edge['from'] == source and edge['to'] == dest
+                match = edge['from'] == source and edge['to'] == to
             else:
-                match = ((edge['from'] == source and edge['to'] == dest) or
-                         (edge['from'] == dest and edge['to'] == source))
+                match = ((edge['from'] == source and edge['to'] == to) or
+                         (edge['from'] == to and edge['to'] == source))
             if match:
                 self.edges.pop(i)
                 if self.directed:
-                    edge_key = (source, dest)
+                    edge_key = (source, to)
                 else:
                     edge_key = tuple(sorted(
-                        [source, dest], key=lambda x: str(x)
+                        [source, to], key=lambda x: str(x)
                     ))
                 self._edge_set.discard(edge_key)
                 self._adj_list_cache = None
                 return
 
         raise ValueError(
-            f"Edge ({source}, {dest}) not found in network"
+            f"Edge ({source}, {to}) not found in network"
         )
 
     def get_network_data(self):

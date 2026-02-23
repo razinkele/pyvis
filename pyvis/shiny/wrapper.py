@@ -146,6 +146,16 @@ __all__ = [
 # Get path to bindings.js
 _BINDINGS_PATH = Path(__file__).parent
 
+import logging as _logging
+
+_logger = _logging.getLogger("pyvis.shiny")
+
+
+def _log_task_exception(task):
+    """Callback for asyncio tasks to log exceptions that would otherwise be silently lost."""
+    if not task.cancelled() and task.exception() is not None:
+        _logger.warning("PyVis command failed: %s", task.exception())
+
 
 def _get_pyvis_dependency() -> 'List[HTMLDependency]':
     """Create HTMLDependencies for vis-network and PyVis Shiny bindings.
@@ -499,9 +509,10 @@ if SHINY_AVAILABLE:
             }
             # send_custom_message is a coroutine in Shiny for Python;
             # schedule it from synchronous reactive contexts.
-            asyncio.create_task(
+            task = asyncio.create_task(
                 self.session.send_custom_message("pyvis-command", message)
             )
+            task.add_done_callback(_log_task_exception)
         
         # === Selection Methods ===
         
@@ -908,7 +919,8 @@ def _send_network_command(
         "command": command,
         "args": args or {}
     }
-    asyncio.create_task(session.send_custom_message("pyvis-command", message))
+    task = asyncio.create_task(session.send_custom_message("pyvis-command", message))
+    task.add_done_callback(_log_task_exception)
 
 
 def network_select_nodes(

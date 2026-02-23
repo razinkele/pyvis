@@ -12,6 +12,7 @@
     --pyvis-accent: #0d6efd;
     --pyvis-accent-hover: #0b5ed7;
     --pyvis-shadow: rgba(0, 0, 0, 0.1);
+    --pyvis-focus-ring: rgba(13, 110, 253, 0.15);
     --pyvis-radius: 6px;
 }
 
@@ -25,6 +26,7 @@
     --pyvis-accent: #58a6ff;
     --pyvis-accent-hover: #79b8ff;
     --pyvis-shadow: rgba(0, 0, 0, 0.3);
+    --pyvis-focus-ring: rgba(88, 166, 255, 0.2);
     --pyvis-radius: 6px;
 }
 
@@ -92,7 +94,7 @@
 
 .pyvis-search input:focus {
     border-color: var(--pyvis-accent);
-    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15);
+    box-shadow: 0 0 0 2px var(--pyvis-focus-ring);
 }
 
 .pyvis-search-count {
@@ -260,7 +262,7 @@
 .pyvis-modal-field input:focus,
 .pyvis-modal-field select:focus {
     border-color: var(--pyvis-accent);
-    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15);
+    box-shadow: 0 0 0 2px var(--pyvis-focus-ring);
 }
 
 .pyvis-modal-field input[type="color"] {
@@ -356,4 +358,36 @@
     height: 12px;
     border-radius: 50%;
     border: 1px solid var(--pyvis-border);
+}
+
+/* === Responsive === */
+@media (max-width: 600px) {
+    .pyvis-toolbar {
+        gap: 4px;
+        padding: 4px 6px;
+    }
+
+    .pyvis-search {
+        max-width: 100%;
+        order: 99; /* Push search to its own row */
+    }
+
+    .pyvis-toolbar-separator {
+        display: none;
+    }
+
+    .pyvis-btn {
+        padding: 4px 6px;
+        font-size: 12px;
+    }
+
+    .pyvis-modal {
+        width: calc(100% - 24px);
+        max-height: 90%;
+    }
+
+    .pyvis-status {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
 }

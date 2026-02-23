@@ -581,12 +581,16 @@ class TestUpdateEdge:
             net.update_edge(1, 2, **{'from': 3})
 
     def test_update_edge_protected_to_raises(self):
-        """update_edge() should reject attempts to change 'to'."""
+        """update_edge() should reject attempts to change 'to'.
+
+        Since the parameter is named `to`, passing to=X as a kwarg raises
+        TypeError (duplicate argument) — Python itself prevents the change.
+        """
         net = Network()
         net.add_node(1, label="A")
         net.add_node(2, label="B")
         net.add_edge(1, 2)
-        with pytest.raises(ValueError, match="Cannot change edge"):
+        with pytest.raises(TypeError):
             net.update_edge(1, 2, to=3)
 
     def test_update_edge_with_typed_options(self):

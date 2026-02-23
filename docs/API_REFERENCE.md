@@ -249,7 +249,7 @@ net.update_node(1, options=NodeOptions(label="New Label", color="red"))
 ```python
 update_edge(
     source: Union[str, int],
-    dest: Union[str, int],
+    to: Union[str, int],
     options=None,
     **kwargs,
 )
@@ -260,7 +260,7 @@ Update attributes of an existing edge. The `from`/`to` endpoints cannot be chang
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `source` | `str\|int` | *required* | Source node ID |
-| `dest` | `str\|int` | *required* | Destination node ID |
+| `to` | `str\|int` | *required* | Destination node ID |
 | `options` | `EdgeOptions\|None` | `None` | Typed options (when provided, `**kwargs` are ignored) |
 | `**kwargs` | | | Attributes to update: `color`, `width`, `label`, `dashes`, etc. |
 
@@ -295,7 +295,7 @@ net.remove_node(1)  # Also removes edges (1,2), (1,3), etc.
 ```python
 remove_edge(
     source: Union[str, int],
-    dest: Union[str, int],
+    to: Union[str, int],
 )
 ```
 
@@ -304,7 +304,7 @@ Remove an edge between two nodes. For undirected graphs, matches regardless of d
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `source` | `str\|int` | Source node ID |
-| `dest` | `str\|int` | Destination node ID |
+| `to` | `str\|int` | Destination node ID |
 
 Raises `ValueError` if the edge does not exist.
 
