@@ -844,7 +844,7 @@ class Network:
         return self.get_adj_list()[node]
 
     def from_nx(self, nx_graph, node_size_transf=(lambda x: x), edge_weight_transf=(lambda x: x),
-                default_node_size =10, default_edge_weight=1, show_edge_weights=True, edge_scaling=False):
+                default_node_size=10, default_edge_weight=1, edge_scaling=False):
         """
         This method takes an exisitng Networkx graph and translates
         it to a PyVis graph format that can be accepted by the VisJs

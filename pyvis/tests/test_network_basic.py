@@ -1,3 +1,4 @@
+import inspect
 import os
 
 import numpy as np
@@ -197,3 +198,10 @@ def test_show_does_not_print(tmp_path, capsys):
     net.show(name, notebook=False)
     captured = capsys.readouterr()
     assert name not in captured.out, "show() should not print the filename"
+
+
+def test_from_nx_no_show_edge_weights_param():
+    """show_edge_weights was a dead parameter — should be removed."""
+    sig = inspect.signature(Network.from_nx)
+    assert 'show_edge_weights' not in sig.parameters, \
+        "show_edge_weights is a dead parameter and should be removed"
