@@ -66,7 +66,23 @@ if (typeof Shiny !== 'undefined') {
             // Clean up previous instance
             if (window.pyvisNetworks[outputId]) {
                 const prev = window.pyvisNetworks[outputId];
+                // Remove global keydown handler (Esc for modals)
+                if (prev._escHandler) {
+                    document.removeEventListener('keydown', prev._escHandler);
+                }
+                // Deregister DataSet listeners
+                if (prev.nodes && prev._statusHandler) {
+                    prev.nodes.off('*', prev._statusHandler);
+                }
+                if (prev.edges && prev._statusHandler) {
+                    prev.edges.off('*', prev._statusHandler);
+                }
+                // Clear DataSets
+                if (prev.nodes) prev.nodes.clear();
+                if (prev.edges) prev.edges.clear();
+                // Disconnect resize observer
                 if (prev.resizeObserver) prev.resizeObserver.disconnect();
+                // Destroy vis.js network (removes its own event handlers)
                 if (prev.network) prev.network.destroy();
             }
 
@@ -548,10 +564,12 @@ if (typeof Shiny !== 'undefined') {
                     if (action === 'save') saveEdgeLinks();
                 });
 
-                // Esc key closes modals
-                document.addEventListener('keydown', function(e) {
+                // Esc key closes modals (stored for cleanup)
+                var escHandler = function(e) {
                     if (e.key === 'Escape') closeModals();
-                });
+                };
+                document.addEventListener('keydown', escHandler);
+                ref._escHandler = escHandler;
 
                 // Enter key saves in modals
                 nodeOverlay.addEventListener('keydown', function(e) {
@@ -639,6 +657,7 @@ if (typeof Shiny !== 'undefined') {
             updateStatus();
             nodesDataSet.on('*', updateStatus);
             edgesDataSet.on('*', updateStatus);
+            ref._statusHandler = updateStatus;
 
             // === EVENTS ===
             function shouldBind(eventName) {
@@ -1171,11 +1190,47 @@ if (typeof Shiny !== 'undefined') {
         }
     });
 
-    // Generic JS runner for app-level DOM operations (e.g. theme toggle)
+    // Safe DOM class operations for app-level theming.
+    // Accepts: { selector: "body", action: "add"|"remove"|"toggle", className: "app-light" }
+    // Legacy compat: { js: "document.body.classList.add('app-light');" } is parsed safely.
     Shiny.addCustomMessageHandler('pyvis-run-js', function(message) {
-        if (message.js) {
-            try { new Function(message.js)(); }
-            catch (e) { console.warn('PyVis run-js error:', e); }
+        var selector, action, className;
+
+        if (message.selector && message.action && message.className) {
+            selector = message.selector;
+            action = message.action;
+            className = message.className;
+        } else if (message.js && typeof message.js === 'string') {
+            // Parse legacy format: "document.body.classList.add('app-light');"
+            var m = message.js.match(
+                /document\.body\.classList\.(add|remove|toggle)\(\s*['"]([^'"]+)['"]\s*\)/
+            );
+            if (m) {
+                selector = 'body';
+                action = m[1];
+                className = m[2];
+            } else {
+                console.warn('PyVis run-js: unsupported operation. Use {selector, action, className} format.');
+                return;
+            }
+        } else {
+            return;
+        }
+
+        if (['add', 'remove', 'toggle'].indexOf(action) === -1) {
+            console.warn('PyVis run-js: action must be add, remove, or toggle');
+            return;
+        }
+        // Validate className is a simple CSS class name (no spaces, no special chars)
+        if (!/^[a-zA-Z_-][a-zA-Z0-9_-]*$/.test(className)) {
+            console.warn('PyVis run-js: invalid className');
+            return;
+        }
+        try {
+            var el = document.querySelector(selector);
+            if (el) el.classList[action](className);
+        } catch (e) {
+            console.warn('PyVis run-js error:', e);
         }
     });
 

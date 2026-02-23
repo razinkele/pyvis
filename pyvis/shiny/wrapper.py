@@ -1241,7 +1241,8 @@ if SHINY_AVAILABLE:
             
             # Apply physics setting
             if hasattr(input, 'physics'):
-                net.toggle_physics(input.physics())
+                physics_on = input.physics()
+                net.set_options({"physics": {"enabled": physics_on}})
             
             return net
         

@@ -337,12 +337,11 @@ def server(input, output, session):
         # Toggle pyvis network theme
         ctrl.set_theme("dark" if is_dark else "light")
         # Toggle app body class for Shiny UI theme
-        js = (
-            "document.body.classList.remove('app-light');"
-            if is_dark else
-            "document.body.classList.add('app-light');"
-        )
-        await session.send_custom_message("pyvis-run-js", {"js": js})
+        await session.send_custom_message("pyvis-run-js", {
+            "selector": "body",
+            "action": "remove" if is_dark else "add",
+            "className": "app-light",
+        })
 
     # ── Manipulation toggle ───────────────────────────────────────────
 

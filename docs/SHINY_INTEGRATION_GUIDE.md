@@ -447,12 +447,11 @@ To toggle both the Shiny app theme and the pyvis network theme:
 async def _on_theme_toggle():
     is_dark = input.dark_mode()
     ctrl.set_theme("dark" if is_dark else "light")
-    js = (
-        "document.body.classList.remove('app-light');"
-        if is_dark else
-        "document.body.classList.add('app-light');"
-    )
-    await session.send_custom_message("pyvis-run-js", {"js": js})
+    await session.send_custom_message("pyvis-run-js", {
+        "selector": "body",
+        "action": "remove" if is_dark else "add",
+        "className": "app-light",
+    })
 ```
 
 ### Complete Editor Demo

@@ -1548,15 +1548,19 @@ ctrl.set_node_template_mode(True)
 
 > **Note:** The `toggle_manipulation` method uses CSS display toggling rather than `network.setOptions()` to avoid vis.js rebuilding and losing the toolbar DOM.
 
-#### Custom JavaScript Execution
+#### App-Level CSS Class Operations
 
-For app-level DOM operations (e.g., toggling body CSS classes for theme switching), use the `pyvis-run-js` custom message handler:
+For app-level DOM class toggling (e.g., theme switching), use the `pyvis-run-js` custom message handler with a structured message:
 
 ```python
 await session.send_custom_message("pyvis-run-js", {
-    "js": "document.body.classList.add('app-light');"
+    "selector": "body",
+    "action": "add",       # "add", "remove", or "toggle"
+    "className": "app-light",
 })
 ```
+
+Only `classList` operations (`add`, `remove`, `toggle`) are supported. Class names must be simple identifiers (letters, digits, hyphens, underscores).
 
 #### Query Methods
 

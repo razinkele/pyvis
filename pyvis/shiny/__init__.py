@@ -113,7 +113,7 @@ app_ui = ui.page_fluid(
 def server(input, output, session):
     network_data = reactive.Value({
         'nodes': [{'id': 1, 'label': 'A'}, {'id': 2, 'label': 'B'}],
-        'edges': [{'source': 1, 'to': 2}]
+        'edges': [{'from': 1, 'to': 2}]
     })
     pyvis_network_server("net1", network_data)
 
