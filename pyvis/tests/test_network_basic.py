@@ -310,3 +310,25 @@ class TestFromNxNodeSizeBug:
             f"NX graph node 1 size was {G.nodes[1]['size']}, "
             f"expected 20 (transform applied once)"
         )
+
+
+class TestFontColor:
+    """font_color should accept None or str, not bool."""
+
+    def test_font_color_none_no_font_dict(self):
+        """font_color=None should not inject a font dict."""
+        net = Network(font_color=None)
+        net.add_node(1, label="A")
+        assert "font" not in net.node_map[1]
+
+    def test_font_color_string_sets_font(self):
+        """font_color='red' should inject font.color='red'."""
+        net = Network(font_color="red")
+        net.add_node(1, label="A")
+        assert net.node_map[1]["font"]["color"] == "red"
+
+    def test_font_color_false_no_font_dict(self):
+        """Legacy font_color=False should behave like None."""
+        net = Network(font_color=False)
+        net.add_node(1, label="A")
+        assert "font" not in net.node_map[1]

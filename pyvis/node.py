@@ -15,7 +15,7 @@ class Node:
     in the network graph, including its ID, label, shape, and other visual options.
     """
 
-    def __init__(self, n_id: Union[str, int], shape: str, label: Union[str, int], font_color: Union[bool, str] = False, **opts):
+    def __init__(self, n_id: Union[str, int], shape: str, label: Union[str, int], font_color: Optional[str] = None, **opts):
         self.options: Dict[str, Any] = opts
         self.options["id"] = n_id
         self.options["label"] = label

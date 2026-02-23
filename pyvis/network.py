@@ -59,7 +59,7 @@ class Network:
                  select_menu: bool = False,
                  filter_menu: bool = False,
                  bgcolor: str = "#ffffff",
-                 font_color: Union[bool, str] = False,
+                 font_color: Optional[str] = None,
                  layout: Optional[bool] = None,
                  heading: str = "",
                  cdn_resources: str = "local",
