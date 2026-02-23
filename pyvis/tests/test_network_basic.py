@@ -614,3 +614,50 @@ class TestAddNodesTypedOptions:
         opts_list = [NodeOptions(shape="star")]
         with pytest.raises(ValueError, match="length"):
             net.add_nodes([1, 2], options=opts_list)
+
+
+class TestErrorPaths:
+    """Tests for error handling and edge cases."""
+
+    def test_add_edge_nonexistent_source_raises(self):
+        net = Network()
+        net.add_node(1, label="A")
+        with pytest.raises(IndexError, match="non existent"):
+            net.add_edge(99, 1)
+
+    def test_add_edge_nonexistent_target_raises(self):
+        net = Network()
+        net.add_node(1, label="A")
+        with pytest.raises(IndexError, match="non existent"):
+            net.add_edge(1, 99)
+
+    def test_get_node_nonexistent_raises(self):
+        net = Network()
+        with pytest.raises(KeyError):
+            net.get_node(999)
+
+    def test_self_loop_allowed(self):
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_edge(1, 1)
+        assert len(net.edges) == 1
+        assert net.edges[0]["from"] == 1
+        assert net.edges[0]["to"] == 1
+
+    def test_unicode_labels(self):
+        net = Network()
+        net.add_node(1, label="日本語")
+        net.add_node(2, label="Ελληνικά")
+        net.add_edge(1, 2)
+        assert net.node_map[1]["label"] == "日本語"
+
+    def test_legacy_method_after_set_options_dict_raises(self):
+        net = Network()
+        net.set_options({"physics": {"enabled": False}})
+        with pytest.raises(TypeError, match="Cannot use legacy"):
+            net.barnes_hut()
+
+    def test_add_nodes_invalid_kwarg_raises(self):
+        net = Network()
+        with pytest.raises(ValueError, match="invalid arg"):
+            net.add_nodes([1, 2], badarg=[10, 20])
