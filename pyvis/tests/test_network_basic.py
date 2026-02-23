@@ -531,3 +531,27 @@ class TestFontColorEmptyString:
         n = Node(1, "dot", "A", font_color="")
         assert "font" in n.options
         assert n.options["font"]["color"] == ""
+
+
+class TestSetOptionsValidation:
+    """set_options() should reject invalid types."""
+
+    def test_rejects_integer(self):
+        net = Network()
+        with pytest.raises(TypeError, match="set_options"):
+            net.set_options(42)
+
+    def test_rejects_list(self):
+        net = Network()
+        with pytest.raises(TypeError, match="set_options"):
+            net.set_options([1, 2, 3])
+
+    def test_accepts_dict(self):
+        net = Network()
+        net.set_options({"physics": {"enabled": False}})
+        assert net.options == {"physics": {"enabled": False}}
+
+    def test_accepts_json_string(self):
+        net = Network()
+        net.set_options('{"physics": {"enabled": false}}')
+        assert net.options == {"physics": {"enabled": False}}

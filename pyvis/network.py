@@ -1210,7 +1210,10 @@ class Network:
         elif isinstance(options, dict):
             self.options = options
         else:
-            self.options = options
+            raise TypeError(
+                f"set_options() expects NetworkOptions, dict, or JSON string, "
+                f"got {type(options).__name__}"
+            )
 
     def set_group(self, group_name: str, **options):
         """
