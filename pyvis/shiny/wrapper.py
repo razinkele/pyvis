@@ -546,7 +546,7 @@ if SHINY_AVAILABLE:
                           or dict with duration/easingFunction
             """
             args = {"animation": animation}
-            if node_ids:
+            if node_ids is not None:
                 args["nodes"] = node_ids
             self._send_command("fit", args)
         
@@ -590,9 +590,9 @@ if SHINY_AVAILABLE:
                 animation: Animation settings
             """
             args = {"animation": animation}
-            if position:
+            if position is not None:
                 args["position"] = position
-            if scale:
+            if scale is not None:
                 args["scale"] = scale
             self._send_command("moveTo", args)
         
@@ -902,7 +902,7 @@ def network_fit(
 ):
     """Fit network or specific nodes in view."""
     args = {"animation": animation}
-    if node_ids:
+    if node_ids is not None:
         args["nodes"] = node_ids
     _send_network_command(session, output_id, "fit", args)
 
@@ -930,9 +930,9 @@ def network_move_to(
 ):
     """Move camera to a position."""
     args = {"animation": animation}
-    if position:
+    if position is not None:
         args["position"] = position
-    if scale:
+    if scale is not None:
         args["scale"] = scale
     _send_network_command(session, output_id, "moveTo", args)
 
