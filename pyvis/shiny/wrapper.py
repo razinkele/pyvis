@@ -1151,8 +1151,7 @@ if SHINY_AVAILABLE:
             elif isinstance(data, dict):
                 # Create network from dict specification
                 net = Network(height="100%", width="100%")
-                net.toggle_physics(input.physics())
-                
+
                 for node in data.get('nodes', []):
                     if isinstance(node, dict):
                         net.add_node(**node)
