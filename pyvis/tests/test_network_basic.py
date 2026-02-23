@@ -121,3 +121,41 @@ def test_get_network_json_with_groups():
     assert data["directed"] == False
     assert data["bgcolor"] == "#ffffff"
     assert data["legend"] is None
+
+
+class TestFalsyLabelBug:
+    """Regression tests for falsy label values (0, '', False)."""
+
+    def test_add_node_label_zero(self):
+        """label=0 must be preserved, not replaced by node ID."""
+        net = Network()
+        net.add_node(1, label=0)
+        assert net.node_map[1]["label"] == 0
+
+    def test_add_node_label_empty_string(self):
+        """label='' must be preserved, not replaced by node ID."""
+        net = Network()
+        net.add_node(1, label="")
+        assert net.node_map[1]["label"] == ""
+
+    def test_add_node_label_none_defaults_to_id(self):
+        """label=None (default) should still fall back to node ID."""
+        net = Network()
+        net.add_node(1)
+        assert net.node_map[1]["label"] == 1
+
+    def test_add_node_typed_options_label_zero(self):
+        """Typed path: label=0 must be preserved."""
+        from pyvis.types import NodeOptions
+        net = Network()
+        opts = NodeOptions(label="0")
+        net.add_node(1, options=opts)
+        assert net.node_map[1]["label"] == "0"
+
+    def test_add_node_typed_options_no_label_defaults_to_id(self):
+        """Typed path: no label in options should fall back to node ID."""
+        from pyvis.types import NodeOptions
+        net = Network()
+        opts = NodeOptions(color="red")
+        net.add_node(1, options=opts)
+        assert net.node_map[1]["label"] == 1

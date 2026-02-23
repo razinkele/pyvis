@@ -324,11 +324,11 @@ class Network:
                 opts = options.to_dict()
                 opts['id'] = n_id
                 if 'label' not in opts:
-                    opts['label'] = label if label else n_id
+                    opts['label'] = label if label is not None else n_id
                 self.node_map[n_id] = opts
             else:
                 # Legacy path: unchanged behavior
-                if label:
+                if label is not None:
                     node_label = label
                 else:
                     node_label = n_id
