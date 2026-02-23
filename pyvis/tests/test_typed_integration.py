@@ -184,3 +184,13 @@ class TestLegacyMethodGuard:
         net.toggle_physics(True)
         net.repulsion()
         net.toggle_drag_nodes(True)
+
+
+def test_no_edge_options_name_collision():
+    """pyvis.options should not export 'EdgeOptions' publicly."""
+    from pyvis import options
+    # The old EdgeOptions should be renamed to _LegacyEdgeOptions
+    assert hasattr(options, '_LegacyEdgeOptions')
+    # The typed version should be importable cleanly
+    from pyvis.types import EdgeOptions
+    assert EdgeOptions.__module__ == 'pyvis.types.edges'

@@ -10,10 +10,10 @@ from typing import Optional, Union, List, Any
 from .physics import Physics
 from .base import JSONSerializable
 
-__all__ = ['EdgeOptions', 'Interaction', 'Configure', 'Layout', 'Options']
+__all__ = ['_LegacyEdgeOptions', 'Interaction', 'Configure', 'Layout', 'Options']
 
 
-class EdgeOptions(JSONSerializable):
+class _LegacyEdgeOptions(JSONSerializable):
     """
     This is where the construction of the edges' options takes place.
     So far, the edge smoothness can be switched through this object
@@ -191,7 +191,7 @@ class Options(JSONSerializable):
         self.interaction = Interaction()
         self.configure = Configure()
         self.physics = Physics()
-        self.edges = EdgeOptions()
+        self.edges = _LegacyEdgeOptions()
 
     def set(self, new_options: str) -> dict:
         """
