@@ -258,23 +258,6 @@ class TestFromNxEdgeWeightBug:
         assert edge.get("width") == 7
 
 
-class TestLayoutRandomSeed:
-    def test_random_seed_zero(self):
-        from pyvis.options import Layout
-        layout = Layout(randomSeed=0)
-        assert layout.randomSeed == 0
-
-    def test_random_seed_none_defaults(self):
-        from pyvis.options import Layout
-        layout = Layout(randomSeed=None)
-        assert layout.randomSeed == 0
-
-    def test_random_seed_explicit(self):
-        from pyvis.options import Layout
-        layout = Layout(randomSeed=42)
-        assert layout.randomSeed == 42
-
-
 class TestFromNxNodeSizeBug:
     """Regression: node_size_transf should be applied exactly once per node."""
 
@@ -332,35 +315,6 @@ class TestFontColor:
         net = Network(font_color=False)
         net.add_node(1, label="A")
         assert "font" not in net.node_map[1]
-
-
-class TestPhysicsMethodsNoSelf:
-    """Physics methods should not pass 'self' in the params dict."""
-
-    def test_barnes_hut_no_self_in_params(self):
-        """barnes_hut should not leak 'self' into physics config."""
-        net = Network()
-        net.barnes_hut(gravity=-5000)
-        bh = net.options.physics.barnesHut
-        assert not hasattr(bh, 'self'), "Physics params contain 'self'"
-
-    def test_repulsion_no_self_in_params(self):
-        net = Network()
-        net.repulsion()
-        rep = net.options.physics.repulsion
-        assert not hasattr(rep, 'self')
-
-    def test_hrepulsion_no_self_in_params(self):
-        net = Network()
-        net.hrepulsion()
-        hrep = net.options.physics.hierarchicalRepulsion
-        assert not hasattr(hrep, 'self')
-
-    def test_force_atlas_no_self_in_params(self):
-        net = Network()
-        net.force_atlas_2based()
-        fa = net.options.physics.forceAtlas2Based
-        assert not hasattr(fa, 'self')
 
 
 class TestAddEdgesValidation:
@@ -470,57 +424,6 @@ class TestAddEdgesExtraElementsWarning:
             net.add_edges([(1, 2, 5, "extra")])
         assert len(net.edges) == 1
         assert net.edges[0].get("width") == 5
-
-
-class TestPhysicsMethodsExplicitParams:
-    """Physics methods should pass exactly their declared parameters."""
-
-    def test_barnes_hut_passes_all_params(self):
-        net = Network()
-        net.barnes_hut(gravity=-5000, central_gravity=0.5, spring_length=100,
-                       spring_strength=0.01, damping=0.1, overlap=1)
-        bh = net.options.physics.barnesHut
-        assert bh.gravitationalConstant == -5000
-        assert bh.centralGravity == 0.5
-        assert bh.springLength == 100
-        assert bh.springConstant == 0.01
-        assert bh.damping == 0.1
-        assert bh.avoidOverlap == 1
-
-    def test_repulsion_passes_all_params(self):
-        net = Network()
-        net.repulsion(node_distance=200, central_gravity=0.5, spring_length=300,
-                      spring_strength=0.1, damping=0.2)
-        rep = net.options.physics.repulsion
-        assert rep.nodeDistance == 200
-        assert rep.centralGravity == 0.5
-        assert rep.springLength == 300
-        assert rep.springConstant == 0.1
-        assert rep.damping == 0.2
-
-    def test_hrepulsion_passes_all_params(self):
-        net = Network()
-        net.hrepulsion(node_distance=200, central_gravity=0.5, spring_length=300,
-                       spring_strength=0.1, damping=0.2)
-        hrep = net.options.physics.hierarchicalRepulsion
-        assert hrep.nodeDistance == 200
-        assert hrep.centralGravity == 0.5
-        assert hrep.springLength == 300
-        assert hrep.springConstant == 0.1
-        assert hrep.damping == 0.2
-
-    def test_force_atlas_passes_all_params(self):
-        net = Network()
-        net.force_atlas_2based(gravity=-100, central_gravity=0.05,
-                               spring_length=200, spring_strength=0.1,
-                               damping=0.5, overlap=1)
-        fa = net.options.physics.forceAtlas2Based
-        assert fa.gravitationalConstant == -100
-        assert fa.centralGravity == 0.05
-        assert fa.springLength == 200
-        assert fa.springConstant == 0.1
-        assert fa.damping == 0.5
-        assert fa.avoidOverlap == 1
 
 
 class TestFontColorEmptyString:
@@ -650,12 +553,6 @@ class TestErrorPaths:
         net.add_node(2, label="Ελληνικά")
         net.add_edge(1, 2)
         assert net.node_map[1]["label"] == "日本語"
-
-    def test_legacy_method_after_set_options_dict_raises(self):
-        net = Network()
-        net.set_options({"physics": {"enabled": False}})
-        with pytest.raises(TypeError, match="Cannot use legacy"):
-            net.barnes_hut()
 
     def test_add_nodes_invalid_kwarg_raises(self):
         net = Network()

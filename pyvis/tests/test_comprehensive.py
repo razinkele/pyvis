@@ -38,8 +38,13 @@ def test_comprehensive_functionality():
 
     # 5. Physics and Layout Configuration
     print("5. Configuring physics and layout...")
-    net.barnes_hut(gravity=-2000, central_gravity=0.3, spring_length=200)
-    net.show_buttons(filter_=['physics'])
+    from pyvis.types import NetworkOptions, PhysicsOptions, BarnesHut
+    net.set_options(NetworkOptions(
+        physics=PhysicsOptions(
+            solver="barnesHut",
+            barnesHut=BarnesHut(gravitationalConstant=-2000, centralGravity=0.3, springLength=200),
+        ),
+    ))
 
     # 6. Generating Output with different CDN resources
     

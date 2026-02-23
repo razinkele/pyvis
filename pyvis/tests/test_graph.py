@@ -216,135 +216,26 @@ class UtilsTestCase(unittest.TestCase):
         os.remove("4nodes.html")
 
 
-class PhysicsTestCase(unittest.TestCase):
-
-    def setUp(self):
-        self.g = Network()
-        self.g.add_nodes([0, 1, 2, 3])
-
-    def test_barnes_hut(self):
-        self.g.barnes_hut()
-        self.assertTrue("barnesHut" in vars(self.g.options.physics))
-
-    def test_repulsion(self):
-        self.g.repulsion()
-        self.assertTrue("repulsion" in vars(self.g.options.physics))
-
-    def test_hrepulsion(self):
-        self.g.hrepulsion()
-        self.assertTrue("hierarchicalRepulsion" in vars(self.g.options.physics))
-
-    def test_force_atlas_2based(self):
-        self.g.force_atlas_2based()
-        self.assertTrue("forceAtlas2Based" in vars(self.g.options.physics))
-
-    def test_toggle_physics(self):
-        self.assertTrue(self.g.options.physics['enabled'])
-        self.g.toggle_physics(False)
-        self.assertFalse(self.g.options.physics['enabled'])
-
-    def test_stabilization(self):
-        self.g.toggle_stabilization(True)
-        self.assertTrue(self.g.options.physics.stabilization['enabled'])
-        self.g.toggle_stabilization(False)
-        self.assertFalse(self.g.options.physics.stabilization['enabled'])
-
-
-class InteractionTestCase(unittest.TestCase):
-
-    def setUp(self):
-        self.g = Network()
-        self.g.add_nodes([0, 1, 2, 3])
-
-    def test_toggle_drag_nodes(self):
-        self.assertTrue(self.g.options.interaction['dragNodes'])
-        self.g.toggle_drag_nodes(False)
-        self.assertFalse(self.g.options.interaction['dragNodes'])
-
-    def test_toggle_hide_edges_on_drag(self):
-        self.assertFalse(self.g.options.interaction['hideEdgesOnDrag'])
-        self.g.toggle_hide_edges_on_drag(True)
-        self.assertTrue(self.g.options.interaction['hideEdgesOnDrag'])
-
-    def test_toggle_hide_nodes_on_drag(self):
-        self.assertFalse(self.g.options.interaction['hideNodesOnDrag'])
-        self.g.toggle_hide_nodes_on_drag(True)
-        self.assertTrue(self.g.options.interaction['hideNodesOnDrag'])
-
-
-class ConfigureTestCase(unittest.TestCase):
-
-    def setUp(self):
-        self.g = Network()
-        self.g.add_nodes([0, 1, 2, 3])
-
-    def test_show_buttons(self):
-        self.assertFalse(self.g.options.configure['enabled'])
-        self.g.show_buttons(True)
-        self.assertTrue(self.g.options.configure['enabled'])
-
-
-class EdgeOptionsTestCase(unittest.TestCase):
-
-    def setUp(self):
-        self.g = Network()
-        self.g.add_nodes([0, 1, 2, 3])
-
-    def test_set_edge_smooth(self):
-        self.assertEqual(self.g.options.edges.smooth.type, 'dynamic')
-        self.g.set_edge_smooth('continuous')
-        self.assertEqual(self.g.options.edges.smooth.type, 'continuous')
-
-    def test_inherit_colors(self):
-        self.assertTrue(self.g.options.edges.color.inherit)
-        self.g.inherit_edge_colors(False)
-        self.assertFalse(self.g.options.edges.color.inherit)
-
-
 class LayoutTestCase(unittest.TestCase):
 
     def setUp(self):
         self.g = Network(layout=True)
 
     def test_can_enable_init(self):
-        self.assertTrue(self.g.options['layout'])
-    
+        self.assertTrue(self.g.options["layout"])
+
     def test_layout_disabled(self):
         self.g = Network()
-        self.assertRaises(KeyError, lambda: self.g.options['layout'])
-    
-    def test_levelSeparation(self):
-        self.assertTrue(self.g.options.layout.hierarchical.levelSeparation)
-    
-    def test_treeSpacing(self):
-        self.assertTrue(self.g.options.layout.hierarchical.treeSpacing)
-    
-    def test_blockShifting(self):
-        self.assertTrue(self.g.options.layout.hierarchical.blockShifting)
-    
-    def test_edgeMinimization(self):
-        self.assertTrue(self.g.options.layout.hierarchical.edgeMinimization)
-    
-    def test_parentCentralization(self):
-        self.assertTrue(self.g.options.layout.hierarchical.parentCentralization)
+        self.assertRaises(KeyError, lambda: self.g.options["layout"])
 
-    def test_sortMethod(self):
-        self.assertTrue(self.g.options.layout.hierarchical.sortMethod)
+    def test_hierarchical_enabled(self):
+        self.assertTrue(
+            self.g.options["layout"]["hierarchical"]["enabled"]
+        )
 
-    def test_set_separation(self):
-        self.g.options.layout.set_separation(10)
-        self.assertTrue(self.g.options.layout.hierarchical.levelSeparation == 10)
-    
-    def test_set_tree_spacing(self):
-        self.g.options.layout.set_tree_spacing(10)
-        self.assertTrue(self.g.options.layout.hierarchical.treeSpacing == 10)
+    def test_random_seed(self):
+        self.assertEqual(self.g.options["layout"]["randomSeed"], 0)
 
-    def test_set_edge_minimization(self):
-        self.g.options.layout.set_edge_minimization(True)
-        self.assertTrue(self.g.options.layout.hierarchical.edgeMinimization == True)
-        self.g.options.layout.set_edge_minimization(False)
-        self.assertTrue(self.g.options.layout.hierarchical.edgeMinimization == False)
+    def test_improved_layout(self):
+        self.assertTrue(self.g.options["layout"]["improvedLayout"])
 
-        
-
-    
