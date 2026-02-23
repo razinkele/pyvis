@@ -846,21 +846,25 @@ class Network:
         """
         if not isinstance(nx_graph, nx.Graph):
             raise TypeError("nx_graph must be a NetworkX Graph instance")
-        edges=nx_graph.edges(data = True)
-        nodes=nx_graph.nodes(data = True)
+        edges = nx_graph.edges(data=True)
+        nodes = nx_graph.nodes(data=True)
 
-        if len(edges) > 0:
+        # Deep copy node and edge data to avoid mutating the original graph
+        node_data = {n: dict(data) for n, data in nodes}
+        edge_list = [(u, v, dict(data)) for u, v, data in edges]
+
+        if len(edge_list) > 0:
             processed_nodes = set()
-            for e in edges:
+            for e in edge_list:
                 for node_idx in (0, 1):
                     n = e[node_idx]
                     if n not in processed_nodes:
-                        if 'size' not in nodes[n]:
-                            nodes[n]['size'] = default_node_size
-                        nodes[n]['size'] = int(node_size_transf(nodes[n]['size']))
+                        if 'size' not in node_data[n]:
+                            node_data[n]['size'] = default_node_size
+                        node_data[n]['size'] = int(node_size_transf(node_data[n]['size']))
                         processed_nodes.add(n)
-                self.add_node(e[0], **nodes[e[0]])
-                self.add_node(e[1], **nodes[e[1]])
+                self.add_node(e[0], **node_data[e[0]])
+                self.add_node(e[1], **node_data[e[1]])
 
                 # Only inject weight when user has provided neither value nor width
                 if "value" not in e[2] and "width" not in e[2]:
@@ -874,9 +878,7 @@ class Network:
                 self.add_edge(e[0], e[1], **e[2])
 
         for node in nx.isolates(nx_graph):
-            if 'size' not in nodes[node].keys():
-                nodes[node]['size'] = default_node_size
-            self.add_node(node, **nodes[node])
+            self.add_node(node, **node_data.get(node, {}))
 
     def get_nodes(self):
         """

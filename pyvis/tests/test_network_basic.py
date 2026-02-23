@@ -306,11 +306,9 @@ class TestFromNxNodeSizeBug:
             G.nodes[n]['size'] = 10
         net = Network()
         net.from_nx(G, node_size_transf=lambda x: x * 2)
-        # Node 1 appears in 3 edges; without the fix the nx graph's
-        # size would be 10 -> 20 -> 40 -> 80 (applied 3 times)
-        assert G.nodes[1]['size'] == 20, (
-            f"NX graph node 1 size was {G.nodes[1]['size']}, "
-            f"expected 20 (transform applied once)"
+        # Original graph should be UNCHANGED
+        assert G.nodes[1]['size'] == 10, (
+            f"NX graph was mutated: node 1 size is {G.nodes[1]['size']}, expected 10"
         )
 
 
@@ -432,3 +430,29 @@ class TestEdgeWeightTransform:
         net.from_nx(G, edge_weight_transf=lambda x: x * 2, edge_scaling=True)
         edge = net.edges[0]
         assert edge.get("value") == 20, f"Expected 20, got {edge.get('value')}"
+
+
+class TestFromNxDoesNotMutate:
+    """from_nx() must not mutate the original NetworkX graph."""
+
+    def test_does_not_corrupt_nx_node_data(self):
+        """from_nx() must not mutate the original NetworkX graph node data."""
+        G = nx.Graph()
+        G.add_edges_from([(1, 2), (1, 3), (1, 4)])
+        for n in G.nodes:
+            G.nodes[n]['size'] = 10
+        net = Network()
+        net.from_nx(G, node_size_transf=lambda x: x * 2)
+        # Original graph should be UNCHANGED
+        assert G.nodes[1]['size'] == 10, (
+            f"NX graph was mutated: node 1 size is {G.nodes[1]['size']}, expected 10"
+        )
+
+    def test_does_not_corrupt_nx_edge_data(self):
+        """from_nx() must not mutate the original NetworkX graph edge data."""
+        G = nx.Graph()
+        G.add_edge(1, 2, weight=5)
+        net = Network()
+        net.from_nx(G)
+        # Original graph edge should still have 'weight', not have it popped
+        assert G[1][2].get("weight") == 5, "Edge weight was removed from original graph"
