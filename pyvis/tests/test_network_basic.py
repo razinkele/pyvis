@@ -385,3 +385,17 @@ class TestAddEdgesValidation:
         net.add_node(3, label="C")
         net.add_edges([(1, 2), (2, 3, 5)])
         assert len(net.edges) == 2
+
+
+class TestContextManager:
+    """Context manager should not break the network for subsequent use."""
+
+    def test_edge_dedup_works_after_context_exit(self):
+        net = Network()
+        with net:
+            net.add_node(1, label="A")
+            net.add_node(2, label="B")
+            net.add_edge(1, 2)
+        # After context exit, duplicate detection should still work
+        net.add_edge(1, 2)  # duplicate — should be silently ignored
+        assert len(net.edges) == 1

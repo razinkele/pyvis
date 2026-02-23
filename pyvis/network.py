@@ -190,10 +190,6 @@ class Network:
         """
         # Clear caches to free memory
         self._adj_list_cache = None
-        self._edge_set.clear()
-
-        # Could add more cleanup here if needed
-        # e.g., closing any open file handles, cleaning temp files, etc.
 
         return False  # Don't suppress exceptions
 
