@@ -555,3 +555,31 @@ class TestSetOptionsValidation:
         net = Network()
         net.set_options('{"physics": {"enabled": false}}')
         assert net.options == {"physics": {"enabled": False}}
+
+
+class TestMixedTypeEdgeDedup:
+    """Edge dedup should be consistent regardless of argument order for mixed types."""
+
+    def test_int_str_dedup_both_directions(self):
+        net = Network(directed=False)
+        net.add_node(1, label="1")
+        net.add_node("a", label="A")
+        net.add_edge(1, "a")
+        net.add_edge("a", 1)
+        assert len(net.edges) == 1
+
+    def test_str_int_dedup_both_directions(self):
+        net = Network(directed=False)
+        net.add_node("a", label="A")
+        net.add_node(1, label="1")
+        net.add_edge("a", 1)
+        net.add_edge(1, "a")
+        assert len(net.edges) == 1
+
+    def test_same_type_dedup_unchanged(self):
+        net = Network(directed=False)
+        net.add_node(1, label="1")
+        net.add_node(2, label="2")
+        net.add_edge(1, 2)
+        net.add_edge(2, 1)
+        assert len(net.edges) == 1
