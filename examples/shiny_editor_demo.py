@@ -51,7 +51,7 @@ INITIAL_EDGES = [
 NODE_CHOICES = {str(n["id"]): f'{n["label"]} ({n["id"]})' for n in INITIAL_NODES}
 
 
-# ── CSS (dark theme) ────────────────────────────────────────────────
+# ── CSS (theme-aware) ──────────────────────────────────────────────
 
 CUSTOM_CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -72,6 +72,23 @@ CUSTOM_CSS = """
     --success: #34d399;
     --warning: #fbbf24;
     --danger: #f87171;
+    --shadow-color: rgba(0,0,0,0.5);
+}
+
+body.app-light {
+    --bg-deep: #f0f2f5;
+    --bg-surface: #ffffff;
+    --bg-elevated: #ffffff;
+    --bg-hover: #e9ecef;
+    --border: #d1d5db;
+    --border-subtle: #e5e7eb;
+    --text: #1f2937;
+    --text-muted: #6b7280;
+    --text-dim: #9ca3af;
+    --accent: #0891b2;
+    --accent-glow: rgba(8, 145, 178, 0.12);
+    --accent-hover: #0e7490;
+    --shadow-color: rgba(0,0,0,0.1);
 }
 
 body {
@@ -83,7 +100,7 @@ body {
 header, .navbar {
     background: var(--bg-surface) !important;
     border-bottom: 1px solid var(--border) !important;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.5) !important;
+    box-shadow: 0 2px 16px var(--shadow-color) !important;
     position: relative;
 }
 header::after, .navbar::after {
@@ -181,7 +198,7 @@ header::after, .navbar::after {
     transition: all 0.2s ease;
 }
 .sidebar .btn-primary {
-    background: var(--accent); border-color: var(--accent); color: var(--bg-deep);
+    background: var(--accent); border-color: var(--accent); color: #fff;
 }
 .sidebar .btn-primary:hover {
     background: var(--accent-hover); border-color: var(--accent-hover);
@@ -215,8 +232,10 @@ header::after, .navbar::after {
 app_ui = ui.page_sidebar(
     ui.sidebar(
         ui.tags.style(CUSTOM_CSS),
-        # Theme toggle
-        ui.input_switch("dark_mode", "Dark Mode", value=True),
+        # Theme toggle (controls both app and network)
+        ui.input_switch("dark_mode", "Dark Theme", value=True),
+        # Native manipulation toggle
+        ui.input_switch("manipulation_enabled", "Native Manipulation", value=True),
         # Edge edit mode selector (for vis.js manipulation toolbar)
         ui.input_radio_buttons(
             "edge_edit_mode",
@@ -307,13 +326,29 @@ def server(input, output, session):
     selected_node_id = reactive.value(None)
     selected_edge_id = reactive.value(None)
 
-    # ── Theme toggle ─────────────────────────────────────────────────
+    # ── Theme toggle (app + network) ─────────────────────────────────
 
     @reactive.effect
     @reactive.event(input.dark_mode, ignore_init=True)
-    def _on_theme_toggle():
-        theme = "dark" if input.dark_mode() else "light"
-        ctrl.set_theme(theme)
+    async def _on_theme_toggle():
+        is_dark = input.dark_mode()
+        # Toggle pyvis network theme
+        ctrl.set_theme("dark" if is_dark else "light")
+        # Toggle app body class for Shiny UI theme
+        js = (
+            "document.body.classList.remove('app-light');"
+            if is_dark else
+            "document.body.classList.add('app-light');"
+        )
+        await session.send_custom_message("pyvis-run-js", {"js": js})
+
+    # ── Manipulation toggle ───────────────────────────────────────────
+
+    @reactive.effect
+    @reactive.event(input.manipulation_enabled, ignore_init=True)
+    def _on_manipulation_toggle():
+        enabled = input.manipulation_enabled()
+        ctrl._send_command("toggleManipulation", {"enabled": enabled})
 
     # ── Edge edit mode toggle ────────────────────────────────────────
 

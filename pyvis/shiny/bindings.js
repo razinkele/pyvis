@@ -550,10 +550,11 @@ if (typeof Shiny !== 'undefined') {
                     }
                 });
 
-                // Store mode setter for command handler access
+                // Store mode setter and manipulation options for command handler access
                 container._pyvisEdgeEditMode = function(mode) {
                     edgeEditMode = mode;
                 };
+                container._pyvisManipOptions = options.manipulation;
             }
 
             var network = new vis.Network(canvasDiv, data, options);
@@ -1086,8 +1087,30 @@ if (typeof Shiny !== 'undefined') {
                 }
                 break;
 
+            case 'toggleManipulation':
+                // Use CSS display toggling instead of network.setOptions() to
+                // avoid vis.js rebuilding (and losing) the manipulation toolbar.
+                var manipDiv = ref.canvasDiv.querySelector('.vis-manipulation');
+                var editDiv = ref.canvasDiv.querySelector('.vis-edit-mode');
+                if (args.enabled) {
+                    if (manipDiv) manipDiv.style.display = '';
+                    if (editDiv) editDiv.style.display = '';
+                } else {
+                    if (manipDiv) manipDiv.style.display = 'none';
+                    if (editDiv) editDiv.style.display = 'none';
+                }
+                break;
+
             default:
                 console.warn('PyVis: unknown command', command);
+        }
+    });
+
+    // Generic JS runner for app-level DOM operations (e.g. theme toggle)
+    Shiny.addCustomMessageHandler('pyvis-run-js', function(message) {
+        if (message.js) {
+            try { new Function(message.js)(); }
+            catch (e) { console.warn('PyVis run-js error:', e); }
         }
     });
 
