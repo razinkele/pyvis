@@ -400,3 +400,35 @@ class TestContextManager:
         # After context exit, duplicate detection should still work
         net.add_edge(1, 2)  # duplicate — should be silently ignored
         assert len(net.edges) == 1
+
+
+class TestEdgeWeightTransform:
+    """edge_weight_transf should actually be applied to edge weights."""
+
+    def test_custom_transform_applied(self):
+        """A custom edge_weight_transf should transform the edge width."""
+        G = nx.Graph()
+        G.add_edge(1, 2, weight=10)
+        net = Network()
+        net.from_nx(G, edge_weight_transf=lambda x: x * 5)
+        edge = net.edges[0]
+        # The transform should produce 50, stored as 'width'
+        assert edge.get("width") == 50, f"Expected 50, got {edge.get('width')}"
+
+    def test_default_transform_is_identity(self):
+        """Default edge_weight_transf (identity) should preserve weight."""
+        G = nx.Graph()
+        G.add_edge(1, 2, weight=7)
+        net = Network()
+        net.from_nx(G)
+        edge = net.edges[0]
+        assert edge.get("width") == 7
+
+    def test_transform_with_edge_scaling(self):
+        """With edge_scaling=True, transform should apply to 'value' key."""
+        G = nx.Graph()
+        G.add_edge(1, 2, weight=10)
+        net = Network()
+        net.from_nx(G, edge_weight_transf=lambda x: x * 2, edge_scaling=True)
+        edge = net.edges[0]
+        assert edge.get("value") == 20, f"Expected 20, got {edge.get('value')}"

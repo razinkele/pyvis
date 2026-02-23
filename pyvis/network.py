@@ -870,8 +870,7 @@ class Network:
                         width_type = 'width'
                     if "weight" not in e[2].keys():
                         e[2]["weight"] = default_edge_weight
-                    e[2][width_type] = edge_weight_transf(e[2]["weight"])
-                    e[2][width_type] = e[2].pop("weight")
+                    e[2][width_type] = edge_weight_transf(e[2].pop("weight"))
                 self.add_edge(e[0], e[1], **e[2])
 
         for node in nx.isolates(nx_graph):
