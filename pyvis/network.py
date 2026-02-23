@@ -13,7 +13,7 @@ import warnings
 import webbrowser
 from collections import defaultdict
 import logging
-from typing import List, Dict, Optional, Union, Any
+from typing import List, Dict, Optional, Union, Any, Tuple
 
 import networkx as nx
 from jinja2 import Environment, FileSystemLoader
@@ -421,7 +421,7 @@ class Network:
                 except (ValueError, TypeError):
                     raise TypeError(f"Node must be string or int, got {type(node)}")
 
-    def num_nodes(self):
+    def num_nodes(self) -> int:
         """
         Return number of nodes
 
@@ -429,7 +429,7 @@ class Network:
         """
         return len(self.node_map)
 
-    def num_edges(self):
+    def num_edges(self) -> int:
         """
         Return number of edges
 
@@ -442,6 +442,9 @@ class Network:
         Add an edge between two existing nodes.
 
         Order does not matter unless dealing with a directed graph.
+        Duplicate edges are silently ignored. In undirected graphs,
+        ``add_edge(1, 2)`` and ``add_edge(2, 1)`` are treated as the
+        same edge; the second call is a no-op.
 
         >>> nt.add_edge(0, 1)
         >>> nt.add_edge(0, 1, value=4)
@@ -694,14 +697,14 @@ class Network:
             f"Edge ({source}, {to}) not found in network"
         )
 
-    def get_network_data(self):
+    def get_network_data(self) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], str, str, str, str]:
         """
         Extract relevant information about this network in order to inject into
         a Jinja2 template.
 
         Returns:
-                nodes (list), edges (list), height (
-                    string), width (string), options (object)
+                nodes (list), edges (list), heading (string), height (
+                    string), width (string), options (JSON string)
 
         Usage:
 
@@ -967,7 +970,7 @@ class Network:
         self.dot_lang = " ".join(s.splitlines())
         self.dot_lang = self.dot_lang.replace('"', '\\"')
 
-    def get_adj_list(self):
+    def get_adj_list(self) -> Dict[Union[str, int], set]:
         """
         This method returns the user an adjacency list representation
         of the network. Results are cached for performance.
@@ -1079,7 +1082,7 @@ class Network:
         for node in nx.isolates(nx_graph):
             self.add_node(node, **node_data.get(node, {}))
 
-    def get_nodes(self):
+    def get_nodes(self) -> List[Union[str, int]]:
         """
         This method returns an iterable list of node ids
 
@@ -1087,7 +1090,7 @@ class Network:
         """
         return list(self.node_map.keys())
 
-    def get_node(self, n_id):
+    def get_node(self, n_id) -> Dict[str, Any]:
         """
         Lookup node by ID and return it.
 
@@ -1097,7 +1100,7 @@ class Network:
         """
         return self.node_map[n_id]
 
-    def get_edges(self):
+    def get_edges(self) -> List[Dict[str, Any]]:
         """
         This method returns an iterable list of edge objects
 

@@ -216,11 +216,14 @@ if (typeof Shiny !== 'undefined') {
                 nodeOverlay.className = 'pyvis-modal-overlay';
                 nodeOverlay.id = outputId + '-node-modal';
                 nodeOverlay.style.display = 'none';
+                nodeOverlay.setAttribute('role', 'dialog');
+                nodeOverlay.setAttribute('aria-modal', 'true');
+                nodeOverlay.setAttribute('aria-labelledby', outputId + '-node-modal-title');
                 nodeOverlay.innerHTML =
                     '<div class="pyvis-modal">' +
                         '<div class="pyvis-modal-header">' +
                             '<h3 id="' + outputId + '-node-modal-title">Add Node</h3>' +
-                            '<button class="pyvis-modal-close" data-action="close">&times;</button>' +
+                            '<button class="pyvis-modal-close" data-action="close" aria-label="Close">&times;</button>' +
                         '</div>' +
                         '<div class="pyvis-modal-body">' +
                             '<div class="pyvis-modal-field pyvis-template-strip" id="' + outputId + '-node-templates" style="display:none">' +
@@ -264,11 +267,14 @@ if (typeof Shiny !== 'undefined') {
                 edgeOverlay.className = 'pyvis-modal-overlay';
                 edgeOverlay.id = outputId + '-edge-modal';
                 edgeOverlay.style.display = 'none';
+                edgeOverlay.setAttribute('role', 'dialog');
+                edgeOverlay.setAttribute('aria-modal', 'true');
+                edgeOverlay.setAttribute('aria-labelledby', outputId + '-edge-modal-title');
                 edgeOverlay.innerHTML =
                     '<div class="pyvis-modal">' +
                         '<div class="pyvis-modal-header">' +
-                            '<h3>Edit Edge Attributes</h3>' +
-                            '<button class="pyvis-modal-close" data-action="close">&times;</button>' +
+                            '<h3 id="' + outputId + '-edge-modal-title">Edit Edge Attributes</h3>' +
+                            '<button class="pyvis-modal-close" data-action="close" aria-label="Close">&times;</button>' +
                         '</div>' +
                         '<div class="pyvis-modal-body">' +
                             '<div class="pyvis-modal-field">' +
@@ -314,11 +320,14 @@ if (typeof Shiny !== 'undefined') {
                 linksOverlay.className = 'pyvis-modal-overlay';
                 linksOverlay.id = outputId + '-links-modal';
                 linksOverlay.style.display = 'none';
+                linksOverlay.setAttribute('role', 'dialog');
+                linksOverlay.setAttribute('aria-modal', 'true');
+                linksOverlay.setAttribute('aria-labelledby', outputId + '-links-modal-title');
                 linksOverlay.innerHTML =
                     '<div class="pyvis-modal">' +
                         '<div class="pyvis-modal-header">' +
-                            '<h3>Edit Edge Links</h3>' +
-                            '<button class="pyvis-modal-close" data-action="close">&times;</button>' +
+                            '<h3 id="' + outputId + '-links-modal-title">Edit Edge Links</h3>' +
+                            '<button class="pyvis-modal-close" data-action="close" aria-label="Close">&times;</button>' +
                         '</div>' +
                         '<div class="pyvis-modal-body">' +
                             '<div class="pyvis-modal-field">' +
@@ -338,6 +347,7 @@ if (typeof Shiny !== 'undefined') {
                 container.appendChild(linksOverlay);
 
                 // --- Modal helpers ---
+                function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
                 var manipCallback = null;
                 var manipNodeData = null;
                 var manipEdgeData = null;
@@ -433,7 +443,7 @@ if (typeof Shiny !== 'undefined') {
                     manipNodeData.label = getEl('node-label').value || 'new';
                     manipNodeData.color = getEl('node-color').value;
                     manipNodeData.shape = getEl('node-shape').value;
-                    manipNodeData.size = parseInt(getEl('node-size').value, 10) || 25;
+                    manipNodeData.size = clamp(parseInt(getEl('node-size').value, 10) || 25, 5, 100);
                     var cb = manipCallback;
                     var nd = manipNodeData;
                     closeModals();
@@ -483,7 +493,7 @@ if (typeof Shiny !== 'undefined') {
                     var updatedEdge = { id: manipEdgeData.id };
                     updatedEdge.label = getEl('edge-label').value;
                     updatedEdge.color = { color: getEl('edge-color').value };
-                    updatedEdge.width = parseFloat(getEl('edge-width').value) || 1;
+                    updatedEdge.width = clamp(parseFloat(getEl('edge-width').value) || 1, 0.1, 20);
                     updatedEdge.dashes = getEl('edge-dashes').checked;
                     var arrowVal = getEl('edge-arrows').value;
                     if (arrowVal === 'none') {
@@ -497,7 +507,7 @@ if (typeof Shiny !== 'undefined') {
                     } else if (arrowVal === 'both') {
                         updatedEdge.arrows = { to: { enabled: true }, from: { enabled: true }, middle: { enabled: false } };
                     }
-                    updatedEdge.font = { size: parseInt(getEl('edge-fontsize').value, 10) || 14 };
+                    updatedEdge.font = { size: clamp(parseInt(getEl('edge-fontsize').value, 10) || 14, 8, 48) };
                     // Update via DataSet directly, then tell vis.js we handled it
                     edgesDataSet.update(updatedEdge);
                     var cb = manipCallback;
@@ -566,12 +576,11 @@ if (typeof Shiny !== 'undefined') {
                     if (action === 'save') saveEdgeLinks();
                 });
 
-                // Esc key closes modals (stored for cleanup)
+                // Esc key closes modals (handler stored on ref later for cleanup)
                 var escHandler = function(e) {
                     if (e.key === 'Escape') closeModals();
                 };
                 document.addEventListener('keydown', escHandler);
-                ref._escHandler = escHandler;
 
                 // Enter key saves in modals
                 nodeOverlay.addEventListener('keydown', function(e) {
@@ -650,6 +659,11 @@ if (typeof Shiny !== 'undefined') {
             };
             window.pyvisNetworks[outputId] = ref;
 
+            // Attach deferred handler references for cleanup on re-render
+            if (typeof escHandler !== 'undefined') {
+                ref._escHandler = escHandler;
+            }
+
             // Update status bar
             function updateStatus() {
                 if (statusLeft) {
@@ -688,9 +702,11 @@ if (typeof Shiny !== 'undefined') {
 
             if (shouldBind('contextMenu')) {
                 network.on('oncontext', function(params) {
+                    var nodeAtPos = network.getNodeAt(params.pointer.DOM);
+                    var edgeAtPos = network.getEdgeAt(params.pointer.DOM);
                     Shiny.setInputValue(outputId + '_contextMenu', {
-                        nodes: network.getNodeAt(params.pointer.DOM),
-                        edges: network.getEdgeAt(params.pointer.DOM),
+                        nodes: nodeAtPos != null ? [nodeAtPos] : [],
+                        edges: edgeAtPos != null ? [edgeAtPos] : [],
                         pointer: params.pointer
                     }, {priority: 'event'});
                 });

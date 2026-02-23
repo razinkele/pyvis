@@ -82,7 +82,7 @@ def server(input, output, session):
 import json as _json
 import os
 from pathlib import Path
-from typing import Optional, Dict, Any, Union, List
+from typing import Optional, Dict, Any, Union, List, Callable
 
 try:
     from shiny import ui, render, reactive, module
@@ -500,19 +500,7 @@ if SHINY_AVAILABLE:
         
         def _send_command(self, command: str, args: Optional[Dict[str, Any]] = None):
             """Send a command to the network via custom message."""
-            import asyncio
-
-            message = {
-                "outputId": self.output_id,
-                "command": command,
-                "args": args or {}
-            }
-            # send_custom_message is a coroutine in Shiny for Python;
-            # schedule it from synchronous reactive contexts.
-            task = asyncio.create_task(
-                self.session.send_custom_message("pyvis-command", message)
-            )
-            task.add_done_callback(_log_task_exception)
+            _send_network_command(self.session, self.output_id, command, args)
         
         # === Selection Methods ===
         
@@ -1210,8 +1198,8 @@ if SHINY_AVAILABLE:
     def pyvis_network_server(
         input, output, session,
         network_data: reactive.Value,
-        on_node_select: Optional[callable] = None,
-        on_edge_select: Optional[callable] = None
+        on_node_select: Optional[Callable[[Dict[str, Any]], None]] = None,
+        on_edge_select: Optional[Callable[[Dict[str, Any]], None]] = None
     ):
         """
         Server function for the PyVis network module.
