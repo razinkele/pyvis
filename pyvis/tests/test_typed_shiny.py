@@ -37,3 +37,24 @@ def test_network_set_theme_exists():
     """network_set_theme standalone function should exist."""
     from pyvis.shiny.wrapper import network_set_theme
     assert callable(network_set_theme)
+
+
+def test_network_set_theme_importable_from_package():
+    """network_set_theme should be importable from pyvis.shiny."""
+    from pyvis.shiny import network_set_theme
+    assert callable(network_set_theme)
+
+
+def test_wrapper_no_falsy_checks_for_scale_position():
+    """wrapper.py should use 'is not None' not truthiness for scale/position/node_ids."""
+    from pathlib import Path
+    source = Path(__file__).resolve().parent.parent / "shiny" / "wrapper.py"
+    lines = source.read_text().split('\n')
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped == "if scale:":
+            assert False, f"Line {i+1}: 'if scale:' should be 'if scale is not None:'"
+        if stripped == "if position:":
+            assert False, f"Line {i+1}: 'if position:' should be 'if position is not None:'"
+        if stripped == "if node_ids:":
+            assert False, f"Line {i+1}: 'if node_ids:' should be 'if node_ids is not None:'"
