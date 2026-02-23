@@ -239,7 +239,7 @@ if (typeof Shiny !== 'undefined') {
                     '</div>';
                 container.appendChild(nodeOverlay);
 
-                // --- Create Edge Modal ---
+                // --- Create Edge Attributes Modal ---
                 var edgeOverlay = document.createElement('div');
                 edgeOverlay.className = 'pyvis-modal-overlay';
                 edgeOverlay.id = outputId + '-edge-modal';
@@ -247,7 +247,7 @@ if (typeof Shiny !== 'undefined') {
                 edgeOverlay.innerHTML =
                     '<div class="pyvis-modal">' +
                         '<div class="pyvis-modal-header">' +
-                            '<h3>Edit Edge</h3>' +
+                            '<h3>Edit Edge Attributes</h3>' +
                             '<button class="pyvis-modal-close" data-action="close">&times;</button>' +
                         '</div>' +
                         '<div class="pyvis-modal-body">' +
@@ -289,6 +289,34 @@ if (typeof Shiny !== 'undefined') {
                     '</div>';
                 container.appendChild(edgeOverlay);
 
+                // --- Create Edge Links Modal (reconnect from/to) ---
+                var linksOverlay = document.createElement('div');
+                linksOverlay.className = 'pyvis-modal-overlay';
+                linksOverlay.id = outputId + '-links-modal';
+                linksOverlay.style.display = 'none';
+                linksOverlay.innerHTML =
+                    '<div class="pyvis-modal">' +
+                        '<div class="pyvis-modal-header">' +
+                            '<h3>Edit Edge Links</h3>' +
+                            '<button class="pyvis-modal-close" data-action="close">&times;</button>' +
+                        '</div>' +
+                        '<div class="pyvis-modal-body">' +
+                            '<div class="pyvis-modal-field">' +
+                                '<label>From</label>' +
+                                '<select id="' + outputId + '-links-from"></select>' +
+                            '</div>' +
+                            '<div class="pyvis-modal-field">' +
+                                '<label>To</label>' +
+                                '<select id="' + outputId + '-links-to"></select>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="pyvis-modal-actions">' +
+                            '<button class="pyvis-btn-cancel" data-action="cancel">Cancel</button>' +
+                            '<button class="pyvis-btn-save" data-action="save">Save</button>' +
+                        '</div>' +
+                    '</div>';
+                container.appendChild(linksOverlay);
+
                 // --- Modal helpers ---
                 var manipCallback = null;
                 var manipNodeData = null;
@@ -301,6 +329,7 @@ if (typeof Shiny !== 'undefined') {
                 function closeModals() {
                     nodeOverlay.style.display = 'none';
                     edgeOverlay.style.display = 'none';
+                    linksOverlay.style.display = 'none';
                     manipCallback = null;
                     manipNodeData = null;
                     manipEdgeData = null;
@@ -404,6 +433,47 @@ if (typeof Shiny !== 'undefined') {
                     cb(null);
                 }
 
+                function openEdgeLinksModal(edgeData, callback) {
+                    manipEdgeData = edgeData;
+                    manipCallback = callback;
+                    // Populate from/to dropdowns with all current nodes
+                    var fromSelect = getEl('links-from');
+                    var toSelect = getEl('links-to');
+                    fromSelect.innerHTML = '';
+                    toSelect.innerHTML = '';
+                    nodesDataSet.forEach(function(node) {
+                        var label = (node.label || node.id) + ' (' + node.id + ')';
+                        var optFrom = document.createElement('option');
+                        optFrom.value = node.id;
+                        optFrom.textContent = label;
+                        fromSelect.appendChild(optFrom);
+                        var optTo = document.createElement('option');
+                        optTo.value = node.id;
+                        optTo.textContent = label;
+                        toSelect.appendChild(optTo);
+                    });
+                    fromSelect.value = edgeData.from;
+                    toSelect.value = edgeData.to;
+                    linksOverlay.style.display = 'flex';
+                    fromSelect.focus();
+                }
+
+                function saveEdgeLinks() {
+                    if (!manipEdgeData || !manipCallback) return;
+                    var updatedEdge = {
+                        id: manipEdgeData.id,
+                        from: getEl('links-from').value,
+                        to: getEl('links-to').value
+                    };
+                    // Try numeric conversion (vis.js node ids may be numbers)
+                    if (!isNaN(Number(updatedEdge.from))) updatedEdge.from = Number(updatedEdge.from);
+                    if (!isNaN(Number(updatedEdge.to))) updatedEdge.to = Number(updatedEdge.to);
+                    edgesDataSet.update(updatedEdge);
+                    var cb = manipCallback;
+                    closeModals();
+                    cb(null);
+                }
+
                 // --- Click-outside and button handlers ---
                 nodeOverlay.addEventListener('click', function(e) {
                     if (e.target === nodeOverlay) closeModals();
@@ -416,6 +486,12 @@ if (typeof Shiny !== 'undefined') {
                     var action = e.target.dataset && e.target.dataset.action;
                     if (action === 'close' || action === 'cancel') closeModals();
                     if (action === 'save') saveEdge();
+                });
+                linksOverlay.addEventListener('click', function(e) {
+                    if (e.target === linksOverlay) closeModals();
+                    var action = e.target.dataset && e.target.dataset.action;
+                    if (action === 'close' || action === 'cancel') closeModals();
+                    if (action === 'save') saveEdgeLinks();
                 });
 
                 // Esc key closes modals
@@ -430,6 +506,12 @@ if (typeof Shiny !== 'undefined') {
                 edgeOverlay.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') saveEdge();
                 });
+                linksOverlay.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') saveEdgeLinks();
+                });
+
+                // Edge edit mode: 'attributes' (modal) or 'links' (reconnect modal)
+                var edgeEditMode = 'attributes';
 
                 // --- Wire up vis.js manipulation callbacks ---
                 options.manipulation = Object.assign({}, options.manipulation, {
@@ -445,7 +527,11 @@ if (typeof Shiny !== 'undefined') {
                     },
                     editEdge: {
                         editWithoutDrag: function(edgeData, callback) {
-                            openEdgeModal(edgeData, callback);
+                            if (edgeEditMode === 'links') {
+                                openEdgeLinksModal(edgeData, callback);
+                            } else {
+                                openEdgeModal(edgeData, callback);
+                            }
                         }
                     },
                     deleteNode: function(data, callback) {
@@ -463,6 +549,11 @@ if (typeof Shiny !== 'undefined') {
                         }
                     }
                 });
+
+                // Store mode setter for command handler access
+                container._pyvisEdgeEditMode = function(mode) {
+                    edgeEditMode = mode;
+                };
             }
 
             var network = new vis.Network(canvasDiv, data, options);
@@ -986,6 +1077,13 @@ if (typeof Shiny !== 'undefined') {
                     scale: network.getScale(),
                     viewPosition: network.getViewPosition()
                 }), {priority: 'event'});
+                break;
+
+            // Manipulation mode
+            case 'setEdgeEditMode':
+                if (ref.container._pyvisEdgeEditMode) {
+                    ref.container._pyvisEdgeEditMode(args.mode || 'attributes');
+                }
                 break;
 
             default:

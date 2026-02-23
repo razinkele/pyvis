@@ -215,6 +215,17 @@ header::after, .navbar::after {
 app_ui = ui.page_sidebar(
     ui.sidebar(
         ui.tags.style(CUSTOM_CSS),
+        # Theme toggle
+        ui.input_switch("dark_mode", "Dark Mode", value=True),
+        # Edge edit mode selector (for vis.js manipulation toolbar)
+        ui.input_radio_buttons(
+            "edge_edit_mode",
+            "Edge Edit Mode",
+            choices={"attributes": "Attributes (modal)", "links": "Links (reconnect)"},
+            selected="attributes",
+            inline=True,
+        ),
+        ui.tags.hr(style="border-color: var(--border-subtle); margin: 8px 0;"),
         ui.accordion(
             # ── Edit Node ──
             ui.accordion_panel(
@@ -295,6 +306,22 @@ def server(input, output, session):
     # Currently selected node / edge id
     selected_node_id = reactive.value(None)
     selected_edge_id = reactive.value(None)
+
+    # ── Theme toggle ─────────────────────────────────────────────────
+
+    @reactive.effect
+    @reactive.event(input.dark_mode, ignore_init=True)
+    def _on_theme_toggle():
+        theme = "dark" if input.dark_mode() else "light"
+        ctrl.set_theme(theme)
+
+    # ── Edge edit mode toggle ────────────────────────────────────────
+
+    @reactive.effect
+    @reactive.event(input.edge_edit_mode, ignore_init=True)
+    def _on_edge_edit_mode():
+        mode = input.edge_edit_mode()
+        ctrl._send_command("setEdgeEditMode", {"mode": mode})
 
     # ── Render initial network ───────────────────────────────────────
 
