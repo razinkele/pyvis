@@ -31,3 +31,9 @@ def test_network_options_to_dict_for_shiny():
     opts = NetworkOptions(physics=PhysicsOptions(barnesHut=BarnesHut(damping=0.1)))
     d = opts.to_dict()
     assert d["physics"]["barnesHut"]["damping"] == 0.1
+
+
+def test_network_set_theme_exists():
+    """network_set_theme standalone function should exist."""
+    from pyvis.shiny.wrapper import network_set_theme
+    assert callable(network_set_theme)

@@ -130,6 +130,7 @@ __all__ = [
     'network_cluster',
     'network_open_cluster',
     'network_set_options',
+    'network_set_theme',
     'network_get_positions',
     'network_get_selection',
     'network_get_data',
@@ -1014,6 +1015,17 @@ def network_set_options(session: 'Session', output_id: str, options):
     if hasattr(options, 'to_dict'):
         options = options.to_dict()
     _send_network_command(session, output_id, "setOptions", {"options": options})
+
+
+def network_set_theme(session: 'Session', output_id: str, theme: str):
+    """Switch the network container theme without re-rendering.
+
+    Args:
+        session: The Shiny session object.
+        output_id: The ID of the network output.
+        theme: "light" or "dark"
+    """
+    _send_network_command(session, output_id, "setTheme", {"theme": theme})
 
 
 def network_get_positions(

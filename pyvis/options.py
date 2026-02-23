@@ -10,7 +10,7 @@ from typing import Optional, Union, List, Any
 from .physics import Physics
 from .base import JSONSerializable
 
-__all__ = ['_LegacyEdgeOptions', 'Interaction', 'Configure', 'Layout', 'Options']
+__all__ = ['Interaction', 'Configure', 'Layout', 'Options']
 
 
 class _LegacyEdgeOptions(JSONSerializable):
