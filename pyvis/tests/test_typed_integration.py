@@ -1,4 +1,5 @@
 """Tests for typed options integration with Network class."""
+import warnings
 import pytest
 from pyvis.network import Network
 from pyvis.types import (
@@ -194,3 +195,45 @@ def test_no_edge_options_name_collision():
     # The typed version should be importable cleanly
     from pyvis.types import EdgeOptions
     assert EdgeOptions.__module__ == 'pyvis.types.edges'
+
+
+class TestKwargsWarning:
+    """Warn when both options= and **kwargs are provided."""
+
+    def test_add_node_warns_on_mixed(self):
+        from pyvis.types import NodeOptions
+        net = Network()
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            net.add_node(1, options=NodeOptions(color="red"), size=20)
+            assert len(w) == 1
+            assert "options=" in str(w[0].message)
+            assert "kwargs" in str(w[0].message).lower()
+
+    def test_add_edge_warns_on_mixed(self):
+        from pyvis.types import EdgeOptions as TypedEdgeOptions
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            net.add_edge(1, 2, options=TypedEdgeOptions(width=3.0), color="blue")
+            assert len(w) == 1
+            assert "options=" in str(w[0].message)
+
+    def test_add_node_no_warning_when_only_options(self):
+        from pyvis.types import NodeOptions
+        net = Network()
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            net.add_node(1, options=NodeOptions(color="red"))
+            assert len(w) == 0
+
+    def test_add_node_no_warning_when_only_kwargs(self):
+        net = Network()
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            net.add_node(1, color="red", size=20)
+            # Filter only UserWarnings from our code
+            our_warnings = [x for x in w if issubclass(x.category, UserWarning) and "options=" in str(x.message)]
+            assert len(our_warnings) == 0

@@ -320,6 +320,13 @@ class Network:
 
         if n_id not in self.node_map:
             if options is not None and hasattr(options, 'to_dict'):
+                if kw_options:
+                    warnings.warn(
+                        "Both options= and **kwargs were provided to add_node(). "
+                        "When options= is used, kwargs are ignored.",
+                        UserWarning,
+                        stacklevel=2,
+                    )
                 # Typed path: serialize to dict
                 opts = options.to_dict()
                 opts['id'] = n_id
@@ -468,6 +475,13 @@ class Network:
 
         if edge_key not in self._edge_set:
             if options is not None and hasattr(options, 'to_dict'):
+                if kw_options:
+                    warnings.warn(
+                        "Both options= and **kwargs were provided to add_edge(). "
+                        "When options= is used, kwargs are ignored.",
+                        UserWarning,
+                        stacklevel=2,
+                    )
                 # Typed path
                 opts = options.to_dict()
                 opts['from'] = source
