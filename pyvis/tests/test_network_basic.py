@@ -2,8 +2,9 @@ import inspect
 import os
 
 import networkx as nx
-import numpy as np
 import pytest
+
+np = pytest.importorskip("numpy")
 
 from ..network import Network
 
