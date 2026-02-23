@@ -456,3 +456,16 @@ class TestFromNxDoesNotMutate:
         net.from_nx(G)
         # Original graph edge should still have 'weight', not have it popped
         assert G[1][2].get("weight") == 5, "Edge weight was removed from original graph"
+
+
+class TestAddEdgesExtraElementsWarning:
+    """add_edges() should warn on tuples with 4+ elements."""
+
+    def test_extra_elements_warns(self):
+        """Tuples with 4+ elements should warn about ignored data."""
+        net = Network()
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        with pytest.warns(UserWarning, match="Extra elements"):
+            net.add_edges([(1, 2, 5, "extra")])
+        assert len(net.edges) == 1

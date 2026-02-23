@@ -482,8 +482,15 @@ class Network:
                 raise ValueError(
                     f"Edge tuple must have at least 2 elements (source, dest), got {edge}"
                 )
+            if len(edge) > 3:
+                warnings.warn(
+                    f"Edge tuple has {len(edge)} elements; only first 3 (source, dest, width) "
+                    f"are used. Extra elements will be ignored: {edge}",
+                    UserWarning,
+                    stacklevel=2
+                )
             # if incoming tuple contains a weight
-            if len(edge) == 3:
+            if len(edge) >= 3:
                 self.add_edge(edge[0], edge[1], width=edge[2])
             else:
                 self.add_edge(edge[0], edge[1])
