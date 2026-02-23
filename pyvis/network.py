@@ -20,7 +20,6 @@ from jinja2 import Environment, FileSystemLoader
 
 from .edge import Edge
 from .node import Node
-from .options import Options, Configure
 from .utils import check_html
 from . import vis_config
 
@@ -112,7 +111,13 @@ class Network:
         self.bgcolor = bgcolor
         self.use_DOT = False
         self.dot_lang = ""
-        self.options = Options(layout)
+        self.options = {}
+        if layout:
+            self.options["layout"] = {
+                "hierarchical": {"enabled": True},
+                "randomSeed": 0,
+                "improvedLayout": True,
+            }
         self.widget = False
         self.template = None
         self.conf = False
@@ -534,12 +539,8 @@ class Network:
 
         >>> nodes, edges, heading, height, width, options = net.get_network_data()
         """
-        if isinstance(self.options, dict):
-            return (self.nodes, self.edges, self.heading, self.height,
-                    self.width, json.dumps(self.options))
-        else:
-            return (self.nodes, self.edges, self.heading, self.height,
-                    self.width, self.options.to_json())
+        return (self.nodes, self.edges, self.heading, self.height,
+                self.width, json.dumps(self.options))
 
     def get_network_json(self) -> dict:
         """
@@ -617,13 +618,10 @@ class Network:
         nodes, edges, heading, height, width, options = self.get_network_data()
 
         # check if physics is enabled
-        if isinstance(self.options, dict):
-            if 'physics' in self.options and 'enabled' in self.options['physics']:
-                physics_enabled = self.options['physics']['enabled']
-            else:
-                physics_enabled = True
+        if 'physics' in self.options and 'enabled' in self.options['physics']:
+            physics_enabled = self.options['physics']['enabled']
         else:
-            physics_enabled = self.options.physics.enabled
+            physics_enabled = True
 
         self.html = template.render(height=height,
                                     width=width,
@@ -939,154 +937,6 @@ class Network:
         """
         return self.edges
 
-    def _require_options_instance(self):
-        """Raise if self.options has been replaced by a dict via set_options()."""
-        if not isinstance(self.options, Options):
-            raise TypeError(
-                "Cannot use legacy helper methods after set_options() replaced "
-                "the Options object with a dict. Use the typed options API "
-                "(e.g., NetworkOptions, PhysicsOptions) exclusively, or create "
-                "a new Network instance to use legacy helpers."
-            )
-
-    def barnes_hut(
-            self,
-            gravity=-80000,
-            central_gravity=0.3,
-            spring_length=250,
-            spring_strength=0.001,
-            damping=0.09,
-            overlap=0
-    ):
-        """
-        BarnesHut is a quadtree based gravity model. It is the fastest. default
-        and recommended solver for non-hierarchical layouts.
-
-        :param gravity: The more negative the gravity value is, the stronger the
-                        repulsion is.
-        :param central_gravity: The gravity attractor to pull the entire network
-                                to the center. 
-        :param spring_length: The rest length of the edges
-        :param spring_strength: The strong the edges springs are
-        :param damping: A value ranging from 0 to 1 of how much of the velocity
-                        from the previous physics simulation iteration carries
-                        over to the next iteration.
-        :param overlap: When larger than 0, the size of the node is taken into
-                        account. The distance will be calculated from the radius
-                        of the encompassing circle of the node for both the
-                        gravity model. Value 1 is maximum overlap avoidance.
-
-        :type gravity: int
-        :type central_gravity: float
-        :type spring_length: int
-        :type spring_strength: float
-        :type damping: float
-        :type overlap: float
-        """
-        self._require_options_instance()
-        self.options.physics.use_barnes_hut(dict(gravity=gravity, central_gravity=central_gravity, spring_length=spring_length, spring_strength=spring_strength, damping=damping, overlap=overlap))
-
-    def repulsion(
-            self,
-            node_distance=100,
-            central_gravity=0.2,
-            spring_length=200,
-            spring_strength=0.05,
-            damping=0.09
-    ):
-        """
-        Set the physics attribute of the entire network to repulsion.
-        When called, it sets the solver attribute of physics to repulsion.
-
-        :param node_distance: This is the range of influence for the repulsion.
-        :param central_gravity: The gravity attractor to pull the entire network
-                                to the center.
-        :param spring_length: The rest length of the edges
-        :param spring_strength: The strong the edges springs are
-        :param damping: A value ranging from 0 to 1 of how much of the velocity
-                        from the previous physics simulation iteration carries
-                        over to the next iteration.
-
-        :type node_distance: int
-        :type central_gravity float
-        :type spring_length: int
-        :type spring_strength: float
-        :type damping: float
-        """
-        self._require_options_instance()
-        self.options.physics.use_repulsion(dict(node_distance=node_distance, central_gravity=central_gravity, spring_length=spring_length, spring_strength=spring_strength, damping=damping))
-
-    def hrepulsion(
-            self,
-            node_distance=120,
-            central_gravity=0.0,
-            spring_length=100,
-            spring_strength=0.01,
-            damping=0.09
-    ):
-        """
-        This model is based on the repulsion solver but the levels are
-        taken into account and the forces are normalized.
-
-        :param node_distance: This is the range of influence for the repulsion.
-        :param central_gravity: The gravity attractor to pull the entire network
-                                to the center.
-        :param spring_length: The rest length of the edges
-        :param spring_strength: The strong the edges springs are
-        :param damping: A value ranging from 0 to 1 of how much of the velocity
-                        from the previous physics simulation iteration carries
-                        over to the next iteration.
-
-        :type node_distance: int
-        :type central_gravity float
-        :type spring_length: int
-        :type spring_strength: float
-        :type damping: float
-        """
-        self._require_options_instance()
-        self.options.physics.use_hrepulsion(dict(node_distance=node_distance, central_gravity=central_gravity, spring_length=spring_length, spring_strength=spring_strength, damping=damping))
-
-    def force_atlas_2based(
-            self,
-            gravity=-50,
-            central_gravity=0.01,
-            spring_length=100,
-            spring_strength=0.08,
-            damping=0.4,
-            overlap=0
-    ):
-        """
-        The forceAtlas2Based solver makes use of some of the equations provided
-        by them and makes use of the barnesHut implementation in vis. The main
-        differences are the central gravity model, which is here distance
-        independent, and the repulsion being linear instead of quadratic. Finally,
-        all node masses have a multiplier based on the amount of connected edges
-        plus one.
-
-        :param gravity: The more negative the gravity value is, the stronger the
-                        repulsion is.
-        :param central_gravity: The gravity attractor to pull the entire network
-                                to the center. 
-        :param spring_length: The rest length of the edges
-        :param spring_strength: The strong the edges springs are
-        :param damping: A value ranging from 0 to 1 of how much of the velocity
-                        from the previous physics simulation iteration carries
-                        over to the next iteration.
-        :param overlap: When larger than 0, the size of the node is taken into
-                        account. The distance will be calculated from the radius
-                        of the encompassing circle of the node for both the
-                        gravity model. Value 1 is maximum overlap avoidance.
-
-        :type gravity: int
-        :type central_gravity: float
-        :type spring_length: int
-        :type spring_strength: float
-        :type damping: float
-        :type overlap: float
-        """
-        self._require_options_instance()
-        self.options.physics.use_force_atlas_2based(dict(gravity=gravity, central_gravity=central_gravity, spring_length=spring_length, spring_strength=spring_strength, damping=damping, overlap=overlap))
-
     def to_json(self, max_depth=1, **args):
         """
         Serialize Network to JSON using jsonpickle.
@@ -1096,137 +946,11 @@ class Network:
         import jsonpickle
         return jsonpickle.encode(self, max_depth=max_depth, **args)
 
-    def set_edge_smooth(self, smooth_type):
-        """
-        Sets the smooth.type attribute of the edges.
-
-        :param smooth_type: Possible options: 'dynamic', 'continuous',
-                            'discrete', 'diagonalCross', 'straightCross',
-                            'horizontal', 'vertical', 'curvedCW',
-                            'curvedCCW', 'cubicBezier'.
-                            When using dynamic, the edges will have an
-                            invisible support node guiding the shape.
-                            This node is part of the physics simulation.
-                            Default is set to continous.
-
-        :type smooth_type: string
-        """
-        self._require_options_instance()
-        self.options.edges.smooth.enabled = True
-        self.options.edges.smooth.type = smooth_type
-
-    def toggle_hide_edges_on_drag(self, status):
-        """
-        Displays or hides edges while dragging the network. This makes
-        panning of the network easy.
-
-        :param status: True if edges should be hidden on drag
-
-        :type status: bool
-        """
-        self._require_options_instance()
-        self.options.interaction.hideEdgesOnDrag = status
-
-    def toggle_hide_nodes_on_drag(self, status):
-        """
-        Displays or hides nodes while dragging the network. This makes
-        panning of the network easy.
-
-        :param status: When set to True, the nodes will hide on drag.
-                       Default is set to False.
-
-        :type status: bool
-        """
-        self._require_options_instance()
-        self.options.interaction.hideNodesOnDrag = status
-
-    def inherit_edge_colors(self, status):
-        """
-        Edges take on the color of the node they are coming from.
-
-        :param status: True if edges should adopt color coming from.
-        :type status: bool
-        """
-        self._require_options_instance()
-        self.options.edges.inherit_colors(status)
-
-    def show_buttons(self, filter_=None):
-        """
-        Displays or hides certain widgets to dynamically modify the
-        network.
-
-        Usage:
-        >>> g.show_buttons(filter_=['nodes', 'edges', 'physics'])
-
-        Or to show all options:
-        >>> g.show_buttons()
-
-        :param status: When set to True, the widgets will be shown.
-                       Default is set to False.
-        :param filter_: Only include widgets specified by `filter_`.
-                        Valid options: True (gives all widgets)
-                                       List of `nodes`, `edges`,
-                                       `layout`, `interaction`,
-                                       `manipulation`, `physics`,
-                                       `selection`, `renderer`.
-
-        :type status: bool
-        :type filter_: bool or list:
-        """
-        self._require_options_instance()
-        self.conf = True
-        self.options.configure = Configure(enabled=True, filter_=filter_)
-        self.widget = True
-
-    def toggle_physics(self, status):
-        """
-        Toggles physics simulation 
-
-        :param status: When False, nodes are not part of the physics
-                       simulation. They will not move except for from
-                       manual dragging.
-                       Default is set to True.
-
-        :type status: bool
-        """
-        self._require_options_instance()
-        self.options.physics.enabled = status
-
-    def toggle_drag_nodes(self, status):
-        """
-        Toggles the dragging of the nodes in the network.
-
-        :param status: When set to True, the nodes can be dragged around
-                       in the network. Default is set to True.
-
-        :type status: bool
-        """
-        self._require_options_instance()
-        self.options.interaction.dragNodes = status
-
-    def toggle_stabilization(self, status):
-        """
-        Toggles the stablization of the network.
-
-        :param status: Default is set to True.
-
-        :type status: bool
-        """
-        self._require_options_instance()
-        self.options.physics.toggle_stabilization(status)
-
     def set_options(self, options):
         """Set global network options.
 
         Args:
-            options: JSON string, dict, Options object, or NetworkOptions instance.
-
-        .. warning::
-            Passing a NetworkOptions, dict, or JSON string replaces the internal
-            Options object with a plain dict. After this call, legacy helper methods
-            like ``barnes_hut()``, ``toggle_physics()``, ``repulsion()``, etc.
-            will no longer work. Use the typed options API exclusively once you
-            call this method with non-Options input.
+            options: NetworkOptions dataclass, dict, or JSON string.
         """
         if hasattr(options, 'to_dict'):
             self.options = options.to_dict()
