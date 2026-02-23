@@ -314,3 +314,46 @@
     background: var(--pyvis-accent-hover);
     border-color: var(--pyvis-accent-hover);
 }
+
+/* === Template Strip === */
+.pyvis-template-strip {
+    border-bottom: 1px solid var(--pyvis-border);
+    padding-bottom: 12px;
+}
+
+.pyvis-template-options {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.pyvis-template-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border: 2px solid var(--pyvis-border);
+    border-radius: 16px;
+    background: var(--pyvis-bg);
+    color: var(--pyvis-text);
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.pyvis-template-chip:hover {
+    background: var(--pyvis-control-hover);
+}
+
+.pyvis-template-chip.pyvis-template-selected {
+    border-color: var(--pyvis-accent);
+    background: var(--pyvis-control-hover);
+}
+
+.pyvis-template-swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid var(--pyvis-border);
+}

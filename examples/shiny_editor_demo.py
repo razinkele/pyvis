@@ -236,6 +236,8 @@ app_ui = ui.page_sidebar(
         ui.input_switch("dark_mode", "Dark Theme", value=True),
         # Native manipulation toggle
         ui.input_switch("manipulation_enabled", "Native Manipulation", value=True),
+        # Node template mode (use existing shapes when adding nodes)
+        ui.input_switch("node_template_mode", "Template from Existing", value=False),
         # Edge edit mode selector (for vis.js manipulation toolbar)
         ui.input_radio_buttons(
             "edge_edit_mode",
@@ -357,6 +359,14 @@ def server(input, output, session):
     def _on_edge_edit_mode():
         mode = input.edge_edit_mode()
         ctrl._send_command("setEdgeEditMode", {"mode": mode})
+
+    # ── Node template mode toggle ─────────────────────────────────────
+
+    @reactive.effect
+    @reactive.event(input.node_template_mode, ignore_init=True)
+    def _on_node_template_mode():
+        enabled = input.node_template_mode()
+        ctrl._send_command("setNodeTemplateMode", {"enabled": enabled})
 
     # ── Render initial network ───────────────────────────────────────
 

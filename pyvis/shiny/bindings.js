@@ -207,6 +207,10 @@ if (typeof Shiny !== 'undefined') {
                             '<button class="pyvis-modal-close" data-action="close">&times;</button>' +
                         '</div>' +
                         '<div class="pyvis-modal-body">' +
+                            '<div class="pyvis-modal-field pyvis-template-strip" id="' + outputId + '-node-templates" style="display:none">' +
+                                '<label>Template</label>' +
+                                '<div class="pyvis-template-options" id="' + outputId + '-node-template-options"></div>' +
+                            '</div>' +
                             '<div class="pyvis-modal-field">' +
                                 '<label>Label</label>' +
                                 '<input type="text" id="' + outputId + '-node-label" placeholder="Node label">' +
@@ -352,6 +356,56 @@ if (typeof Shiny !== 'undefined') {
                     getEl('node-color').value = color;
                     getEl('node-shape').value = nodeData.shape || 'dot';
                     getEl('node-size').value = nodeData.size || 25;
+
+                    // Populate template strip if mode is active and this is Add (not Edit)
+                    var templateStrip = getEl('node-templates');
+                    var templateOpts = getEl('node-template-options');
+                    if (nodeTemplateMode && title === 'Add Node') {
+                        // Collect unique shape+color+size combos from existing nodes
+                        var seen = {};
+                        var templates = [];
+                        nodesDataSet.forEach(function(n) {
+                            var c = '#97c2fc';
+                            if (n.color) {
+                                if (typeof n.color === 'string') c = n.color;
+                                else if (n.color.background) c = n.color.background;
+                            }
+                            var key = (n.shape || 'dot') + '|' + c + '|' + (n.size || 25);
+                            if (!seen[key]) {
+                                seen[key] = true;
+                                templates.push({ shape: n.shape || 'dot', color: c, size: n.size || 25 });
+                            }
+                        });
+                        // Build chips
+                        templateOpts.innerHTML = '';
+                        templates.forEach(function(t) {
+                            var chip = document.createElement('button');
+                            chip.type = 'button';
+                            chip.className = 'pyvis-template-chip';
+                            chip.dataset.shape = t.shape;
+                            chip.dataset.color = t.color;
+                            chip.dataset.size = t.size;
+                            chip.innerHTML =
+                                '<span class="pyvis-template-swatch" style="background:' + t.color + '"></span>' +
+                                t.shape;
+                            chip.addEventListener('click', function() {
+                                // Deselect all chips, select this one
+                                templateOpts.querySelectorAll('.pyvis-template-chip').forEach(function(c) {
+                                    c.classList.remove('pyvis-template-selected');
+                                });
+                                chip.classList.add('pyvis-template-selected');
+                                // Pre-fill form fields
+                                getEl('node-color').value = t.color;
+                                getEl('node-shape').value = t.shape;
+                                getEl('node-size').value = t.size;
+                            });
+                            templateOpts.appendChild(chip);
+                        });
+                        templateStrip.style.display = templates.length > 0 ? '' : 'none';
+                    } else {
+                        templateStrip.style.display = 'none';
+                    }
+
                     nodeOverlay.style.display = 'flex';
                     getEl('node-label').focus();
                 }
@@ -512,6 +566,8 @@ if (typeof Shiny !== 'undefined') {
 
                 // Edge edit mode: 'attributes' (modal) or 'links' (reconnect modal)
                 var edgeEditMode = 'attributes';
+                // Node template mode: when true, Add Node modal shows existing shapes
+                var nodeTemplateMode = false;
 
                 // --- Wire up vis.js manipulation callbacks ---
                 options.manipulation = Object.assign({}, options.manipulation, {
@@ -550,9 +606,12 @@ if (typeof Shiny !== 'undefined') {
                     }
                 });
 
-                // Store mode setter and manipulation options for command handler access
+                // Store mode setters and manipulation options for command handler access
                 container._pyvisEdgeEditMode = function(mode) {
                     edgeEditMode = mode;
+                };
+                container._pyvisNodeTemplateMode = function(enabled) {
+                    nodeTemplateMode = enabled;
                 };
                 container._pyvisManipOptions = options.manipulation;
             }
@@ -1084,6 +1143,12 @@ if (typeof Shiny !== 'undefined') {
             case 'setEdgeEditMode':
                 if (ref.container._pyvisEdgeEditMode) {
                     ref.container._pyvisEdgeEditMode(args.mode || 'attributes');
+                }
+                break;
+
+            case 'setNodeTemplateMode':
+                if (ref.container._pyvisNodeTemplateMode) {
+                    ref.container._pyvisNodeTemplateMode(!!args.enabled);
                 }
                 break;
 
