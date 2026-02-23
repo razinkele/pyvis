@@ -1,6 +1,7 @@
 import inspect
 import os
 
+import networkx as nx
 import numpy as np
 
 from ..network import Network
@@ -205,3 +206,73 @@ def test_from_nx_no_show_edge_weights_param():
     sig = inspect.signature(Network.from_nx)
     assert 'show_edge_weights' not in sig.parameters, \
         "show_edge_weights is a dead parameter and should be removed"
+
+
+class TestFromNxEdgeWeightBug:
+    """Regression: from_nx() should not overwrite existing edge value/width."""
+
+    def test_preserves_existing_value(self):
+        G = nx.Graph()
+        G.add_node(1); G.add_node(2)
+        G.add_edge(1, 2, value=42)
+        net = Network()
+        net.from_nx(G)
+        edge = net.edges[0]
+        assert edge.get("value") == 42, f"value was overwritten to {edge.get('value')}"
+
+    def test_preserves_existing_width(self):
+        G = nx.Graph()
+        G.add_node(1); G.add_node(2)
+        G.add_edge(1, 2, width=5.0)
+        net = Network()
+        net.from_nx(G)
+        edge = net.edges[0]
+        assert edge.get("width") == 5.0
+
+    def test_injects_default_weight_when_no_weight(self):
+        G = nx.Graph()
+        G.add_node(1); G.add_node(2)
+        G.add_edge(1, 2)
+        net = Network()
+        net.from_nx(G, default_edge_weight=7)
+        edge = net.edges[0]
+        assert edge.get("width") == 7
+
+
+class TestFromNxNodeSizeBug:
+    """Regression: node_size_transf should be applied exactly once per node."""
+
+    def test_size_transform_applied_once(self):
+        """Transform must not be applied multiple times per edge appearance."""
+        G = nx.Graph()
+        G.add_edges_from([(1, 2), (1, 3), (1, 4)])
+        net = Network()
+        net.from_nx(G, node_size_transf=lambda x: x * 2, default_node_size=10)
+        node1 = net.node_map[1]
+        assert node1["size"] == 20, f"Expected 20, got {node1['size']}"
+
+    def test_size_transform_preserves_existing(self):
+        G = nx.Graph()
+        G.add_node(1, size=50)
+        G.add_node(2, size=30)
+        G.add_edge(1, 2)
+        net = Network()
+        net.from_nx(G, node_size_transf=lambda x: x * 3)
+        assert net.node_map[1]["size"] == 150
+        assert net.node_map[2]["size"] == 90
+
+    def test_does_not_corrupt_nx_graph(self):
+        """from_nx() must not mutate the original NetworkX graph node data."""
+        G = nx.Graph()
+        G.add_edges_from([(1, 2), (1, 3), (1, 4)])
+        # Set initial sizes on the nx graph
+        for n in G.nodes:
+            G.nodes[n]['size'] = 10
+        net = Network()
+        net.from_nx(G, node_size_transf=lambda x: x * 2)
+        # Node 1 appears in 3 edges; without the fix the nx graph's
+        # size would be 10 -> 20 -> 40 -> 80 (applied 3 times)
+        assert G.nodes[1]['size'] == 20, (
+            f"NX graph node 1 size was {G.nodes[1]['size']}, "
+            f"expected 20 (transform applied once)"
+        )
