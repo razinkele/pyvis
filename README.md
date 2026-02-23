@@ -172,7 +172,7 @@ See the [Shiny Integration Guide](docs/SHINY_INTEGRATION_GUIDE.md) for complete 
 pytest pyvis/tests/ --ignore=pyvis/tests/test_html.py -v
 ```
 
-206 tests covering core network operations, typed options, Shiny integration, and regression tests for edge cases.
+229 tests covering core network operations, typed options, Shiny integration, and regression tests for edge cases.
 
 ## Project Structure
 
