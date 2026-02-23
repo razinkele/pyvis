@@ -919,6 +919,16 @@ class Network:
         """
         return self.edges
 
+    def _require_options_instance(self):
+        """Raise if self.options has been replaced by a dict via set_options()."""
+        if not isinstance(self.options, Options):
+            raise TypeError(
+                "Cannot use legacy helper methods after set_options() replaced "
+                "the Options object with a dict. Use the typed options API "
+                "(e.g., NetworkOptions, PhysicsOptions) exclusively, or create "
+                "a new Network instance to use legacy helpers."
+            )
+
     def barnes_hut(
             self,
             gravity=-80000,
@@ -953,6 +963,7 @@ class Network:
         :type damping: float
         :type overlap: float
         """
+        self._require_options_instance()
         self.options.physics.use_barnes_hut(locals())
 
     def repulsion(
@@ -982,6 +993,7 @@ class Network:
         :type spring_strength: float
         :type damping: float
         """
+        self._require_options_instance()
         self.options.physics.use_repulsion(locals())
 
     def hrepulsion(
@@ -1011,6 +1023,7 @@ class Network:
         :type spring_strength: float
         :type damping: float
         """
+        self._require_options_instance()
         self.options.physics.use_hrepulsion(locals())
 
     def force_atlas_2based(
@@ -1051,6 +1064,7 @@ class Network:
         :type damping: float
         :type overlap: float
         """
+        self._require_options_instance()
         self.options.physics.use_force_atlas_2based(locals())
 
     def to_json(self, max_depth=1, **args):
@@ -1077,6 +1091,7 @@ class Network:
 
         :type smooth_type: string
         """
+        self._require_options_instance()
         self.options.edges.smooth.enabled = True
         self.options.edges.smooth.type = smooth_type
 
@@ -1086,9 +1101,10 @@ class Network:
         panning of the network easy.
 
         :param status: True if edges should be hidden on drag
-        
+
         :type status: bool
         """
+        self._require_options_instance()
         self.options.interaction.hideEdgesOnDrag = status
 
     def toggle_hide_nodes_on_drag(self, status):
@@ -1101,6 +1117,7 @@ class Network:
 
         :type status: bool
         """
+        self._require_options_instance()
         self.options.interaction.hideNodesOnDrag = status
 
     def inherit_edge_colors(self, status):
@@ -1110,6 +1127,7 @@ class Network:
         :param status: True if edges should adopt color coming from.
         :type status: bool
         """
+        self._require_options_instance()
         self.options.edges.inherit_colors(status)
 
     def show_buttons(self, filter_=None):
@@ -1135,6 +1153,7 @@ class Network:
         :type status: bool
         :type filter_: bool or list:
         """
+        self._require_options_instance()
         self.conf = True
         self.options.configure = Configure(enabled=True, filter_=filter_)
         self.widget = True
@@ -1150,6 +1169,7 @@ class Network:
 
         :type status: bool
         """
+        self._require_options_instance()
         self.options.physics.enabled = status
 
     def toggle_drag_nodes(self, status):
@@ -1161,6 +1181,7 @@ class Network:
 
         :type status: bool
         """
+        self._require_options_instance()
         self.options.interaction.dragNodes = status
 
     def toggle_stabilization(self, status):
@@ -1171,6 +1192,7 @@ class Network:
 
         :type status: bool
         """
+        self._require_options_instance()
         self.options.physics.toggle_stabilization(status)
 
     def set_options(self, options):

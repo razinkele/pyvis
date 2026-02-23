@@ -1,4 +1,5 @@
 """Tests for typed options integration with Network class."""
+import pytest
 from pyvis.network import Network
 from pyvis.types import (
     NodeOptions, NodeColor, ColorHighlight, Font, FontStyle, Shadow,
@@ -133,3 +134,53 @@ def test_set_options_legacy_string_still_works():
     net.set_options('{"physics": {"enabled": false}}')
     assert isinstance(net.options, dict)
     assert net.options["physics"]["enabled"] is False
+
+
+# --- Legacy method guard after set_options(typed) ---
+
+class TestLegacyMethodGuard:
+    """Legacy methods should raise TypeError after set_options(typed)."""
+
+    def test_barnes_hut_after_typed_set_options(self):
+        from pyvis.types import NetworkOptions, PhysicsOptions
+        net = Network()
+        net.set_options(NetworkOptions(physics=PhysicsOptions(enabled=True)))
+        with pytest.raises(TypeError, match="legacy helper methods"):
+            net.barnes_hut()
+
+    def test_toggle_physics_after_typed_set_options(self):
+        from pyvis.types import NetworkOptions
+        net = Network()
+        net.set_options(NetworkOptions())
+        with pytest.raises(TypeError, match="legacy helper methods"):
+            net.toggle_physics(False)
+
+    def test_repulsion_after_typed_set_options(self):
+        from pyvis.types import NetworkOptions
+        net = Network()
+        net.set_options(NetworkOptions())
+        with pytest.raises(TypeError, match="legacy helper methods"):
+            net.repulsion()
+
+    def test_set_edge_smooth_after_typed_set_options(self):
+        from pyvis.types import NetworkOptions
+        net = Network()
+        net.set_options(NetworkOptions())
+        with pytest.raises(TypeError, match="legacy helper methods"):
+            net.set_edge_smooth("dynamic")
+
+    def test_show_buttons_after_typed_set_options(self):
+        from pyvis.types import NetworkOptions
+        net = Network()
+        net.set_options(NetworkOptions())
+        with pytest.raises(TypeError, match="legacy helper methods"):
+            net.show_buttons()
+
+    def test_legacy_methods_work_without_set_options(self):
+        """Legacy methods should still work when options is an Options instance."""
+        net = Network()
+        # These should NOT raise
+        net.barnes_hut()
+        net.toggle_physics(True)
+        net.repulsion()
+        net.toggle_drag_nodes(True)
