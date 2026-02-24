@@ -352,6 +352,7 @@ if (typeof Shiny !== 'undefined') {
                 var manipNodeData = null;
                 var manipEdgeData = null;
 
+                // Shorthand to look up modal form elements by outputId-scoped ID
                 function getEl(suffix) {
                     return document.getElementById(outputId + '-' + suffix);
                 }
@@ -557,24 +558,17 @@ if (typeof Shiny !== 'undefined') {
                 }
 
                 // --- Click-outside and button handlers ---
-                nodeOverlay.addEventListener('click', function(e) {
-                    if (e.target === nodeOverlay) closeModals();
-                    var action = e.target.dataset && e.target.dataset.action;
-                    if (action === 'close' || action === 'cancel') closeModals();
-                    if (action === 'save') saveNode();
-                });
-                edgeOverlay.addEventListener('click', function(e) {
-                    if (e.target === edgeOverlay) closeModals();
-                    var action = e.target.dataset && e.target.dataset.action;
-                    if (action === 'close' || action === 'cancel') closeModals();
-                    if (action === 'save') saveEdge();
-                });
-                linksOverlay.addEventListener('click', function(e) {
-                    if (e.target === linksOverlay) closeModals();
-                    var action = e.target.dataset && e.target.dataset.action;
-                    if (action === 'close' || action === 'cancel') closeModals();
-                    if (action === 'save') saveEdgeLinks();
-                });
+                function setupModalHandlers(overlay, onSave) {
+                    overlay.addEventListener('click', function(e) {
+                        if (e.target === overlay) closeModals();
+                        var action = e.target.dataset && e.target.dataset.action;
+                        if (action === 'close' || action === 'cancel') closeModals();
+                        if (action === 'save') onSave();
+                    });
+                }
+                setupModalHandlers(nodeOverlay, saveNode);
+                setupModalHandlers(edgeOverlay, saveEdge);
+                setupModalHandlers(linksOverlay, saveEdgeLinks);
 
                 // Esc key closes modals (handler stored on ref later for cleanup)
                 var escHandler = function(e) {
@@ -1011,7 +1005,7 @@ if (typeof Shiny !== 'undefined') {
                 statusRight.textContent = 'Zoom: 100%';
             }
 
-            console.log('PyVis Shiny v3: initialized ' + outputId + ' (' + nodesDataSet.length + ' nodes, ' + edgesDataSet.length + ' edges)');
+            console.debug('PyVis Shiny v3: initialized ' + outputId + ' (' + nodesDataSet.length + ' nodes, ' + edgesDataSet.length + ' edges)');
         }
     }
 
@@ -1256,5 +1250,5 @@ if (typeof Shiny !== 'undefined') {
         }
     });
 
-    console.log('PyVis Shiny bindings v3.0 registered');
+    console.debug('PyVis Shiny bindings v3.0 registered');
 }

@@ -7,12 +7,12 @@ with NetworkX and Jupyter notebooks.
 """
 
 import json
+import logging
 import os
 import shutil
 import warnings
 import webbrowser
 from collections import defaultdict
-import logging
 from typing import List, Dict, Optional, Union, Any, Tuple
 
 import networkx as nx

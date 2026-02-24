@@ -80,6 +80,7 @@ def server(input, output, session):
 """
 
 import json as _json
+import logging as _logging
 import os
 from pathlib import Path
 from typing import Optional, Dict, Any, Union, List, Callable
@@ -145,8 +146,6 @@ __all__ = [
 
 # Get path to bindings.js
 _BINDINGS_PATH = Path(__file__).parent
-
-import logging as _logging
 
 _logger = _logging.getLogger("pyvis.shiny")
 
