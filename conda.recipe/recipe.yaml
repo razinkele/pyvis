@@ -14,16 +14,7 @@ build:
   noarch: python
   script:
     - python -m pip install . -vv --no-deps --no-build-isolation
-    - mkdir -p "${PREFIX}/share/pyvis/examples"  # [unix]
-    - mkdir -p "${PREFIX}/share/pyvis/notebooks"  # [unix]
-    - cp examples/*.py "${PREFIX}/share/pyvis/examples/"  # [unix]
-    - cp notebooks/*.ipynb notebooks/*.csv notebooks/*.dot "${PREFIX}/share/pyvis/notebooks/" 2>/dev/null || true  # [unix]
-    - mkdir "%PREFIX%\share\pyvis\examples" 2>nul  # [win]
-    - mkdir "%PREFIX%\share\pyvis\notebooks" 2>nul  # [win]
-    - copy examples\*.py "%PREFIX%\share\pyvis\examples\"  # [win]
-    - copy notebooks\*.ipynb "%PREFIX%\share\pyvis\notebooks\"  # [win]
-    - copy notebooks\*.csv "%PREFIX%\share\pyvis\notebooks\" 2>nul  # [win]
-    - copy notebooks\*.dot "%PREFIX%\share\pyvis\notebooks\" 2>nul  # [win]
+    - python -c "import shutil, os, glob; share=os.path.join(os.environ['PREFIX'],'share','pyvis'); [os.makedirs(os.path.join(share,d),exist_ok=True) for d in ('examples','notebooks')]; [shutil.copy2(f,os.path.join(share,'examples')) for f in glob.glob('examples/*.py')]; [shutil.copy2(f,os.path.join(share,'notebooks')) for f in glob.glob('notebooks/*.ipynb')+glob.glob('notebooks/*.csv')+glob.glob('notebooks/*.dot')]"
 
 requirements:
   host:

@@ -11,9 +11,6 @@ source:
 build:
   number: 0
   noarch: python
-  script:
-    - python -m pip install . -vv --no-deps --no-build-isolation
-    - python -c "import shutil, os; share=os.path.join(os.environ['PREFIX'],'share','pyvis'); os.makedirs(os.path.join(share,'examples'),exist_ok=True); os.makedirs(os.path.join(share,'notebooks'),exist_ok=True); [shutil.copy2(os.path.join('examples',f),os.path.join(share,'examples',f)) for f in os.listdir('examples') if f.endswith('.py')]; [shutil.copy2(os.path.join('notebooks',f),os.path.join(share,'notebooks',f)) for f in os.listdir('notebooks') if f.endswith(('.ipynb','.csv','.dot'))]"
 
 requirements:
   host:
