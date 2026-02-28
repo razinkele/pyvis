@@ -1,6 +1,6 @@
 context:
   name: pyvis
-  version: "4.0.0"
+  version: "4.1"
 
 package:
   name: ${{ name|lower }}
@@ -14,6 +14,16 @@ build:
   noarch: python
   script:
     - python -m pip install . -vv --no-deps --no-build-isolation
+    - mkdir -p "${PREFIX}/share/pyvis/examples"  # [unix]
+    - mkdir -p "${PREFIX}/share/pyvis/notebooks"  # [unix]
+    - cp examples/*.py "${PREFIX}/share/pyvis/examples/"  # [unix]
+    - cp notebooks/*.ipynb notebooks/*.csv notebooks/*.dot "${PREFIX}/share/pyvis/notebooks/" 2>/dev/null || true  # [unix]
+    - mkdir "%PREFIX%\share\pyvis\examples" 2>nul  # [win]
+    - mkdir "%PREFIX%\share\pyvis\notebooks" 2>nul  # [win]
+    - copy examples\*.py "%PREFIX%\share\pyvis\examples\"  # [win]
+    - copy notebooks\*.ipynb "%PREFIX%\share\pyvis\notebooks\"  # [win]
+    - copy notebooks\*.csv "%PREFIX%\share\pyvis\notebooks\" 2>nul  # [win]
+    - copy notebooks\*.dot "%PREFIX%\share\pyvis\notebooks\" 2>nul  # [win]
 
 requirements:
   host:
@@ -34,6 +44,8 @@ tests:
         - pyvis
         - pyvis.network
         - pyvis.types
+  - script:
+      - python -c "import pathlib, sys; s = pathlib.Path(sys.prefix) / 'share' / 'pyvis'; assert any(s.glob('examples/*.py')), 'no example files'; assert any(s.glob('notebooks/*.ipynb')), 'no notebook files'; print('Examples and notebooks verified')"
 
 about:
   homepage: https://github.com/razinkele/pyvis
