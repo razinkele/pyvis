@@ -1,8 +1,30 @@
 <html>
-<!-- NOTE: vis-network version below should match VIS_NETWORK_VERSION in pyvis/vis_config.py -->
 <head>
-	<link rel="stylesheet" href="https://unpkg.com/vis-network@10.0.2/styles/vis-network.min.css" type="text/css" />
-   		<script type="text/javascript" src="https://unpkg.com/vis-network@10.0.2/dist/vis-network.min.js"> </script>
+        {% if cdn_resources=="local" %}
+            <link rel="stylesheet" href="lib/{{ vis_lib_dir }}/vis-network.min.css" type="text/css" />
+            <script src="lib/{{ vis_lib_dir }}/vis-network.min.js" type="text/javascript"></script>
+        {% elif cdn_resources=="in_line" %}
+            {% set vis_css_path = 'lib/' ~ vis_lib_dir ~ '/vis-network.min.css' %}
+            {% set vis_js_path = 'lib/' ~ vis_lib_dir ~ '/vis-network.min.js' %}
+            <style>{%  include vis_css_path %}</style>
+            <script>{%  include vis_js_path %}</script>
+        {%  elif cdn_resources=="remote" %}
+            <link rel="stylesheet" href="{{ vis_css_cdn }}" type="text/css" />
+            <script src="{{ vis_js_cdn }}" type="text/javascript"></script>
+        {%  elif cdn_resources=="remote_esm" %}
+            <link rel="stylesheet" href="{{ vis_css_cdn }}" type="text/css" />
+            <script type="module">
+                import { Network, DataSet } from "{{ vis_esm_cdn }}";
+                window.vis = {
+                    Network: Network,
+                    DataSet: DataSet
+                };
+            </script>
+        {% else %}
+            <!-- Fallback: remote CDN (default if cdn_resources not set) -->
+            <link rel="stylesheet" href="https://unpkg.com/vis-network@10.0.2/styles/vis-network.min.css" type="text/css" />
+            <script type="text/javascript" src="https://unpkg.com/vis-network@10.0.2/dist/vis-network.min.js"></script>
+        {% endif %}
 		<style type="text/css">
 		        #mynetwork {
 		            width: {{width}};

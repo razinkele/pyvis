@@ -1,5 +1,5 @@
 {% set name = "pyvis" %}
-{% set version = "4.0.1" %}
+{% set version = "4.1" %}
 
 package:
   name: {{ name|lower }}
@@ -30,6 +30,8 @@ test:
     - pyvis
     - pyvis.network
     - pyvis.types
+  commands:
+    - python -c "import pathlib, pyvis; p = pathlib.Path(pyvis.__file__).parent; assert (p / 'templates' / 'template.html').exists(), 'template.html missing'; assert (p / 'templates' / 'lib' / 'bindings' / 'utils.js').exists(), 'utils.js missing'; assert (p / 'templates' / 'lib' / 'tom-select' / 'tom-select.css').exists(), 'tom-select.css missing'; print('All runtime resources verified')"
 
 about:
   home: https://github.com/razinkele/pyvis
