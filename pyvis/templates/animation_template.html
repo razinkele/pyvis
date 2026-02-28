@@ -21,7 +21,8 @@
                 };
             </script>
         {% else %}
-            <!-- Fallback: remote CDN (default if cdn_resources not set) -->
+            <!-- Fallback: remote CDN (default if cdn_resources not set).
+                 NOTE: version below must match VIS_NETWORK_VERSION in pyvis/vis_config.py -->
             <link rel="stylesheet" href="https://unpkg.com/vis-network@10.0.2/styles/vis-network.min.css" type="text/css" />
             <script type="text/javascript" src="https://unpkg.com/vis-network@10.0.2/dist/vis-network.min.js"></script>
         {% endif %}

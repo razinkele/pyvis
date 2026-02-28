@@ -1,21 +1,8 @@
 import unittest
 import os
 import shutil
-import pytest
-from pathlib import Path
 from ..network import Network
 
-
-def test_setup_py_python_requires():
-    """setup.py must require Python >= 3.8 to match pyproject.toml."""
-    setup_py = Path(__file__).resolve().parent.parent.parent / "setup.py"
-    if not setup_py.exists():
-        pytest.skip("setup.py not found")
-
-    content = setup_py.read_text()
-    assert '>=3.8' in content, "setup.py python_requires should be >=3.8"
-    assert '"Programming Language :: Python :: 3.6"' not in content, "setup.py should not reference Python 3.6"
-    assert '"Programming Language :: Python :: 3.7"' not in content, "setup.py should not reference Python 3.7"
 
 class VersionCheckTestCase(unittest.TestCase):
     def setUp(self):

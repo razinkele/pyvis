@@ -62,11 +62,11 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/WestHealth/pyvis"
+Homepage = "https://github.com/razinkele/pyvis"
 Documentation = "https://pyvis.readthedocs.io"
-Repository = "https://github.com/WestHealth/pyvis"
-"Bug Tracker" = "https://github.com/WestHealth/pyvis/issues"
-Changelog = "https://github.com/WestHealth/pyvis/blob/master/CHANGELOG.md"
+Repository = "https://github.com/razinkele/pyvis"
+"Bug Tracker" = "https://github.com/razinkele/pyvis/issues"
+Changelog = "https://github.com/razinkele/pyvis/blob/master/CHANGELOG.md"
 
 [tool.setuptools]
 packages = ["pyvis", "pyvis.shiny", "pyvis.types"]

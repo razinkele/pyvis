@@ -158,6 +158,7 @@ pyvis/make.bat
 
 # Conda build artifacts
 conda-bld/
+conda-output/
 output/
 
 # Generated screenshots / images from demo testing

@@ -758,7 +758,7 @@ class Network:
         check_html(name)
         self.write_html(name)
 
-    def generate_html(self, name="index.html", local=True, notebook=False):
+    def generate_html(self, name="index.html", notebook=False):
         """
         This method gets the data structures supporting the nodes, edges,
         and options and updates the template to write the HTML holding

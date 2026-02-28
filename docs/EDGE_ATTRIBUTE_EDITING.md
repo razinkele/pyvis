@@ -296,5 +296,5 @@ class Network:
 ## See Also
 
 - [vis-network documentation](https://visjs.github.io/vis-network/docs/network/)
-- [pyvis GitHub repository](https://github.com/WestHealth/pyvis)
+- [pyvis GitHub repository](https://github.com/razinkele/pyvis)
 - [Network manipulation options](https://visjs.github.io/vis-network/docs/network/manipulation.html)
