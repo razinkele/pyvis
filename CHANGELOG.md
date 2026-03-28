@@ -2,6 +2,37 @@
 
 All notable changes to this project are documented in this file.
 
+## [4.2] - 2026-03-28
+
+### Security
+- **XSS Prevention:** Enabled Jinja2 `autoescape=True` on all template environments — user-supplied values (heading, bgcolor, node labels) are now HTML-escaped by default
+- **Template hardening:** Added `|safe` only to trusted pre-built content (CDN URLs, JSON data) to prevent double-escaping
+- **File input validation:** `from_DOT()` now validates file existence and rejects empty files with descriptive errors
+
+### Fixed
+- **Error handling:** `get_node()` raises `KeyError` with descriptive message instead of bare `KeyError`
+- **Error handling:** `Network[node_id]` (`__getitem__`) raises `KeyError` with descriptive message
+- **Error handling:** `add_edge()` raises `ValueError` (not `IndexError`) for missing nodes — `IndexError` was semantically wrong
+- **Error handling:** `check_html()` raises `TypeError` for non-string input instead of crashing with `AttributeError`
+- **Error handling:** `set_options()` wraps `JSONDecodeError` with descriptive `ValueError` mentioning the method name
+- **Silent failure:** `prep_notebook(custom_template=True)` now raises `ValueError` when `custom_template_path` is not provided (previously fell back silently to the default template)
+- **Data integrity:** `from_nx()` uses `float()` instead of `int()` for node size transforms — no more silent truncation of `15.7` to `15`
+- **Shiny logging:** `_log_task_exception` upgraded from `WARNING` to `ERROR` with full traceback
+- **Shiny race condition:** `render_network()` uses `copy.copy()` instead of temporarily mutating the original network's `cdn_resources`
+- **Test reliability:** Fixed false-positive assertion in `test_add_nodes_with_options` — `assert(generator)` is always truthy
+
+### Added
+- **Type validation:** `NodeOptions` and `EdgeColor` validate `opacity` in `[0.0, 1.0]` via `__post_init__`
+- **Type validation:** `Font.align` changed from `str` to `Literal['horizontal', 'left', 'center', 'right']` with runtime validation
+- **Type system:** `OptionsBase._field_renames` mechanism replaces duplicated `to_dict()` overrides in `EdgeArrows` and `EdgeEndPointOffset`
+- **Versioning:** `pyproject.toml` now reads version dynamically from `pyvis/_version.py` (single source of truth)
+- **Versioning:** `bump_version.py` script for easy releases (`patch`, `minor`, `major`, or explicit version)
+- **Tests:** 45 new tests across 5 new test modules: `test_utils.py`, `test_error_handling.py`, `test_security.py`, `test_types_validation.py`, `test_shiny_error_handling.py`
+
+### Changed
+- `Font.align` type narrowed from `Optional[str]` to `Optional[Literal[...]]` (breaking for code passing invalid strings)
+- `add_edge()` exception type changed from `IndexError` to `ValueError` (breaking for code catching `IndexError`)
+
 ## [4.1] - 2026-02-28
 
 ### Fixed

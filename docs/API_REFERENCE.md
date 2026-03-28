@@ -41,6 +41,20 @@ Complete reference for the PyVis library — interactive network visualization i
 
 ---
 
+## Security
+
+*Added in v4.2*
+
+PyVis uses Jinja2 with `autoescape=True` to prevent cross-site scripting (XSS) attacks. User-supplied values like `heading`, `bgcolor`, and node labels are automatically HTML-escaped in rendered output. Trusted content (CDN URLs, JSON-serialized graph data) is explicitly marked safe.
+
+Input validation:
+- `from_DOT()` validates file existence and rejects empty files
+- `check_html()` validates string type and `.html` extension
+- `NodeOptions.opacity` and `EdgeColor.opacity` validated in `[0.0, 1.0]`
+- `Font.align` restricted to `Literal['horizontal', 'left', 'center', 'right']`
+
+---
+
 ## Network Class
 
 ```python
@@ -190,6 +204,8 @@ net.add_edge(1, 2, width=3, title="friendship")
 net.add_edge("alice", "bob", color="red", arrows="to")
 ```
 
+**Raises:** `ValueError` if either node does not exist. *(Changed from `IndexError` in v4.2)*
+
 #### `add_edges`
 
 ```python
@@ -332,6 +348,13 @@ get_node(n_id) -> dict
 ```
 
 Returns the full node dictionary for a given node ID.
+
+**Raises:** `KeyError` with descriptive message if the node does not exist.
+
+```python
+>>> net.get_node(99)
+KeyError: "Node '99' not found in network"
+```
 
 #### `get_edges`
 
@@ -574,6 +597,10 @@ from_DOT(dot: str)
 
 Convert a GraphViz `.DOT` file to a PyVis visualization. Takes a file path as input.
 
+**Raises:**
+- `FileNotFoundError` if the file does not exist *(added in v4.2)*
+- `ValueError` if the file is empty *(added in v4.2)*
+
 ---
 
 ### Serialization
@@ -619,6 +646,10 @@ from pyvis.types import NetworkOptions, NodeOptions, EdgeOptions, PhysicsOptions
 ```
 
 All option classes inherit from `OptionsBase` and are Python dataclasses. Every field is `Optional` with a default of `None` — only non-`None` fields are serialized to vis.js configuration. Call `.to_dict()` on any option to get a clean dictionary.
+
+**Runtime validation:** Some types validate values via `__post_init__` (e.g., `opacity` in `[0.0, 1.0]`, `Font.align` must be a valid literal). Invalid values raise `ValueError` at construction time.
+
+**Field renaming:** Subclasses can declare `_field_renames: ClassVar[Dict[str, str]]` to map Python field names to vis.js JSON keys (e.g., `from_` -> `from` in `EdgeArrows`).
 
 ---
 
@@ -680,7 +711,7 @@ class NodeOptions(OptionsBase):
     x: Optional[int] = None
     y: Optional[int] = None
     labelHighlightBold: Optional[bool] = None
-    opacity: Optional[float] = None
+    opacity: Optional[float] = None  # Validated: must be in [0.0, 1.0]
     borderWidth: Optional[int] = None
     borderWidthSelected: Optional[int] = None
     brokenImage: Optional[str] = None
@@ -901,7 +932,7 @@ class EdgeColor(OptionsBase):
     highlight: Optional[str] = None
     hover: Optional[str] = None
     inherit: Optional[Union[str, bool]] = None
-    opacity: Optional[float] = None
+    opacity: Optional[float] = None  # Validated: must be in [0.0, 1.0]
 ```
 </details>
 
@@ -1282,7 +1313,7 @@ class Font(OptionsBase):
     background: Optional[str] = None
     strokeWidth: Optional[int] = None
     strokeColor: Optional[str] = None
-    align: Optional[str] = None
+    align: Optional[Literal['horizontal', 'left', 'center', 'right']] = None  # Validated
     vadjust: Optional[int] = None
     multi: Optional[Union[bool, str]] = None
     bold: Optional[FontStyle] = None

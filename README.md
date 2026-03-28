@@ -2,7 +2,7 @@
 
 ![](pyvis/source/tut.gif?raw=true)
 
-PyVis is a Python library for creating and visualizing interactive network graphs, built on top of the [vis.js](https://visjs.github.io/vis-network/docs/network/) JavaScript library. This edition adds type-safe configuration, Shiny for Python integration, and performance optimizations over the [upstream project](https://github.com/WestHealth/pyvis).
+PyVis is a Python library for creating and visualizing interactive network graphs, built on top of the [vis.js](https://visjs.github.io/vis-network/docs/network/) JavaScript library. This edition adds type-safe configuration, Shiny for Python integration, security hardening, and performance optimizations over the [upstream project](https://github.com/WestHealth/pyvis).
 
 ## Features
 
@@ -12,6 +12,8 @@ PyVis is a Python library for creating and visualizing interactive network graph
 - **Shiny for Python** — Full bidirectional integration with event handling, viewport control, and live data updates
 - **Multiple physics engines** — Barnes-Hut, Force Atlas 2, repulsion, and hierarchical repulsion
 - **Jupyter support** — Render networks inline in Jupyter notebooks
+- **Security hardened** — Jinja2 autoescape prevents XSS, input validation on file operations
+- **Runtime validation** — Type-safe options with `__post_init__` checks for opacity, font alignment, and more
 
 ## Installation
 
@@ -177,7 +179,17 @@ See the [Shiny Integration Guide](docs/SHINY_INTEGRATION_GUIDE.md) for complete 
 pytest pyvis/tests/ --ignore=pyvis/tests/test_html.py -v
 ```
 
-192 tests covering core network operations, typed options, Shiny integration, and regression tests for edge cases.
+259 tests covering core network operations, typed options, Shiny integration, security, error handling, and regression tests for edge cases.
+
+## Versioning
+
+Version is managed from a single source of truth: `pyvis/_version.py`. Use the bump script for releases:
+
+```bash
+python bump_version.py patch   # 4.2 -> 4.2.1
+python bump_version.py minor   # 4.2 -> 4.3
+python bump_version.py major   # 4.2 -> 5.0
+```
 
 ## Project Structure
 
@@ -186,11 +198,14 @@ pyvis/
     network.py          # Main Network class
     node.py             # Node representation
     edge.py             # Edge representation
+    _version.py         # Single source of truth for version
+    utils.py            # Validation utilities
     types/              # Type-safe dataclass options (46 classes)
     shiny/              # Shiny for Python integration
         wrapper.py      # Controller, standalone functions, rendering
-        pyvis_network/  # JavaScript binding (vis-network 9.1.2)
-    tests/              # 192 tests across 15 modules
+        bindings.js     # JavaScript binding for vis-network
+    tests/              # 259 tests across 20 modules
+bump_version.py         # Version bump + tag script
 ```
 
 ## License
