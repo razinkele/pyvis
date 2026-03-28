@@ -1,6 +1,6 @@
 """Base mixin for all vis-network typed option dataclasses."""
 from dataclasses import dataclass, fields
-from typing import Any
+from typing import Any, ClassVar, Dict
 
 
 @dataclass
@@ -12,7 +12,10 @@ class OptionsBase:
     2. Recursively serializes nested OptionsBase children
     3. Handles Union types (e.g., color: str | NodeColor)
     4. Handles list and dict fields
+    5. Renames fields via _field_renames (e.g., from_ -> from)
     """
+
+    _field_renames: ClassVar[Dict[str, str]] = {}
 
     def to_dict(self) -> dict:
         result = {}
@@ -20,7 +23,8 @@ class OptionsBase:
             value = getattr(self, f.name)
             if value is None:
                 continue
-            result[f.name] = self._serialize_value(value)
+            key = self._field_renames.get(f.name, f.name)
+            result[key] = self._serialize_value(value)
         return result
 
     @staticmethod

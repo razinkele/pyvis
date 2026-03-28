@@ -3,7 +3,7 @@
 Covers all ~80 leaf-level edge options from the vis-network API.
 """
 from dataclasses import dataclass
-from typing import Optional, Union, Literal
+from typing import Optional, Union, Literal, ClassVar, Dict
 
 from .base import OptionsBase
 from .common import Font, Shadow, Scaling
@@ -42,17 +42,13 @@ class EdgeArrows(OptionsBase):
     """Arrow configuration for edge endpoints.
 
     Note: The 'from' endpoint uses 'from_' in Python (reserved keyword).
-    It serializes correctly as 'from' in to_dict().
+    It serializes correctly as 'from' via _field_renames.
     """
+    _field_renames: ClassVar[Dict[str, str]] = {'from_': 'from'}
+
     to: Optional[Union[bool, ArrowConfig]] = None
     middle: Optional[Union[bool, ArrowConfig]] = None
     from_: Optional[Union[bool, ArrowConfig]] = None
-
-    def to_dict(self) -> dict:
-        d = super().to_dict()
-        if 'from_' in d:
-            d['from'] = d.pop('from_')
-        return d
 
 
 @dataclass
@@ -82,14 +78,10 @@ class EdgeEndPointOffset(OptionsBase):
 
     Note: 'from' endpoint uses 'from_' in Python (reserved keyword).
     """
+    _field_renames: ClassVar[Dict[str, str]] = {'from_': 'from'}
+
     from_: Optional[int] = None
     to: Optional[int] = None
-
-    def to_dict(self) -> dict:
-        d = super().to_dict()
-        if 'from_' in d:
-            d['from'] = d.pop('from_')
-        return d
 
 
 @dataclass
