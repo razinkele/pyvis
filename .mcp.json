@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@anthropic-ai/github-mcp-server"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": ""
+      },
+      "disabled": true,
+      "disabledReason": "Enable after setting GITHUB_PERSONAL_ACCESS_TOKEN. Use 'gh auth token' to get your token."
+    }
+  }
+}
