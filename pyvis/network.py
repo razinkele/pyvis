@@ -180,6 +180,8 @@ class Network:
 
     def __getitem__(self, node_id):
         """Get a node by its ID."""
+        if node_id not in self.node_map:
+            raise KeyError(f"Node '{node_id}' not found in network")
         return self.node_map[node_id]
 
     def __enter__(self):
@@ -463,10 +465,10 @@ class Network:
         """
         # Verify nodes exist - O(1) lookup with dict
         if source not in self.node_map:
-            raise IndexError(f"non existent node '{source}'")
+            raise ValueError(f"non existent node '{source}'")
 
         if to not in self.node_map:
-            raise IndexError(f"non existent node '{to}'")
+            raise ValueError(f"non existent node '{to}'")
 
         # O(1) duplicate detection using edge set
         if self.directed:
@@ -1095,9 +1097,11 @@ class Network:
         Lookup node by ID and return it.
 
         :param n_id: The ID given to the node.
-
         :returns: dict containing node properties
+        :raises KeyError: If the node does not exist.
         """
+        if n_id not in self.node_map:
+            raise KeyError(f"Node '{n_id}' not found in network")
         return self.node_map[n_id]
 
     def get_edges(self) -> List[Dict[str, Any]]:

@@ -763,13 +763,13 @@ class TestErrorPaths:
     def test_add_edge_nonexistent_source_raises(self):
         net = Network()
         net.add_node(1, label="A")
-        with pytest.raises(IndexError, match="non existent"):
+        with pytest.raises(ValueError, match="non existent"):
             net.add_edge(99, 1)
 
     def test_add_edge_nonexistent_target_raises(self):
         net = Network()
         net.add_node(1, label="A")
-        with pytest.raises(IndexError, match="non existent"):
+        with pytest.raises(ValueError, match="non existent"):
             net.add_edge(1, 99)
 
     def test_get_node_nonexistent_raises(self):

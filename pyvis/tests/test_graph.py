@@ -124,8 +124,8 @@ class EdgeTestCase(unittest.TestCase):
         self.g.add_nodes([0, 1, 2, 3])
 
     def test_non_existent_edge(self):
-        self.assertRaises(IndexError, self.g.add_edge, 5, 1)
-        self.assertRaises(IndexError, self.g.add_edge, "node1", "node2")
+        self.assertRaises(ValueError, self.g.add_edge, 5, 1)
+        self.assertRaises(ValueError, self.g.add_edge, "node1", "node2")
 
     def test_no_edge_length(self):
         self.assertTrue(self.g.num_nodes() == 4)
