@@ -1145,7 +1145,12 @@ class Network:
             self.options = options.to_dict()
         elif isinstance(options, str):
             import json as _json
-            self.options = _json.loads(options)
+            try:
+                self.options = _json.loads(options)
+            except _json.JSONDecodeError as e:
+                raise ValueError(
+                    f"set_options() received invalid JSON string: {e}"
+                ) from e
         elif isinstance(options, dict):
             self.options = options
         else:

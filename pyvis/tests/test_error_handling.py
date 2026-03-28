@@ -64,3 +64,21 @@ class TestPrepNotebookValidation:
         )
         net.prep_notebook(custom_template=True, custom_template_path=template_path)
         assert net.template is not None
+
+
+class TestSetOptionsErrors:
+    def test_invalid_json_gives_descriptive_message(self):
+        """Invalid JSON should produce a message mentioning set_options."""
+        net = Network()
+        with pytest.raises(ValueError, match="set_options.*invalid JSON"):
+            net.set_options("{invalid json}")
+
+    def test_valid_json_string_works(self):
+        net = Network()
+        net.set_options('{"physics": {"enabled": false}}')
+        assert net.options["physics"]["enabled"] is False
+
+    def test_dict_options_work(self):
+        net = Network()
+        net.set_options({"physics": {"enabled": False}})
+        assert net.options["physics"]["enabled"] is False
