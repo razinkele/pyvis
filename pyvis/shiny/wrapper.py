@@ -153,7 +153,11 @@ _logger = _logging.getLogger("pyvis.shiny")
 def _log_task_exception(task):
     """Callback for asyncio tasks to log exceptions that would otherwise be silently lost."""
     if not task.cancelled() and task.exception() is not None:
-        _logger.warning("PyVis command failed: %s", task.exception())
+        _logger.error(
+            "PyVis command failed: %s",
+            task.exception(),
+            exc_info=task.exception(),
+        )
 
 
 def _get_pyvis_dependency() -> 'List[HTMLDependency]':
@@ -228,12 +232,14 @@ def render_network(network: 'PyVisNetwork', height: str = "600px", width: str = 
     # Import constants for CDN comparison
     from pyvis.network import CDN_LOCAL, CDN_INLINE
 
-    # Ensure resources are compatible with iframe (inline or remote)
+    # Ensure resources are compatible with iframe (inline or remote).
+    # Use shallow copy to avoid mutating the original network object.
+    # This prevents race conditions in concurrent async Shiny environments.
     if network.cdn_resources == CDN_LOCAL:
-        original_resources = network.cdn_resources
-        network.cdn_resources = CDN_INLINE
-        html_content = network.generate_html()
-        network.cdn_resources = original_resources
+        import copy
+        net_copy = copy.copy(network)
+        net_copy.cdn_resources = CDN_INLINE
+        html_content = net_copy.generate_html()
     else:
         html_content = network.generate_html()
 

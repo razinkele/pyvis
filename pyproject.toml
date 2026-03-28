@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyvis"
-version = "4.1"
+dynamic = ["version"]
 description = "A Python network graph visualization library - Optimized Edition"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -67,6 +67,9 @@ Documentation = "https://pyvis.readthedocs.io"
 Repository = "https://github.com/razinkele/pyvis"
 "Bug Tracker" = "https://github.com/razinkele/pyvis/issues"
 Changelog = "https://github.com/razinkele/pyvis/blob/master/CHANGELOG.md"
+
+[tool.setuptools.dynamic]
+version = {attr = "pyvis._version.__version__"}
 
 [tool.setuptools]
 packages = ["pyvis", "pyvis.shiny", "pyvis.types"]

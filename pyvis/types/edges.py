@@ -3,7 +3,7 @@
 Covers all ~80 leaf-level edge options from the vis-network API.
 """
 from dataclasses import dataclass
-from typing import Optional, Union, Literal
+from typing import Optional, Union, Literal, ClassVar, Dict
 
 from .base import OptionsBase
 from .common import Font, Shadow, Scaling
@@ -17,6 +17,12 @@ class EdgeColor(OptionsBase):
     hover: Optional[str] = None
     inherit: Optional[Union[str, bool]] = None
     opacity: Optional[float] = None
+
+    def __post_init__(self):
+        if self.opacity is not None and not (0.0 <= self.opacity <= 1.0):
+            raise ValueError(
+                f"opacity must be between 0.0 and 1.0, got {self.opacity}"
+            )
 
 
 @dataclass
@@ -42,17 +48,13 @@ class EdgeArrows(OptionsBase):
     """Arrow configuration for edge endpoints.
 
     Note: The 'from' endpoint uses 'from_' in Python (reserved keyword).
-    It serializes correctly as 'from' in to_dict().
+    It serializes correctly as 'from' via _field_renames.
     """
+    _field_renames: ClassVar[Dict[str, str]] = {'from_': 'from'}
+
     to: Optional[Union[bool, ArrowConfig]] = None
     middle: Optional[Union[bool, ArrowConfig]] = None
     from_: Optional[Union[bool, ArrowConfig]] = None
-
-    def to_dict(self) -> dict:
-        d = super().to_dict()
-        if 'from_' in d:
-            d['from'] = d.pop('from_')
-        return d
 
 
 @dataclass
@@ -82,14 +84,10 @@ class EdgeEndPointOffset(OptionsBase):
 
     Note: 'from' endpoint uses 'from_' in Python (reserved keyword).
     """
+    _field_renames: ClassVar[Dict[str, str]] = {'from_': 'from'}
+
     from_: Optional[int] = None
     to: Optional[int] = None
-
-    def to_dict(self) -> dict:
-        d = super().to_dict()
-        if 'from_' in d:
-            d['from'] = d.pop('from_')
-        return d
 
 
 @dataclass

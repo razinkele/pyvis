@@ -134,7 +134,10 @@ class Network:
         # path is the root template located in the template_dir
         self.path = "template.html"
         self.template_dir = os.path.dirname(__file__) + "/templates/"
-        self.templateEnv = Environment(loader=FileSystemLoader(self.template_dir))
+        self.templateEnv = Environment(
+            loader=FileSystemLoader(self.template_dir),
+            autoescape=True,
+        )
 
         if cdn_resources == "local" and notebook:
             logger.warning("When cdn_resources is 'local' jupyter notebook has issues displaying graphics on chrome/safari."
@@ -180,6 +183,8 @@ class Network:
 
     def __getitem__(self, node_id):
         """Get a node by its ID."""
+        if node_id not in self.node_map:
+            raise KeyError(f"Node '{node_id}' not found in network")
         return self.node_map[node_id]
 
     def __enter__(self):
@@ -463,10 +468,10 @@ class Network:
         """
         # Verify nodes exist - O(1) lookup with dict
         if source not in self.node_map:
-            raise IndexError(f"non existent node '{source}'")
+            raise ValueError(f"non existent node '{source}'")
 
         if to not in self.node_map:
-            raise IndexError(f"non existent node '{to}'")
+            raise ValueError(f"non existent node '{to}'")
 
         # O(1) duplicate detection using edge set
         if self.directed:
@@ -911,7 +916,11 @@ class Network:
         :param path: the relative path pointing to a template html file
         :type path: string
         """
-        if custom_template and custom_template_path:
+        if custom_template:
+            if not custom_template_path:
+                raise ValueError(
+                    "custom_template=True requires custom_template_path to be set"
+                )
             self.set_template(custom_template_path)
         # with open(self.path) as html:
         #     content = html.read()
@@ -941,7 +950,10 @@ class Network:
         """
         self.path = template_file
         self.template_dir = template_directory
-        self.templateEnv = Environment(loader=FileSystemLoader(self.template_dir))
+        self.templateEnv = Environment(
+            loader=FileSystemLoader(self.template_dir),
+            autoescape=True,
+        )
 
     def from_DOT(self, dot):
         """
@@ -964,9 +976,13 @@ class Network:
         :type dot: .dot file
 
         """
-        self.use_DOT = True
+        if not os.path.isfile(dot):
+            raise FileNotFoundError(f"DOT file not found: {dot!r}")
         with open(dot, "r") as file:
             s = file.read()
+        if not s.strip():
+            raise ValueError(f"DOT file is empty: {dot!r}")
+        self.use_DOT = True
         self.dot_lang = " ".join(s.splitlines())
         self.dot_lang = self.dot_lang.replace('"', '\\"')
 
@@ -1063,7 +1079,7 @@ class Network:
                     if n not in processed_nodes:
                         if 'size' not in node_data[n]:
                             node_data[n]['size'] = default_node_size
-                        node_data[n]['size'] = int(node_size_transf(node_data[n]['size']))
+                        node_data[n]['size'] = float(node_size_transf(node_data[n]['size']))
                         processed_nodes.add(n)
                 self.add_node(e[0], **node_data[e[0]])
                 self.add_node(e[1], **node_data[e[1]])
@@ -1095,9 +1111,11 @@ class Network:
         Lookup node by ID and return it.
 
         :param n_id: The ID given to the node.
-
         :returns: dict containing node properties
+        :raises KeyError: If the node does not exist.
         """
+        if n_id not in self.node_map:
+            raise KeyError(f"Node '{n_id}' not found in network")
         return self.node_map[n_id]
 
     def get_edges(self) -> List[Dict[str, Any]]:
@@ -1127,7 +1145,12 @@ class Network:
             self.options = options.to_dict()
         elif isinstance(options, str):
             import json as _json
-            self.options = _json.loads(options)
+            try:
+                self.options = _json.loads(options)
+            except _json.JSONDecodeError as e:
+                raise ValueError(
+                    f"set_options() received invalid JSON string: {e}"
+                ) from e
         elif isinstance(options, dict):
             self.options = options
         else:
