@@ -1,4 +1,5 @@
 import pytest
+import networkx as nx
 from pyvis.network import Network
 
 
@@ -46,3 +47,20 @@ class TestAddEdgeErrors:
         net.add_node(2)
         net.add_edge(1, 2)
         assert net.num_edges() == 1
+
+
+class TestPrepNotebookValidation:
+    def test_custom_template_without_path_raises(self):
+        net = Network()
+        with pytest.raises(ValueError, match="custom_template_path"):
+            net.prep_notebook(custom_template=True, custom_template_path=None)
+
+    def test_custom_template_with_path_succeeds(self):
+        """Should not raise when both custom_template and path are provided."""
+        import os
+        net = Network()
+        template_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "templates", "template.html"
+        )
+        net.prep_notebook(custom_template=True, custom_template_path=template_path)
+        assert net.template is not None

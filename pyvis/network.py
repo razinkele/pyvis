@@ -916,7 +916,11 @@ class Network:
         :param path: the relative path pointing to a template html file
         :type path: string
         """
-        if custom_template and custom_template_path:
+        if custom_template:
+            if not custom_template_path:
+                raise ValueError(
+                    "custom_template=True requires custom_template_path to be set"
+                )
             self.set_template(custom_template_path)
         # with open(self.path) as html:
         #     content = html.read()
