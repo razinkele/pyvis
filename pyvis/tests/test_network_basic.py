@@ -46,13 +46,14 @@ def test_add_nodes_with_options():
     """
     net = Network()
 
-    sizes = [10, 20, 30]
+    expected_sizes = {0: 10, 1: 20, 2: 30}
 
     net.add_node(0, "Node 0", color="green", size=10)
     net.add_node(1, "Node 1", color="blue", size=20)
     net.add_node(2, "Node 2", color="yellow", size=30)
 
-    assert(sizes[node["id"]] == node["size"] for node in net.nodes)
+    for node in net.nodes:
+        assert expected_sizes[node["id"]] == node["size"]
 
 
 def test_add_edge():
