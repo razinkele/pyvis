@@ -18,6 +18,12 @@ class EdgeColor(OptionsBase):
     inherit: Optional[Union[str, bool]] = None
     opacity: Optional[float] = None
 
+    def __post_init__(self):
+        if self.opacity is not None and not (0.0 <= self.opacity <= 1.0):
+            raise ValueError(
+                f"opacity must be between 0.0 and 1.0, got {self.opacity}"
+            )
+
 
 @dataclass
 class EdgeChosen(OptionsBase):
