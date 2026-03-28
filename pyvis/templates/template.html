@@ -21,17 +21,17 @@
             {%  endif %}
         {%  elif cdn_resources=="remote" %}
             <script>{%  include 'lib/bindings/utils.js' %}</script>
-            <link rel="stylesheet" href="{{ vis_css_cdn }}" type="text/css" />
-            <script src="{{ vis_js_cdn }}" type="text/javascript"></script>
+            <link rel="stylesheet" href="{{ vis_css_cdn|safe }}" type="text/css" />
+            <script src="{{ vis_js_cdn|safe }}" type="text/javascript"></script>
             {% if select_menu or filter_menu %}
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.4.3/css/tom-select.min.css" integrity="sha512-WBuHdUNR/QocxZ4cSMmXUrV142yazK51uQdknbg+RBTJsrQBbdXFxH8EPyjoU/rGV7FPR9HoWBul4nVbEWifzQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.4.3/js/tom-select.complete.js" integrity="sha512-cv8SyZZkoW3eB3rWs0JsM/wNxKZe59+tMN8ewVIu24I1EAeBOT6lqkdty/iMxo3OJGvrFRYIrrGwM5BJqAXsYw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
             {%  endif %}
         {%  elif cdn_resources=="remote_esm" %}
             <script>{%  include 'lib/bindings/utils.js' %}</script>
-            <link rel="stylesheet" href="{{ vis_css_cdn }}" type="text/css" />
+            <link rel="stylesheet" href="{{ vis_css_cdn|safe }}" type="text/css" />
             <script type="module">
-                import { Network, DataSet } from "{{ vis_esm_cdn }}";
+                import { Network, DataSet } from "{{ vis_esm_cdn|safe }}";
                 window.vis = {
                     Network: Network,
                     DataSet: DataSet
@@ -762,8 +762,8 @@
                   {% else %}
 
                   // parsing and collecting nodes and edges from the python
-                  nodes = new vis.DataSet({{nodes|tojson}});
-                  edges = new vis.DataSet({{edges|tojson}});
+                  nodes = new vis.DataSet({{nodes|tojson|safe}});
+                  edges = new vis.DataSet({{edges|tojson|safe}});
 
                   nodeColors = {};
                   allNodes = nodes.get({ returnType: "Object" });

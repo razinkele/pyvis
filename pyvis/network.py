@@ -134,7 +134,10 @@ class Network:
         # path is the root template located in the template_dir
         self.path = "template.html"
         self.template_dir = os.path.dirname(__file__) + "/templates/"
-        self.templateEnv = Environment(loader=FileSystemLoader(self.template_dir))
+        self.templateEnv = Environment(
+            loader=FileSystemLoader(self.template_dir),
+            autoescape=True,
+        )
 
         if cdn_resources == "local" and notebook:
             logger.warning("When cdn_resources is 'local' jupyter notebook has issues displaying graphics on chrome/safari."
@@ -943,7 +946,10 @@ class Network:
         """
         self.path = template_file
         self.template_dir = template_directory
-        self.templateEnv = Environment(loader=FileSystemLoader(self.template_dir))
+        self.templateEnv = Environment(
+            loader=FileSystemLoader(self.template_dir),
+            autoescape=True,
+        )
 
     def from_DOT(self, dot):
         """
@@ -966,9 +972,13 @@ class Network:
         :type dot: .dot file
 
         """
-        self.use_DOT = True
+        if not os.path.isfile(dot):
+            raise FileNotFoundError(f"DOT file not found: {dot!r}")
         with open(dot, "r") as file:
             s = file.read()
+        if not s.strip():
+            raise ValueError(f"DOT file is empty: {dot!r}")
+        self.use_DOT = True
         self.dot_lang = " ".join(s.splitlines())
         self.dot_lang = self.dot_lang.replace('"', '\\"')
 
