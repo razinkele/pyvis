@@ -1079,7 +1079,7 @@ class Network:
                     if n not in processed_nodes:
                         if 'size' not in node_data[n]:
                             node_data[n]['size'] = default_node_size
-                        node_data[n]['size'] = int(node_size_transf(node_data[n]['size']))
+                        node_data[n]['size'] = float(node_size_transf(node_data[n]['size']))
                         processed_nodes.add(n)
                 self.add_node(e[0], **node_data[e[0]])
                 self.add_node(e[1], **node_data[e[1]])

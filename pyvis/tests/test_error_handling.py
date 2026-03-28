@@ -82,3 +82,27 @@ class TestSetOptionsErrors:
         net = Network()
         net.set_options({"physics": {"enabled": False}})
         assert net.options["physics"]["enabled"] is False
+
+
+class TestFromNxSizeHandling:
+    def test_float_sizes_preserved(self):
+        """from_nx should not silently truncate float node sizes."""
+        G = nx.Graph()
+        G.add_node(1, size=15.7)
+        G.add_node(2, size=22.3)
+        G.add_edge(1, 2)
+        net = Network()
+        net.from_nx(G)
+        assert net.node_map[1]["size"] == 15.7
+        assert net.node_map[2]["size"] == 22.3
+
+    def test_size_transform_preserves_float(self):
+        """Custom size transform returning float should not be truncated."""
+        G = nx.Graph()
+        G.add_node(1, size=10)
+        G.add_node(2, size=20)
+        G.add_edge(1, 2)
+        net = Network()
+        net.from_nx(G, node_size_transf=lambda x: x * 1.5)
+        assert net.node_map[1]["size"] == 15.0
+        assert net.node_map[2]["size"] == 30.0
