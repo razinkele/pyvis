@@ -468,6 +468,7 @@
         {% endif %}
 
         <script type="{{ 'module' if cdn_resources == 'remote_esm' else 'text/javascript' }}">
+                  var HIGHLIGHT_DEGREE = {{highlight_degree}};
 
               // initialize global variables.
               var edges;
@@ -746,7 +747,7 @@
 
                   {% if use_DOT %}
 
-                  var DOTstring = "{{dot_lang|safe}}";
+                  var DOTstring = {{dot_lang|tojson|safe}};
                   var parsedData = vis.network.convertDot(DOTstring);
 
                   data = {
@@ -774,7 +775,7 @@
                   // adding nodes and edges to the graph
                   data = {nodes: nodes, edges: edges};
 
-                  var options = {{options|safe}};
+                  var options = {{options|tojson|safe}};
 
                   {% endif %}
 
@@ -860,7 +861,7 @@
                       function showPopup(nodeId) {
                           // get the data from the vis.DataSet
                           var nodeData = nodes.get([nodeId]);
-                          popup.innerHTML = nodeData[0].title;
+                          popup.textContent = nodeData[0].title;
 
                           // get the position of the node
                           var posCanvas = network.getPositions([nodeId])[nodeId];

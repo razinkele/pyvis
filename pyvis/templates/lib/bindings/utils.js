@@ -7,7 +7,7 @@ function neighbourhoodHighlight(params) {
     highlightActive = true;
     var i, j;
     var selectedNode = params.nodes[0];
-    var degrees = 2;
+    var degrees = (typeof HIGHLIGHT_DEGREE !== 'undefined') ? HIGHLIGHT_DEGREE : 2;
 
     // mark all nodes as hard to read.
     for (let nodeId in allNodes) {

@@ -9,6 +9,7 @@ with NetworkX and Jupyter notebooks.
 import json
 import logging
 import os
+import re
 import shutil
 import warnings
 import webbrowser
@@ -38,6 +39,12 @@ CDN_REMOTE = "remote"
 CDN_REMOTE_ESM = "remote_esm"
 VALID_CDN_RESOURCES = [CDN_LOCAL, CDN_INLINE, CDN_REMOTE, CDN_REMOTE_ESM]
 
+# CSS validation patterns to prevent CSS injection
+_CSS_DIM_RE = re.compile(r'^\d+(\.\d+)?(px|%|em|rem|vh|vw)$')
+_CSS_COLOR_RE = re.compile(
+    r'^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+|rgba?\(\s*[\d.,\s%]+\)|hsla?\(\s*[\d.,\s%]+\))$'
+)
+
 
 class Network:
     """
@@ -62,7 +69,8 @@ class Network:
                  layout: Optional[bool] = None,
                  heading: str = "",
                  cdn_resources: str = "local",
-                 edge_attribute_edit: bool = False):
+                 edge_attribute_edit: bool = False,
+                 highlight_degree: int = 2):
         """
         :param height: The height of the canvas
         :param width: The width of the canvas
@@ -101,6 +109,23 @@ class Network:
         # Adjacency list cache
         self._adj_list_cache: Optional[Dict[Union[str, int], set]] = None
 
+        # Validate CSS values to prevent CSS injection
+        # Accept bare int/float/numeric-string as pixel values (legacy API)
+        if isinstance(height, (int, float)):
+            height = f"{height}px"
+        elif isinstance(height, str) and height.isdigit():
+            height = f"{height}px"
+        if isinstance(width, (int, float)):
+            width = f"{width}px"
+        elif isinstance(width, str) and width.isdigit():
+            width = f"{width}px"
+        if not isinstance(height, str) or not _CSS_DIM_RE.match(height):
+            raise ValueError(f"Invalid CSS dimension for height: {height!r}")
+        if not isinstance(width, str) or not _CSS_DIM_RE.match(width):
+            raise ValueError(f"Invalid CSS dimension for width: {width!r}")
+        if not isinstance(bgcolor, str) or not _CSS_COLOR_RE.match(bgcolor):
+            raise ValueError(f"Invalid CSS color for bgcolor: {bgcolor!r}")
+
         self.height = height
         self.width = width
         self.heading = heading
@@ -125,6 +150,7 @@ class Network:
         self.select_menu = select_menu
         self.filter_menu = filter_menu
         self.edge_attribute_edit = edge_attribute_edit
+        self.highlight_degree = highlight_degree
         self.legend = None
         self.groups = {}
 
@@ -407,11 +433,14 @@ class Network:
                     self.add_node(node, **opts_dict)
                 return
 
+        # Validate lengths before the loop to avoid O(n²)
+        for k, v in kwargs.items():
+            if len(v) != len(nodes):
+                raise ValueError(f"keyword arg {k} [length {len(v)}] does not match [length {len(nodes)}] of nodes")
+
         nd = defaultdict(dict)
         for i in range(len(nodes)):
             for k, v in kwargs.items():
-                if len(v) != len(nodes):
-                    raise ValueError(f"keyword arg {k} [length {len(v)}] does not match [length {len(nodes)}] of nodes")
                 nd[nodes[i]].update({k: v[i]})
 
         for node in nodes:
@@ -702,21 +731,21 @@ class Network:
             f"Edge ({source}, {to}) not found in network"
         )
 
-    def get_network_data(self) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], str, str, str, str]:
+    def get_network_data(self) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], str, str, str, dict]:
         """
         Extract relevant information about this network in order to inject into
         a Jinja2 template.
 
         Returns:
                 nodes (list), edges (list), heading (string), height (
-                    string), width (string), options (JSON string)
+                    string), width (string), options (dict)
 
         Usage:
 
         >>> nodes, edges, heading, height, width, options = net.get_network_data()
         """
         return (self.nodes, self.edges, self.heading, self.height,
-                self.width, json.dumps(self.options))
+                self.width, self.options)
 
     def get_network_json(self) -> dict:
         """
@@ -732,19 +761,16 @@ class Network:
         """
         nodes, edges, heading, height, width, options = self.get_network_data()
 
-        # Parse options to dict if it's a JSON string
-        if isinstance(options, str):
-            options = json.loads(options)
-
+        import copy
         return {
-            "nodes": nodes,
-            "edges": edges,
-            "options": options,
+            "nodes": [dict(n) for n in nodes],
+            "edges": [dict(e) for e in edges],
+            "options": copy.deepcopy(options),
             "heading": heading,
             "height": height,
             "width": width,
-            "groups": self.groups,
-            "legend": self.legend,
+            "groups": copy.deepcopy(self.groups),
+            "legend": copy.deepcopy(self.legend) if self.legend else None,
             "neighborhood_highlight": self.neighborhood_highlight,
             "select_menu": self.select_menu,
             "filter_menu": self.filter_menu,
@@ -763,14 +789,15 @@ class Network:
         check_html(name)
         self.write_html(name)
 
-    def generate_html(self, name="index.html", notebook=False):
+    def generate_html(self, notebook=False):
         """
         This method gets the data structures supporting the nodes, edges,
         and options and updates the template to write the HTML holding
         the visualization.
-        :type name: str
+
+        :param notebook: whether to generate notebook-compatible output
+        :type notebook: bool
         """
-        check_html(name)
         # here, check if an href is present in the hover data
         use_link_template = False
         for n in self.nodes:
@@ -794,8 +821,8 @@ class Network:
         nodes, edges, heading, height, width, options = self.get_network_data()
 
         # check if physics is enabled
-        if 'physics' in self.options and 'enabled' in self.options['physics']:
-            physics_enabled = self.options['physics']['enabled']
+        if 'physics' in options and 'enabled' in options['physics']:
+            physics_enabled = options['physics']['enabled']
         else:
             physics_enabled = True
 
@@ -824,7 +851,8 @@ class Network:
                                     vis_js_cdn=vis_config.VIS_JS_UNPKG,
                                     vis_esm_cdn=vis_config.VIS_ESM_UNPKG,
                                     legend=self.legend,
-                                    groups=self.groups
+                                    groups=self.groups,
+                                    highlight_degree=self.highlight_degree
                                     )
         return self.html
 
@@ -984,7 +1012,6 @@ class Network:
             raise ValueError(f"DOT file is empty: {dot!r}")
         self.use_DOT = True
         self.dot_lang = " ".join(s.splitlines())
-        self.dot_lang = self.dot_lang.replace('"', '\\"')
 
     def get_adj_list(self) -> Dict[Union[str, int], set]:
         """
@@ -1081,8 +1108,7 @@ class Network:
                             node_data[n]['size'] = default_node_size
                         node_data[n]['size'] = float(node_size_transf(node_data[n]['size']))
                         processed_nodes.add(n)
-                self.add_node(e[0], **node_data[e[0]])
-                self.add_node(e[1], **node_data[e[1]])
+                        self.add_node(n, **node_data[n])
 
                 # Only inject weight when user has provided neither value nor width
                 if "value" not in e[2] and "width" not in e[2]:
@@ -1096,7 +1122,11 @@ class Network:
                 self.add_edge(e[0], e[1], **e[2])
 
         for node in nx.isolates(nx_graph):
-            self.add_node(node, **node_data.get(node, {}))
+            data = node_data.get(node, {})
+            if 'size' not in data:
+                data['size'] = default_node_size
+            data['size'] = float(node_size_transf(data['size']))
+            self.add_node(node, **data)
 
     def get_nodes(self) -> List[Union[str, int]]:
         """
@@ -1124,7 +1154,7 @@ class Network:
 
         :returns: list
         """
-        return self.edges
+        return [dict(e) for e in self.edges]
 
     def to_json(self, max_depth=1, **args):
         """
