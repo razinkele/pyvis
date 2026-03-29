@@ -70,7 +70,8 @@ class Network:
                  heading: str = "",
                  cdn_resources: str = "local",
                  edge_attribute_edit: bool = False,
-                 highlight_degree: int = 2):
+                 highlight_degree: int = 2,
+                 tooltip_link_override: Optional[bool] = None):
         """
         :param height: The height of the canvas
         :param width: The width of the canvas
@@ -151,6 +152,7 @@ class Network:
         self.filter_menu = filter_menu
         self.edge_attribute_edit = edge_attribute_edit
         self.highlight_degree = highlight_degree
+        self.tooltip_link_override = tooltip_link_override
         self.legend = None
         self.groups = {}
 
@@ -798,19 +800,17 @@ class Network:
         :param notebook: whether to generate notebook-compatible output
         :type notebook: bool
         """
-        # here, check if an href is present in the hover data
-        use_link_template = False
-        for n in self.nodes:
-            title = n.get("title", None)
-            if title:
-                if "href" in title:
-                    """
-                    this tells the template to override default hover
-                    mechanic, as the tooltip would move with the mouse
-                    cursor which made interacting with hover data useless.
-                    """
-                    use_link_template = True
-                    break
+        # Tooltip link detection
+        if self.tooltip_link_override is not None:
+            use_link_template = self.tooltip_link_override
+        else:
+            use_link_template = False
+            for n in self.nodes:
+                title = n.get("title", None)
+                if title:
+                    if "href" in title:
+                        use_link_template = True
+                        break
         if not notebook:
             # with open(self.path) as html:
             #     content = html.read()
