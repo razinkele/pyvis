@@ -927,14 +927,20 @@ class Network:
         html = self.generate_html(notebook=notebook)
 
         if self.cdn_resources == CDN_LOCAL:
-            if not os.path.exists("lib"):
-                os.makedirs("lib")
-            if not os.path.exists("lib/bindings"):
-                shutil.copytree(f"{os.path.dirname(__file__)}/templates/lib/bindings", "lib/bindings")
-            if not os.path.exists(os.getcwd()+"/lib/tom-select"):
-                shutil.copytree(f"{os.path.dirname(__file__)}/templates/lib/tom-select", "lib/tom-select")
-            if not os.path.exists(os.getcwd()+f"/lib/{vis_config.LOCAL_LIB_DIR}"):
-                shutil.copytree(f"{os.path.dirname(__file__)}/templates/lib/{vis_config.LOCAL_LIB_DIR}", f"lib/{vis_config.LOCAL_LIB_DIR}")
+            try:
+                if not os.path.exists("lib"):
+                    os.makedirs("lib")
+                if not os.path.exists("lib/bindings"):
+                    shutil.copytree(f"{os.path.dirname(__file__)}/templates/lib/bindings", "lib/bindings")
+                if not os.path.exists(os.getcwd()+"/lib/tom-select"):
+                    shutil.copytree(f"{os.path.dirname(__file__)}/templates/lib/tom-select", "lib/tom-select")
+                if not os.path.exists(os.getcwd()+f"/lib/{vis_config.LOCAL_LIB_DIR}"):
+                    shutil.copytree(f"{os.path.dirname(__file__)}/templates/lib/{vis_config.LOCAL_LIB_DIR}", f"lib/{vis_config.LOCAL_LIB_DIR}")
+            except OSError as e:
+                raise OSError(
+                    f"Failed to copy pyvis resources: {e}. "
+                    "Check directory permissions and disk space."
+                ) from e
             with open(getcwd_name, "w+", encoding="utf-8") as out:
                 out.write(html)
         elif self.cdn_resources in [CDN_INLINE, CDN_REMOTE, CDN_REMOTE_ESM]:
