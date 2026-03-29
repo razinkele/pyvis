@@ -747,12 +747,12 @@
               }
 
               // Close modal when clicking outside of it
-              window.onclick = function(event) {
+              window.addEventListener('click', function(event) {
                   var modal = document.getElementById('edgeAttributeModal');
                   if (event.target == modal) {
                       closeEdgeAttributeModal();
                   }
-              }
+              });
               {% endif %}
 
               // This method is responsible for drawing the graph, returns the drawn network

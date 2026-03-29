@@ -124,12 +124,20 @@ class Network:
         # Accept bare int/float/numeric-string as pixel values (legacy API)
         if isinstance(height, (int, float)):
             height = f"{height}px"
-        elif isinstance(height, str) and height.isdigit():
-            height = f"{height}px"
+        elif isinstance(height, str):
+            try:
+                float(height)
+                height = f"{height}px"
+            except ValueError:
+                pass
         if isinstance(width, (int, float)):
             width = f"{width}px"
-        elif isinstance(width, str) and width.isdigit():
-            width = f"{width}px"
+        elif isinstance(width, str):
+            try:
+                float(width)
+                width = f"{width}px"
+            except ValueError:
+                pass
         if not isinstance(height, str) or not _CSS_DIM_RE.match(height):
             raise ValueError(f"Invalid CSS dimension for height: {height!r}")
         if not isinstance(width, str) or not _CSS_DIM_RE.match(width):
@@ -1286,6 +1294,11 @@ class Network:
         :type group_name: str
         :type options: dict
         """
+        # Validate color if provided
+        if 'color' in options:
+            color = options['color']
+            if isinstance(color, str) and not _CSS_COLOR_RE.match(color):
+                raise ValueError(f"Invalid CSS color for group '{group_name}': {color!r}")
         self.groups[group_name] = options
 
     def add_legend(self,
@@ -1350,6 +1363,24 @@ class Network:
             raise ValueError("position must be 'left' or 'right'")
         if ncol < 1:
             raise ValueError("ncol must be >= 1")
+
+        if add_nodes:
+            for node_entry in add_nodes:
+                if isinstance(node_entry, dict) and 'color' in node_entry:
+                    c = node_entry['color']
+                    if isinstance(c, str) and not _CSS_COLOR_RE.match(c):
+                        raise ValueError(f"Invalid CSS color in legend node: {c!r}")
+        if add_edges:
+            for edge_entry in add_edges:
+                if isinstance(edge_entry, dict):
+                    if 'color' in edge_entry:
+                        c = edge_entry['color']
+                        if isinstance(c, str) and not _CSS_COLOR_RE.match(c):
+                            raise ValueError(f"Invalid CSS color in legend edge: {c!r}")
+                    if 'width' in edge_entry:
+                        w = edge_entry['width']
+                        if not isinstance(w, (int, float)) or w < 0:
+                            raise ValueError(f"Invalid width in legend edge: {w!r}")
 
         self.legend = {
             'enabled': enabled,

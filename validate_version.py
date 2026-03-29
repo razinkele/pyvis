@@ -86,21 +86,27 @@ def main():
 
     print(f"Source of truth: pyvis/_version.py = {code_ver}")
 
-    meta_ver = read_meta_version()
-    if meta_ver is None:
-        errors.append(f"Cannot parse version from {META_YAML}")
-    elif meta_ver != code_ver:
-        errors.append(f"conda.recipe/meta.yaml has '{meta_ver}', expected '{code_ver}'")
+    if not META_YAML.exists():
+        info.append(f"  conda.recipe/meta.yaml: not found (skipped)")
     else:
-        print(f"  conda.recipe/meta.yaml: {meta_ver} OK")
+        meta_ver = read_meta_version()
+        if meta_ver is None:
+            errors.append(f"Cannot parse version from {META_YAML}")
+        elif meta_ver != code_ver:
+            errors.append(f"conda.recipe/meta.yaml has '{meta_ver}', expected '{code_ver}'")
+        else:
+            print(f"  conda.recipe/meta.yaml: {meta_ver} OK")
 
-    recipe_ver = read_recipe_version()
-    if recipe_ver is None:
-        errors.append(f"Cannot parse version from {RECIPE_YAML}")
-    elif recipe_ver != code_ver:
-        errors.append(f"conda.recipe/recipe.yaml has '{recipe_ver}', expected '{code_ver}'")
+    if not RECIPE_YAML.exists():
+        info.append(f"  conda.recipe/recipe.yaml: not found (skipped)")
     else:
-        print(f"  conda.recipe/recipe.yaml: {recipe_ver} OK")
+        recipe_ver = read_recipe_version()
+        if recipe_ver is None:
+            errors.append(f"Cannot parse version from {RECIPE_YAML}")
+        elif recipe_ver != code_ver:
+            errors.append(f"conda.recipe/recipe.yaml has '{recipe_ver}', expected '{code_ver}'")
+        else:
+            print(f"  conda.recipe/recipe.yaml: {recipe_ver} OK")
 
     cl_ver = read_changelog_version()
     if cl_ver is None:

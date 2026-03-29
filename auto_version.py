@@ -244,11 +244,17 @@ def main():
         write_version(new_version)
         print(f"  Updated {VERSION_FILE}")
 
-    update_meta_yaml(new_version)
-    print(f"  Updated {META_YAML}")
+    if META_YAML.exists():
+        update_meta_yaml(new_version)
+        print(f"  Updated {META_YAML}")
+    else:
+        print(f"  Skipped {META_YAML} (not found)")
 
-    update_recipe_yaml(new_version)
-    print(f"  Updated {RECIPE_YAML}")
+    if RECIPE_YAML.exists():
+        update_recipe_yaml(new_version)
+        print(f"  Updated {RECIPE_YAML}")
+    else:
+        print(f"  Skipped {RECIPE_YAML} (not found)")
 
     if categorized:
         update_changelog(new_version, categorized)
@@ -258,7 +264,11 @@ def main():
         print("--no-commit: files updated, skipping git operations.")
         return
 
-    files_to_stage = [str(VERSION_FILE), str(META_YAML), str(RECIPE_YAML)]
+    files_to_stage = [str(VERSION_FILE)]
+    if META_YAML.exists():
+        files_to_stage.append(str(META_YAML))
+    if RECIPE_YAML.exists():
+        files_to_stage.append(str(RECIPE_YAML))
     if categorized:
         files_to_stage.append(str(CHANGELOG))
     subprocess.run(["git", "add"] + files_to_stage, check=True, cwd=ROOT, timeout=60)

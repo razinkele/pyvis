@@ -18,7 +18,8 @@ class OptionsBase:
     _field_renames: ClassVar[Dict[str, str]] = {}
 
     def to_dict(self) -> dict:
-        if self._field_renames:
+        # Validate _field_renames keys (once per class, cached)
+        if self._field_renames and not getattr(type(self), '_renames_validated', False):
             field_names = {f.name for f in fields(self)}
             for rename_from in self._field_renames:
                 if rename_from not in field_names:
@@ -26,6 +27,7 @@ class OptionsBase:
                         f"{type(self).__name__}._field_renames references field '{rename_from}' "
                         f"which does not exist. Valid fields: {field_names}"
                     )
+            type(self)._renames_validated = True
         result = {}
         for f in fields(self):
             value = getattr(self, f.name)

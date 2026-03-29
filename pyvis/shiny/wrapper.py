@@ -98,8 +98,12 @@ def _validate_css_dim(value: str, name: str) -> str:
     """Validate a CSS dimension value to prevent CSS injection."""
     if isinstance(value, (int, float)):
         value = f"{value}px"
-    elif isinstance(value, str) and value.isdigit():
-        value = f"{value}px"
+    elif isinstance(value, str):
+        try:
+            float(value)
+            value = f"{value}px"
+        except ValueError:
+            pass
     if not isinstance(value, str) or not _CSS_DIM_RE.match(value):
         raise ValueError(f"Invalid CSS dimension for {name}: {value!r}")
     return value

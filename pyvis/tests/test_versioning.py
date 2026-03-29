@@ -219,24 +219,3 @@ class TestParseVersionErrors:
     def test_alpha_rejected(self):
         with pytest.raises(ValueError, match="plain integer"):
             auto_version.parse_version("4.2.0-beta")
-
-
-class TestBumpThreeComponent:
-    def test_major_three_parts(self):
-        assert auto_version.bump("4.2", "major") == "5.0.0"
-
-    def test_minor_three_parts(self):
-        assert auto_version.bump("4.2", "minor") == "4.3.0"
-
-    def test_patch_still_works(self):
-        assert auto_version.bump("4.2.1", "patch") == "4.2.2"
-
-
-class TestParseVersionErrors:
-    def test_prerelease_rejected(self):
-        with pytest.raises(ValueError, match="plain integer"):
-            auto_version.parse_version("4.2.0a1")
-
-    def test_alpha_rejected(self):
-        with pytest.raises(ValueError, match="plain integer"):
-            auto_version.parse_version("4.2.0-beta")
