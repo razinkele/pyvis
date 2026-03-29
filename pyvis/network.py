@@ -397,6 +397,12 @@ class Network:
                 self.node_map[n_id] = n.options
             # Invalidate adjacency list cache
             self._adj_list_cache = None
+        else:
+            warnings.warn(
+                f"Node {n_id!r} already exists and was not updated. "
+                f"Use update_node() to modify existing nodes.",
+                UserWarning, stacklevel=2
+            )
 
     def add_nodes(self, nodes: List[Union[str, int]], options=None, **kwargs):
         """
@@ -448,8 +454,10 @@ class Network:
                         f"nodes list length ({len(nodes)})"
                     )
                 for node, opt in zip(nodes, options):
-                    opts_dict = opt.to_dict() if hasattr(opt, 'to_dict') else opt
-                    self.add_node(node, **opts_dict)
+                    if hasattr(opt, 'to_dict'):
+                        self.add_node(node, options=opt)
+                    else:
+                        self.add_node(node, **opt)
                 return
 
         # Validate lengths before the loop to avoid O(n²)

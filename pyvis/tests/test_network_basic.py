@@ -14,7 +14,7 @@ def test_canvas_size():
     Test the canvas size
     """
     net = Network(500, 500)
-    assert(net.width == 500 and net.height == 500)
+    assert net.width == "500px" and net.height == "500px"
 
 
 def test_add_node():
@@ -796,3 +796,28 @@ class TestErrorPaths:
         net = Network()
         with pytest.raises(ValueError, match="invalid arg"):
             net.add_nodes([1, 2], badarg=[10, 20])
+
+
+def test_add_nodes_with_typed_options_list():
+    """add_nodes with a list of NodeOptions should not crash."""
+    from pyvis.types.nodes import NodeOptions
+    net = Network()
+    opts = [
+        NodeOptions(color="red", label="A"),
+        NodeOptions(color="blue", label="B"),
+    ]
+    net.add_nodes([1, 2], options=opts)
+    assert net.num_nodes() == 2
+
+
+def test_add_node_duplicate_warns():
+    """Adding a duplicate node should issue a warning."""
+    import warnings
+    net = Network()
+    net.add_node(1, label="First")
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        net.add_node(1, label="Second")
+        assert len(w) == 1
+        assert "already exists" in str(w[0].message).lower()
+    assert net.node_map[1]["label"] == "First"
