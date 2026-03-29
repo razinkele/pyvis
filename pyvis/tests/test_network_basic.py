@@ -853,3 +853,18 @@ def test_select_node_options_warns_on_stripped_keys():
         assert len(w) == 1
         assert "onItemAdd" in str(w[0].message)
     assert net.select_node_options == {"placeholder": "ok"}
+
+
+def test_from_nx_warns_on_non_serializable():
+    """from_nx should warn when NX attributes are not JSON-serializable."""
+    import warnings
+    import networkx as nx
+    G = nx.Graph()
+    G.add_node(1, label="A", custom_obj=object())
+    G.add_edge(1, 2)
+    net = Network()
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        net.from_nx(G)
+        non_serial_warnings = [x for x in w if "not JSON-serializable" in str(x.message)]
+        assert len(non_serial_warnings) >= 1

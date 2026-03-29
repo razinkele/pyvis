@@ -1137,6 +1137,31 @@ class Network:
         node_data = {n: dict(data) for n, data in nodes}
         edge_list = [(u, v, dict(data)) for u, v, data in edges]
 
+        # Warn about non-JSON-serializable attributes and remove them
+        import json as _json
+        for n, data in node_data.items():
+            for k, v in list(data.items()):
+                try:
+                    _json.dumps(v)
+                except (TypeError, ValueError):
+                    warnings.warn(
+                        f"Node {n!r} attribute '{k}' is not JSON-serializable "
+                        f"(type: {type(v).__name__}) and was removed.",
+                        UserWarning, stacklevel=2
+                    )
+                    del data[k]
+        for e in edge_list:
+            for k, v in list(e[2].items()):
+                try:
+                    _json.dumps(v)
+                except (TypeError, ValueError):
+                    warnings.warn(
+                        f"Edge ({e[0]}, {e[1]}) attribute '{k}' is not JSON-serializable "
+                        f"(type: {type(v).__name__}) and was removed.",
+                        UserWarning, stacklevel=2
+                    )
+                    del e[2][k]
+
         if len(edge_list) > 0:
             processed_nodes = set()
             for e in edge_list:

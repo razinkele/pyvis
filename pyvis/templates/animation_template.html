@@ -9,12 +9,12 @@
             <style>{%  include vis_css_path %}</style>
             <script>{%  include vis_js_path %}</script>
         {%  elif cdn_resources=="remote" %}
-            <link rel="stylesheet" href="{{ vis_css_cdn }}" type="text/css" />
-            <script src="{{ vis_js_cdn }}" type="text/javascript"></script>
+            <link rel="stylesheet" href="{{ vis_css_cdn|safe }}" type="text/css" />
+            <script src="{{ vis_js_cdn|safe }}" type="text/javascript"></script>
         {%  elif cdn_resources=="remote_esm" %}
-            <link rel="stylesheet" href="{{ vis_css_cdn }}" type="text/css" />
+            <link rel="stylesheet" href="{{ vis_css_cdn|safe }}" type="text/css" />
             <script type="module">
-                import { Network, DataSet } from "{{ vis_esm_cdn }}";
+                import { Network, DataSet } from "{{ vis_esm_cdn|safe }}";
                 window.vis = {
                     Network: Network,
                     DataSet: DataSet
@@ -71,7 +71,7 @@
 
         {% if use_DOT %}
         alert("using DOT");
-        var DOTstring = "{{dot_lang|safe}}";
+        var DOTstring = {{dot_lang|tojson|safe}};
         var parsedData = vis.network.convertDot(DOTstring);
 
         data = {
@@ -92,9 +92,9 @@
         {% else %}
         
 
-        var nodes = {{nodes|safe}};
+        var nodes = {{nodes|tojson|safe}};
 
-        edges = {{edges|safe}};
+        edges = {{edges|tojson|safe}};
 
         var e_values = [];
 
@@ -102,7 +102,7 @@
         console.log("edges: " + e_values);
 
         data = {nodes: nodes, edges: edges};
-        var options = {{options|safe}};
+        var options = {{options|tojson|safe}};
 
         {% endif %}
 
