@@ -44,7 +44,7 @@ CONVENTIONAL_RE = re.compile(
 
 
 def read_version():
-    text = VERSION_FILE.read_text()
+    text = VERSION_FILE.read_text(encoding="utf-8")
     match = re.search(r"__version__\s*=\s*['\"]([^'\"]+)['\"]", text)
     if not match:
         raise RuntimeError(f"Cannot parse version from {VERSION_FILE}")
@@ -52,7 +52,7 @@ def read_version():
 
 
 def write_version(version):
-    VERSION_FILE.write_text(f"__version__ = '{version}'\n")
+    VERSION_FILE.write_text(f"__version__ = '{version}'\n", encoding="utf-8")
 
 
 def parse_version(v):
@@ -71,6 +71,10 @@ def bump(current, part):
     elif part == "patch":
         return f"{major}.{minor}.{patch + 1}"
     else:
+        if not re.match(r'^\d+\.\d+(\.\d+)?$', part):
+            raise ValueError(
+                f"Invalid explicit version {part!r}: must match \\d+\\.\\d+(\\.\\d+)?"
+            )
         return part
 
 
@@ -138,23 +142,31 @@ def determine_bump(commits):
 
 
 def update_meta_yaml(new_version):
-    text = META_YAML.read_text()
-    text = re.sub(
+    text = META_YAML.read_text(encoding="utf-8")
+    text, count = re.subn(
         r'{%\s*set version\s*=\s*"[^"]+"\s*%}',
         f'{{% set version = "{new_version}" %}}',
         text
     )
-    META_YAML.write_text(text)
+    if count == 0:
+        raise RuntimeError(
+            f"update_meta_yaml: version pattern not found in {META_YAML}"
+        )
+    META_YAML.write_text(text, encoding="utf-8")
 
 
 def update_recipe_yaml(new_version):
-    text = RECIPE_YAML.read_text()
-    text = re.sub(
+    text = RECIPE_YAML.read_text(encoding="utf-8")
+    text, count = re.subn(
         r'(  version: ")[^"]+(")',
         f'\\g<1>{new_version}\\g<2>',
         text
     )
-    RECIPE_YAML.write_text(text)
+    if count == 0:
+        raise RuntimeError(
+            f"update_recipe_yaml: version pattern not found in {RECIPE_YAML}"
+        )
+    RECIPE_YAML.write_text(text, encoding="utf-8")
 
 
 def update_changelog(new_version, categorized):
@@ -171,13 +183,13 @@ def update_changelog(new_version, categorized):
             for entry in entries:
                 lines.append(f"- {entry}\n")
     new_section = "".join(lines)
-    text = CHANGELOG.read_text()
+    text = CHANGELOG.read_text(encoding="utf-8")
     first_heading = text.find("\n## ")
     if first_heading == -1:
         text = text + "\n" + new_section
     else:
         text = text[:first_heading] + "\n" + new_section + text[first_heading:]
-    CHANGELOG.write_text(text)
+    CHANGELOG.write_text(text, encoding="utf-8")
 
 
 def main():
@@ -212,6 +224,17 @@ def main():
 
     print(f"Version: {current} -> {new_version}")
 
+    if not no_commit:
+        test_dir = ROOT / "pyvis" / "tests"
+        test_result = subprocess.run(
+            [sys.executable, "-m", "pytest", str(test_dir),
+             "--ignore=" + str(test_dir / "test_html.py"), "-v"],
+            cwd=ROOT
+        )
+        if test_result.returncode != 0:
+            print("Tests failed! Aborting release.")
+            sys.exit(1)
+
     if new_version != current:
         write_version(new_version)
         print(f"  Updated {VERSION_FILE}")
@@ -229,16 +252,6 @@ def main():
     if no_commit:
         print("--no-commit: files updated, skipping git operations.")
         return
-
-    test_dir = ROOT / "pyvis" / "tests"
-    test_result = subprocess.run(
-        [sys.executable, "-m", "pytest", str(test_dir),
-         "--ignore=" + str(test_dir / "test_html.py"), "-v"],
-        cwd=ROOT
-    )
-    if test_result.returncode != 0:
-        print("Tests failed! Aborting release.")
-        sys.exit(1)
 
     files_to_stage = [str(VERSION_FILE), str(META_YAML), str(RECIPE_YAML)]
     if categorized:
