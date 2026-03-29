@@ -128,6 +128,9 @@ class Network:
             raise ValueError(f"Invalid CSS dimension for width: {width!r}")
         if not isinstance(bgcolor, str) or not _CSS_COLOR_RE.match(bgcolor):
             raise ValueError(f"Invalid CSS color for bgcolor: {bgcolor!r}")
+        # Legacy: font_color=False was used to mean "no color"
+        if font_color is False:
+            font_color = None
         if font_color is not None:
             if not isinstance(font_color, str) or not _CSS_COLOR_RE.match(font_color):
                 raise ValueError(f"Invalid CSS color for font_color: {font_color!r}")
