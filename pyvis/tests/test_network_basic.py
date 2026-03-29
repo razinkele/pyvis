@@ -868,3 +868,88 @@ def test_from_nx_warns_on_non_serializable():
         net.from_nx(G)
         non_serial_warnings = [x for x in w if "not JSON-serializable" in str(x.message)]
         assert len(non_serial_warnings) >= 1
+
+
+def test_remove_edge_directed_then_readd():
+    """After removing an edge in a directed graph, re-adding should succeed."""
+    net = Network(directed=True)
+    net.add_node(1)
+    net.add_node(2)
+    net.add_edge(1, 2)
+    assert net.num_edges() == 1
+    net.remove_edge(1, 2)
+    assert net.num_edges() == 0
+    net.add_edge(1, 2)
+    assert net.num_edges() == 1
+
+
+def test_remove_node_directed_cleans_edge_set():
+    """Removing a node in a directed graph should clean up _edge_set."""
+    net = Network(directed=True)
+    net.add_node(1)
+    net.add_node(2)
+    net.add_node(3)
+    net.add_edge(1, 2)
+    net.add_edge(2, 3)
+    net.remove_node(2)
+    assert net.num_nodes() == 2
+    assert net.num_edges() == 0
+    net.add_node(2)
+    net.add_edge(1, 2)
+    assert net.num_edges() == 1
+
+
+def test_add_legend_invalid_width():
+    net = Network()
+    net.add_node(1, label="A")
+    with pytest.raises(ValueError):
+        net.add_legend(width=-0.1)
+
+
+def test_add_legend_invalid_position():
+    net = Network()
+    net.add_node(1, label="A")
+    with pytest.raises(ValueError):
+        net.add_legend(position="top")
+
+
+def test_add_legend_invalid_ncol():
+    net = Network()
+    net.add_node(1, label="A")
+    with pytest.raises(ValueError):
+        net.add_legend(ncol=0)
+
+
+def test_get_network_json_returns_isolated_copy():
+    """Mutating get_network_json result should not affect the Network."""
+    net = Network()
+    net.add_node(1, label="A")
+    net.set_options('{"physics": {"enabled": false}}')
+    data1 = net.get_network_json()
+    data1["options"]["physics"]["enabled"] = True
+    data1["nodes"][0]["label"] = "MUTATED"
+    data2 = net.get_network_json()
+    assert data2["options"]["physics"]["enabled"] is False
+    assert data2["nodes"][0]["label"] == "A"
+
+
+def test_invalid_height_string_rejected():
+    with pytest.raises(ValueError):
+        Network(height="abc")
+
+
+def test_digit_string_auto_converts():
+    net = Network(height="600", width="800")
+    assert net.height == "600px"
+    assert net.width == "800px"
+
+
+def test_from_nx_isolated_nodes_only():
+    """from_nx with a graph containing only isolated nodes should work."""
+    import networkx as nx
+    G = nx.empty_graph(3)
+    net = Network()
+    net.from_nx(G, default_node_size=10, node_size_transf=lambda x: x * 2)
+    assert net.num_nodes() == 3
+    for node in net.nodes:
+        assert node["size"] == 20.0

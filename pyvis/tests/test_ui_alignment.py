@@ -153,3 +153,19 @@ class TestHighlightDegreeValidation:
     def test_zero_accepted(self):
         net = Network(highlight_degree=0)
         assert net.highlight_degree == 0
+
+
+class TestNeighborhoodHighlightConditional:
+    def test_highlight_js_present_when_enabled(self):
+        net = Network(neighborhood_highlight=True, highlight_degree=3)
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_edge(1, 2)
+        html = net.generate_html()
+        assert 'network.on("click", neighbourhoodHighlight)' in html
+
+    def test_highlight_js_absent_when_disabled(self):
+        net = Network(neighborhood_highlight=False)
+        net.add_node(1, label="A")
+        html = net.generate_html()
+        assert 'network.on("click", neighbourhoodHighlight)' not in html
