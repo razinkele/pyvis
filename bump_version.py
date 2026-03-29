@@ -8,6 +8,13 @@ Usage:
     python bump_version.py 4.5.1   # set explicit version
 """
 
+import warnings
+warnings.warn(
+    "bump_version.py is deprecated. Use auto_version.py instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
 import re
 import subprocess
 import sys
