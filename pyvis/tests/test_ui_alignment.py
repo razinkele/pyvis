@@ -106,3 +106,28 @@ class TestFilterExclude:
         html = net.generate_html()
         assert '"internal"' in html
         assert '"temp"' in html
+
+
+class TestFontColor:
+    def test_default_none_no_css(self):
+        net = Network()
+        net.add_node(1, label="A")
+        html = net.generate_html()
+        assert ".vis-label" not in html
+
+    def test_font_color_produces_css(self):
+        net = Network(font_color="red")
+        net.add_node(1, label="A")
+        html = net.generate_html()
+        assert ".vis-label" in html
+        assert "red" in html
+
+    def test_font_color_hex(self):
+        net = Network(font_color="#333333")
+        net.add_node(1, label="A")
+        html = net.generate_html()
+        assert "#333333" in html
+
+    def test_font_color_invalid_rejected(self):
+        with pytest.raises(ValueError):
+            Network(font_color="red; } body { display:none }")

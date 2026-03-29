@@ -93,6 +93,10 @@
                  float: left;
              }
 
+             {% if font_color %}
+             .vis-network .vis-label { color: {{font_color}}; }
+             {% endif %}
+
              {% if nodes|length > 100 and physics_enabled %}
              #loadingBar {
                  position:absolute;

@@ -128,6 +128,9 @@ class Network:
             raise ValueError(f"Invalid CSS dimension for width: {width!r}")
         if not isinstance(bgcolor, str) or not _CSS_COLOR_RE.match(bgcolor):
             raise ValueError(f"Invalid CSS color for bgcolor: {bgcolor!r}")
+        if font_color is not None:
+            if not isinstance(font_color, str) or not _CSS_COLOR_RE.match(font_color):
+                raise ValueError(f"Invalid CSS color for font_color: {font_color!r}")
 
         self.height = height
         self.width = width
@@ -845,6 +848,7 @@ class Network:
                                     dot_lang=self.dot_lang,
                                     widget=self.widget,
                                     bgcolor=self.bgcolor,
+                                    font_color=self.font_color,
                                     conf=self.conf,
                                     tooltip_link=use_link_template,
                                     neighborhood_highlight=self.neighborhood_highlight,
