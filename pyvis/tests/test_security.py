@@ -16,16 +16,10 @@ class TestXSSPrevention:
         assert "<script>alert(" not in html
         assert "&lt;script&gt;" in html
 
-    def test_bgcolor_is_escaped(self):
-        """Malicious bgcolor cannot break out of CSS context."""
-        net = Network(bgcolor='red; } </style><script>alert(1)</script><style> .x {')
-        net.add_node(1, label="A")
-        net.add_node(2, label="B")
-        net.add_edge(1, 2)
-        html = net.generate_html()
-        # Verify the script tag was escaped, not merely omitted
-        assert "<script>alert(1)</script>" not in html
-        assert "&lt;script&gt;" in html
+    def test_bgcolor_is_validated(self):
+        """Malicious bgcolor is rejected at construction time."""
+        with pytest.raises(ValueError):
+            Network(bgcolor='red; } </style><script>alert(1)</script><style> .x {')
 
     def test_valid_html_still_renders(self):
         """Normal content should render correctly with autoescape on."""
