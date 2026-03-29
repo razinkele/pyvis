@@ -131,3 +131,25 @@ class TestFontColor:
     def test_font_color_invalid_rejected(self):
         with pytest.raises(ValueError):
             Network(font_color="red; } body { display:none }")
+
+
+class TestHighlightDegreeValidation:
+    def test_non_int_rejected(self):
+        with pytest.raises(ValueError):
+            Network(highlight_degree="2; alert(1)//")
+
+    def test_negative_rejected(self):
+        with pytest.raises(ValueError):
+            Network(highlight_degree=-1)
+
+    def test_float_rejected(self):
+        with pytest.raises(ValueError):
+            Network(highlight_degree=2.5)
+
+    def test_bool_rejected(self):
+        with pytest.raises(ValueError):
+            Network(highlight_degree=True)
+
+    def test_zero_accepted(self):
+        net = Network(highlight_degree=0)
+        assert net.highlight_degree == 0

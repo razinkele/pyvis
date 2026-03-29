@@ -200,7 +200,7 @@
              {% if legend and legend.enabled %}
              #network-legend {
                  position: absolute;
-                 {{ legend.position }}: 10px;
+                 {{ legend.position|e }}: 10px;
                  top: 10px;
                  width: {{ (legend.width * 100)|int }}%;
                  max-height: 80%;
@@ -472,7 +472,7 @@
         {% endif %}
 
         <script type="{{ 'module' if cdn_resources == 'remote_esm' else 'text/javascript' }}">
-                  var HIGHLIGHT_DEGREE = {{highlight_degree}};
+                  var HIGHLIGHT_DEGREE = {{highlight_degree|tojson|safe}};
 
               // initialize global variables.
               var edges;

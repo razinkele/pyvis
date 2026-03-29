@@ -135,6 +135,9 @@ class Network:
             if not isinstance(font_color, str) or not _CSS_COLOR_RE.match(font_color):
                 raise ValueError(f"Invalid CSS color for font_color: {font_color!r}")
 
+        if not isinstance(highlight_degree, int) or isinstance(highlight_degree, bool) or highlight_degree < 0:
+            raise ValueError(f"highlight_degree must be a non-negative integer, got {highlight_degree!r}")
+
         self.height = height
         self.width = width
         self.heading = heading
