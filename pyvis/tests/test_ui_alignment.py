@@ -60,3 +60,25 @@ class TestTooltipLinkOverride:
         net.add_edge(1, 2)
         html = net.generate_html()
         assert "showPopup" not in html
+
+
+class TestSelectNodeOptions:
+    def test_default_none(self):
+        net = Network()
+        assert net.select_node_options is None
+
+    def test_custom_options_in_html(self):
+        net = Network(select_menu=True, select_node_options={"maxOptions": 50, "placeholder": "Pick a node"})
+        net.add_node(1, label="A")
+        net.add_node(2, label="B")
+        net.add_edge(1, 2)
+        html = net.generate_html()
+        assert "50" in html
+        assert "Pick a node" in html
+
+    def test_unsafe_keys_filtered(self):
+        net = Network(select_menu=True, select_node_options={"onItemAdd": "alert(1)", "placeholder": "ok"})
+        net.add_node(1, label="A")
+        html = net.generate_html()
+        assert "alert(1)" not in html
+        assert "ok" in html

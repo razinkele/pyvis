@@ -487,6 +487,14 @@
               };
 
               {% if select_menu %}
+                  {% if select_node_options %}
+                  var _selectNodeDefaults = {
+                      create: false,
+                      sortField: { field: "text", direction: "asc" }
+                  };
+                  Object.assign(_selectNodeDefaults, {{select_node_options|tojson|safe}});
+                  new TomSelect("#select-node", _selectNodeDefaults);
+                  {% else %}
                   new TomSelect("#select-node",{
                       create: false,
                       sortField: {
@@ -494,6 +502,7 @@
                           direction: "asc"
                       }
                   });
+                  {% endif %}
               {%  endif %}
 
               {% if filter_menu %}

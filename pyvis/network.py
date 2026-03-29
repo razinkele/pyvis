@@ -71,7 +71,8 @@ class Network:
                  cdn_resources: str = "local",
                  edge_attribute_edit: bool = False,
                  highlight_degree: int = 2,
-                 tooltip_link_override: Optional[bool] = None):
+                 tooltip_link_override: Optional[bool] = None,
+                 select_node_options: Optional[dict] = None):
         """
         :param height: The height of the canvas
         :param width: The width of the canvas
@@ -153,6 +154,11 @@ class Network:
         self.edge_attribute_edit = edge_attribute_edit
         self.highlight_degree = highlight_degree
         self.tooltip_link_override = tooltip_link_override
+        _SAFE_TOMSELECT_KEYS = {"sortField", "maxOptions", "placeholder", "create", "closeAfterSelect", "hideSelected"}
+        if select_node_options is not None:
+            self.select_node_options = {k: v for k, v in select_node_options.items() if k in _SAFE_TOMSELECT_KEYS}
+        else:
+            self.select_node_options = None
         self.legend = None
         self.groups = {}
 
@@ -852,7 +858,8 @@ class Network:
                                     vis_esm_cdn=vis_config.VIS_ESM_UNPKG,
                                     legend=self.legend,
                                     groups=self.groups,
-                                    highlight_degree=self.highlight_degree
+                                    highlight_degree=self.highlight_degree,
+                                    select_node_options=self.select_node_options
                                     )
         return self.html
 
