@@ -59,22 +59,25 @@ def parse_version(v):
     parts = v.split(".")
     while len(parts) < 3:
         parts.append("0")
-    return [int(p) for p in parts]
+    try:
+        return [int(p) for p in parts]
+    except ValueError:
+        raise ValueError(
+            f"Cannot parse version '{v}': each part must be a plain integer (got parts {parts})"
+        )
 
 
 def bump(current, part):
     major, minor, patch = parse_version(current)
     if part == "major":
-        return f"{major + 1}.0"
+        return f"{major + 1}.0.0"
     elif part == "minor":
-        return f"{major}.{minor + 1}"
+        return f"{major}.{minor + 1}.0"
     elif part == "patch":
         return f"{major}.{minor}.{patch + 1}"
     else:
         if not re.match(r'^\d+\.\d+(\.\d+)?$', part):
-            raise ValueError(
-                f"Invalid explicit version {part!r}: must match \\d+\\.\\d+(\\.\\d+)?"
-            )
+            raise ValueError(f"Invalid version or bump type: {part!r}")
         return part
 
 
@@ -82,7 +85,7 @@ def get_last_tag():
     try:
         result = subprocess.run(
             ["git", "describe", "--tags", "--abbrev=0"],
-            capture_output=True, text=True, check=True, cwd=ROOT
+            capture_output=True, text=True, check=True, cwd=ROOT, timeout=60
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError:
@@ -93,7 +96,7 @@ def get_commits_since(tag):
     cmd = ["git", "log", "--format=%H%n%s%n%b%n---END---"]
     if tag:
         cmd.append(f"{tag}..HEAD")
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True, cwd=ROOT)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True, cwd=ROOT, timeout=60)
     commits = []
     raw = result.stdout.strip()
     if not raw:
@@ -225,11 +228,13 @@ def main():
     print(f"Version: {current} -> {new_version}")
 
     if not no_commit:
+        import os as _os
         test_dir = ROOT / "pyvis" / "tests"
+        test_env = {**_os.environ, "PYTHONPATH": str(ROOT)}
         test_result = subprocess.run(
             [sys.executable, "-m", "pytest", str(test_dir),
              "--ignore=" + str(test_dir / "test_html.py"), "-v"],
-            cwd=ROOT
+            cwd=ROOT, timeout=300, env=test_env
         )
         if test_result.returncode != 0:
             print("Tests failed! Aborting release.")
@@ -256,14 +261,14 @@ def main():
     files_to_stage = [str(VERSION_FILE), str(META_YAML), str(RECIPE_YAML)]
     if categorized:
         files_to_stage.append(str(CHANGELOG))
-    subprocess.run(["git", "add"] + files_to_stage, check=True, cwd=ROOT)
+    subprocess.run(["git", "add"] + files_to_stage, check=True, cwd=ROOT, timeout=60)
     subprocess.run(
         ["git", "commit", "-m", f"release: bump version to {new_version}"],
-        check=True, cwd=ROOT
+        check=True, cwd=ROOT, timeout=60
     )
     subprocess.run(
         ["git", "tag", "-a", f"v{new_version}", "-m", f"Release v{new_version}"],
-        check=True, cwd=ROOT
+        check=True, cwd=ROOT, timeout=60
     )
     print(f"\nDone! Created commit and tag v{new_version}")
     print(f"Push with: git push origin master --tags")

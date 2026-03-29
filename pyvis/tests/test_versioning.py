@@ -103,10 +103,10 @@ class TestBump:
         assert auto_version.bump("4.2", "patch") == "4.2.1"
 
     def test_minor(self):
-        assert auto_version.bump("4.2", "minor") == "4.3"
+        assert auto_version.bump("4.2", "minor") == "4.3.0"
 
     def test_major(self):
-        assert auto_version.bump("4.2", "major") == "5.0"
+        assert auto_version.bump("4.2", "major") == "5.0.0"
 
     def test_explicit(self):
         assert auto_version.bump("4.2", "4.5.1") == "4.5.1"
@@ -198,3 +198,45 @@ class TestValidateVersion:
         assert code == meta, f"code={code} != meta={meta}"
         assert code == recipe, f"code={code} != recipe={recipe}"
         assert code == changelog, f"code={code} != changelog={changelog}"
+
+
+class TestBumpThreeComponent:
+    def test_major_three_parts(self):
+        assert auto_version.bump("4.2", "major") == "5.0.0"
+
+    def test_minor_three_parts(self):
+        assert auto_version.bump("4.2", "minor") == "4.3.0"
+
+    def test_patch_still_works(self):
+        assert auto_version.bump("4.2.1", "patch") == "4.2.2"
+
+
+class TestParseVersionErrors:
+    def test_prerelease_rejected(self):
+        with pytest.raises(ValueError, match="plain integer"):
+            auto_version.parse_version("4.2.0a1")
+
+    def test_alpha_rejected(self):
+        with pytest.raises(ValueError, match="plain integer"):
+            auto_version.parse_version("4.2.0-beta")
+
+
+class TestBumpThreeComponent:
+    def test_major_three_parts(self):
+        assert auto_version.bump("4.2", "major") == "5.0.0"
+
+    def test_minor_three_parts(self):
+        assert auto_version.bump("4.2", "minor") == "4.3.0"
+
+    def test_patch_still_works(self):
+        assert auto_version.bump("4.2.1", "patch") == "4.2.2"
+
+
+class TestParseVersionErrors:
+    def test_prerelease_rejected(self):
+        with pytest.raises(ValueError, match="plain integer"):
+            auto_version.parse_version("4.2.0a1")
+
+    def test_alpha_rejected(self):
+        with pytest.raises(ValueError, match="plain integer"):
+            auto_version.parse_version("4.2.0-beta")
