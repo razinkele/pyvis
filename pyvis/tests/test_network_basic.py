@@ -821,3 +821,35 @@ def test_add_node_duplicate_warns():
         assert len(w) == 1
         assert "already exists" in str(w[0].message).lower()
     assert net.node_map[1]["label"] == "First"
+
+
+def test_get_network_json_includes_new_params():
+    """get_network_json must include all new UI params for Shiny."""
+    net = Network(highlight_degree=3, filter_exclude=["hidden"], font_color="red")
+    net.add_node(1, label="A")
+    data = net.get_network_json()
+    assert data["highlight_degree"] == 3
+    assert data["filter_exclude"] == ["hidden"]
+    assert data["font_color"] == "red"
+
+
+def test_font_color_does_not_overwrite_font_kwarg():
+    """font_color should merge into existing font dict, not replace it."""
+    net = Network(font_color="blue")
+    net.add_node(1, label="A", font={"size": 20})
+    node = net.node_map[1]
+    font = node.get("font", {})
+    assert isinstance(font, dict)
+    assert font.get("color") == "blue"
+    assert font.get("size") == 20
+
+
+def test_select_node_options_warns_on_stripped_keys():
+    """Stripping unsafe keys should produce a warning."""
+    import warnings
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        net = Network(select_node_options={"onItemAdd": "bad", "placeholder": "ok"})
+        assert len(w) == 1
+        assert "onItemAdd" in str(w[0].message)
+    assert net.select_node_options == {"placeholder": "ok"}

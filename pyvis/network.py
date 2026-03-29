@@ -44,6 +44,7 @@ _CSS_DIM_RE = re.compile(r'^\d+(\.\d+)?(px|%|em|rem|vh|vw)$')
 _CSS_COLOR_RE = re.compile(
     r'^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+|rgba?\(\s*[\d.,\s%]+\)|hsla?\(\s*[\d.,\s%]+\))$'
 )
+_SAFE_TOMSELECT_KEYS = frozenset({"sortField", "maxOptions", "placeholder", "create", "closeAfterSelect", "hideSelected"})
 
 
 class Network:
@@ -164,8 +165,13 @@ class Network:
         self.edge_attribute_edit = edge_attribute_edit
         self.highlight_degree = highlight_degree
         self.tooltip_link_override = tooltip_link_override
-        _SAFE_TOMSELECT_KEYS = {"sortField", "maxOptions", "placeholder", "create", "closeAfterSelect", "hideSelected"}
         if select_node_options is not None:
+            unknown = set(select_node_options) - _SAFE_TOMSELECT_KEYS
+            if unknown:
+                warnings.warn(
+                    f"select_node_options: keys {unknown} are not in the allowed set and were removed.",
+                    UserWarning, stacklevel=2
+                )
             self.select_node_options = {k: v for k, v in select_node_options.items() if k in _SAFE_TOMSELECT_KEYS}
         else:
             self.select_node_options = None
@@ -804,6 +810,11 @@ class Network:
             "edge_attribute_edit": self.edge_attribute_edit,
             "directed": self.directed,
             "bgcolor": self.bgcolor,
+            "highlight_degree": self.highlight_degree,
+            "select_node_options": self.select_node_options,
+            "filter_exclude": self.filter_exclude,
+            "font_color": self.font_color,
+            "tooltip_link_override": self.tooltip_link_override,
         }
 
     def save_graph(self, name):

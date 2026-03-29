@@ -21,4 +21,15 @@ class Node:
         self.options["label"] = label
         self.options["shape"] = shape
         if font_color is not None and font_color is not False:
-            self.options["font"] = dict(color=font_color)
+            existing_font = self.options.get("font", {})
+            if isinstance(existing_font, dict):
+                existing_font["color"] = font_color
+                self.options["font"] = existing_font
+            else:
+                import warnings
+                warnings.warn(
+                    f"font_color cannot be merged into string font value {existing_font!r}. "
+                    "The string font will be replaced with a dict containing the color.",
+                    UserWarning, stacklevel=3
+                )
+                self.options["font"] = {"color": font_color}
