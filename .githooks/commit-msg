@@ -1,0 +1,38 @@
+#!/bin/bash
+# Conventional commit message validation hook.
+# On master: rejects non-conforming messages.
+# On other branches: warns but allows.
+
+COMMIT_MSG_FILE=$1
+COMMIT_MSG=$(head -1 "$COMMIT_MSG_FILE")
+
+# Skip merge commits and fixup commits
+if echo "$COMMIT_MSG" | grep -qE "^(Merge|fixup!|squash!)"; then
+    exit 0
+fi
+
+PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?!?:\s*.+"
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+
+if ! echo "$COMMIT_MSG" | grep -qE "$PATTERN"; then
+    echo ""
+    echo "ERROR: Commit message does not follow Conventional Commits format."
+    echo ""
+    echo "  Expected: type(scope)?: description"
+    echo "  Got:      $COMMIT_MSG"
+    echo ""
+    echo "  Valid types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+    echo "  Examples:    fix: resolve null pointer"
+    echo "               feat(network): add highlight depth parameter"
+    echo "               fix!: breaking change in API"
+    echo ""
+
+    if [ "$BRANCH" = "master" ] || [ "$BRANCH" = "main" ]; then
+        echo "  Rejected (master branch enforces conventional commits)."
+        exit 1
+    else
+        echo "  Warning only (branch: $BRANCH). Commit allowed."
+        exit 0
+    fi
+fi
