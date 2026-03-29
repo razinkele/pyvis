@@ -76,25 +76,32 @@ class Network:
                  select_node_options: Optional[dict] = None,
                  filter_exclude: Optional[List[str]] = None):
         """
-        :param height: The height of the canvas
-        :param width: The width of the canvas
+        :param height: The height of the canvas (auto-converted to px if bare number).
+        :param width: The width of the canvas (auto-converted to px if bare number).
         :param directed: Whether or not to use a directed graph. This is false
                          by default.
         :param notebook: True if using jupyter notebook.
-        :param select_menu: sets the option to highlight nodes and the neighborhood
+        :param select_menu: Adds a dropdown menu to select and navigate to specific nodes.
         :param filter_menu: sets the option to filter nodes and edges based on attributes
         :param bgcolor: The background color of the canvas.
         :param cdn_resources: Where to pull resources for css and js files. Defaults to local.
-            Options ['local','in_line','remote'].
+            Options ['local','in_line','remote','remote_esm'].
             local: pull resources from local lib folder.
             in_line: insert lib resources as inline script tags.
             remote: pull resources from hash checked cdns.
-        :param edge_attribute_edit: Enable a button in the manipulation toolbar to edit edge attributes (color, width, label, etc.)
+            remote_esm: pull resources from CDN as ES modules.
+        :param edge_attribute_edit: Enables edge property editing modal on double-click. Default False.
         :param font_color: The color of the node labels text
-        :param layout: Use hierarchical layout if this is set
+        :param layout: Use hierarchical layout if True. Pass a LayoutOptions object for custom layout.
+        :param neighborhood_highlight: When True, clicking a node highlights its neighbors. Default False.
+        :param heading: Heading text displayed above the visualization. Default "".
+        :param highlight_degree: Degree of neighbors to highlight (default 2). Must be a non-negative integer.
+        :param tooltip_link_override: Override auto-detection of HTML tooltips. True forces on, False forces off, None auto-detects.
+        :param select_node_options: Dict of TomSelect options for node selector. Only safe keys accepted.
+        :param filter_exclude: List of node property names to exclude from filter menu.
 
-        :type height: num or str
-        :type width: num or str
+        :type height: str, int, or float
+        :type width: str, int, or float
         :type directed: bool
         :type notebook: bool
         :type select_menu: bool
@@ -855,9 +862,7 @@ class Network:
                         use_link_template = True
                         break
         if not notebook:
-            # with open(self.path) as html:
-            #     content = html.read()
-            template = self.templateEnv.get_template(self.path)  # Template(content)
+            template = self.templateEnv.get_template(self.path)
         else:
             template = self.template
 
@@ -993,8 +998,8 @@ class Network:
                 >>> net.show("nb.html")
 
 
-        :param path: the relative path pointing to a template html file
-        :type path: string
+        :param custom_template: If True, use a custom template file. Default False.
+        :param custom_template_path: Path to the custom template HTML file.
         """
         if custom_template:
             if not custom_template_path:
@@ -1002,9 +1007,7 @@ class Network:
                     "custom_template=True requires custom_template_path to be set"
                 )
             self.set_template(custom_template_path)
-        # with open(self.path) as html:
-        #     content = html.read()
-        self.template = self.templateEnv.get_template(self.path)  # Template(content)
+        self.template = self.templateEnv.get_template(self.path)
 
     def set_template(self, path_to_template: str):
         """

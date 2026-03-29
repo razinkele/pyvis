@@ -1,6 +1,6 @@
 """Typed option classes for vis-network edge configuration.
 
-Covers all ~80 leaf-level edge options from the vis-network API.
+Covers the vis-network edge options from the vis-network API.
 """
 from dataclasses import dataclass
 from typing import Optional, Union, Literal, ClassVar, Dict

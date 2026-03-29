@@ -1,6 +1,6 @@
 """Typed option classes for vis-network node configuration.
 
-Covers all ~85 leaf-level node options from the vis-network API.
+Covers the vis-network node options from the vis-network API.
 """
 from dataclasses import dataclass
 from typing import Optional, Union, Literal
@@ -122,7 +122,7 @@ class NodeOptions(OptionsBase):
     title: Optional[str] = None
     group: Optional[str] = None
     shape: Optional[NodeShape] = None
-    size: Optional[int] = None
+    size: Optional[Union[int, float]] = None
     value: Optional[int] = None
     level: Optional[int] = None
     mass: Optional[float] = None
