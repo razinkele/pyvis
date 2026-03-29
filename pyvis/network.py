@@ -142,7 +142,6 @@ class Network:
         self.height = height
         self.width = width
         self.heading = heading
-        self.html = ""
         self.shape = "dot"
         self.font_color = font_color
         self.directed = directed
@@ -150,12 +149,20 @@ class Network:
         self.use_DOT = False
         self.dot_lang = ""
         self.options = {}
-        if layout:
+        if layout is True:
             self.options["layout"] = {
                 "hierarchical": {"enabled": True},
                 "randomSeed": 0,
                 "improvedLayout": True,
             }
+        elif layout is not None and layout is not False:
+            if hasattr(layout, 'to_dict'):
+                self.options["layout"] = layout.to_dict()
+            else:
+                warnings.warn(
+                    f"layout= expected bool or LayoutOptions, got {type(layout).__name__}. Ignoring.",
+                    UserWarning, stacklevel=2
+                )
         self.widget = False
         self.template = None
         self.conf = False
@@ -862,7 +869,7 @@ class Network:
         else:
             physics_enabled = True
 
-        self.html = template.render(height=height,
+        html = template.render(height=height,
                                     width=width,
                                     nodes=nodes,
                                     edges=edges,
@@ -893,7 +900,7 @@ class Network:
                                     select_node_options=self.select_node_options,
                                     filter_exclude=self.filter_exclude
                                     )
-        return self.html
+        return html
 
     def write_html(self, name, local=True, notebook=False, open_browser=False):
         """
@@ -917,7 +924,7 @@ class Network:
             )
         getcwd_name = name
         check_html(getcwd_name)
-        self.html = self.generate_html(notebook=notebook)
+        html = self.generate_html(notebook=notebook)
 
         if self.cdn_resources == CDN_LOCAL:
             if not os.path.exists("lib"):
@@ -929,10 +936,10 @@ class Network:
             if not os.path.exists(os.getcwd()+f"/lib/{vis_config.LOCAL_LIB_DIR}"):
                 shutil.copytree(f"{os.path.dirname(__file__)}/templates/lib/{vis_config.LOCAL_LIB_DIR}", f"lib/{vis_config.LOCAL_LIB_DIR}")
             with open(getcwd_name, "w+", encoding="utf-8") as out:
-                out.write(self.html)
+                out.write(html)
         elif self.cdn_resources in [CDN_INLINE, CDN_REMOTE, CDN_REMOTE_ESM]:
             with open(getcwd_name, "w+", encoding="utf-8") as out:
-                out.write(self.html)
+                out.write(html)
         else:
             raise ValueError(
                 f"cdn_resources must be one of {VALID_CDN_RESOURCES}, "

@@ -82,8 +82,27 @@ def server(input, output, session):
 import json as _json
 import logging as _logging
 import os
+import re as _re
 from pathlib import Path
 from typing import Optional, Dict, Any, Union, List, Callable
+
+try:
+    from pyvis._version import __version__ as _PYVIS_VERSION
+except ImportError:
+    _PYVIS_VERSION = "0.0.0"
+
+_CSS_DIM_RE = _re.compile(r'^\d+(\.\d+)?(px|%|em|rem|vh|vw)$')
+
+
+def _validate_css_dim(value: str, name: str) -> str:
+    """Validate a CSS dimension value to prevent CSS injection."""
+    if isinstance(value, (int, float)):
+        value = f"{value}px"
+    elif isinstance(value, str) and value.isdigit():
+        value = f"{value}px"
+    if not isinstance(value, str) or not _CSS_DIM_RE.match(value):
+        raise ValueError(f"Invalid CSS dimension for {name}: {value!r}")
+    return value
 
 try:
     from shiny import ui, render, reactive, module
@@ -184,7 +203,7 @@ def _get_pyvis_dependency() -> 'List[HTMLDependency]':
         ),
         HTMLDependency(
             name="pyvis-shiny",
-            version="1.0.0",
+            version=_PYVIS_VERSION,
             source={"subdir": str(_BINDINGS_PATH)},
             script={"src": "bindings.js"},
             stylesheet={"href": "styles.css"},
@@ -229,15 +248,18 @@ def render_network(network: 'PyVisNetwork', height: str = "600px", width: str = 
             "Please install it with 'pip install shiny'."
         )
 
+    height = _validate_css_dim(height, "height")
+    width = _validate_css_dim(width, "width")
+
     # Import constants for CDN comparison
     from pyvis.network import CDN_LOCAL, CDN_INLINE
 
     # Ensure resources are compatible with iframe (inline or remote).
-    # Use shallow copy to avoid mutating the original network object.
-    # This prevents race conditions in concurrent async Shiny environments.
+    # Deep copy to avoid mutating the original and to prevent races
+    # if another coroutine modifies the network concurrently.
     if network.cdn_resources == CDN_LOCAL:
         import copy
-        net_copy = copy.copy(network)
+        net_copy = copy.deepcopy(network)
         net_copy.cdn_resources = CDN_INLINE
         html_content = net_copy.generate_html()
     else:
@@ -302,6 +324,9 @@ def output_pyvis_network(
         raise ImportError(
             "The 'shiny' package is required. Install with 'pip install shiny'."
         )
+
+    height = _validate_css_dim(height, "height")
+    width = _validate_css_dim(width, "width")
 
     resolved_id = resolve_id(id)
 
@@ -912,8 +937,17 @@ def _send_network_command(
         "command": command,
         "args": args or {}
     }
-    task = asyncio.create_task(session.send_custom_message("pyvis-command", message))
-    task.add_done_callback(_log_task_exception)
+    try:
+        loop = asyncio.get_running_loop()
+        task = loop.create_task(
+            session.send_custom_message("pyvis-command", message)
+        )
+        task.add_done_callback(_log_task_exception)
+    except RuntimeError:
+        raise RuntimeError(
+            f"_send_network_command requires a running async event loop; "
+            f"command '{command}' was not sent. Call from an async context."
+        )
 
 
 def network_select_nodes(
