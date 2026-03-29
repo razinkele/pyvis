@@ -3,7 +3,7 @@
 Covers the vis-network node options from the vis-network API.
 """
 from dataclasses import dataclass
-from typing import Optional, Union, Literal
+from typing import Optional, Union, Literal, List
 
 from .base import OptionsBase
 from .common import Font, Shadow, Scaling
@@ -92,12 +92,12 @@ class NodeMargin(OptionsBase):
 @dataclass
 class NodeShapeProperties(OptionsBase):
     """Fine-grained shape rendering options."""
-    borderDashes: Optional[Union[bool, list]] = None
+    borderDashes: Optional[Union[bool, List[int]]] = None
     borderRadius: Optional[int] = None
     interpolation: Optional[bool] = None
     useImageSize: Optional[bool] = None
     useBorderWithImage: Optional[bool] = None
-    coordinateOrigin: Optional[str] = None
+    coordinateOrigin: Optional[Literal['center', 'top-left']] = None
 
 
 @dataclass
@@ -111,7 +111,7 @@ class NodeWidthConstraint(OptionsBase):
 class NodeHeightConstraint(OptionsBase):
     """Constrain node height."""
     minimum: Optional[int] = None
-    valign: Optional[str] = None
+    valign: Optional[Literal['top', 'middle', 'bottom']] = None
 
 
 @dataclass

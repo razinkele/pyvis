@@ -870,6 +870,69 @@ def test_from_nx_warns_on_non_serializable():
         assert len(non_serial_warnings) >= 1
 
 
+def test_add_node_invalid_type_raises():
+    """Passing a non-str/int node ID should raise TypeError."""
+    net = Network()
+    with pytest.raises(TypeError):
+        net.add_node([1, 2], label="bad")
+
+
+def test_add_node_float_id_raises():
+    """Passing a float as node ID should raise TypeError."""
+    net = Network()
+    with pytest.raises(TypeError):
+        net.add_node(3.14, label="pi")
+
+
+def test_from_nx_invalid_graph_type_raises():
+    """from_nx with non-NetworkX object should raise TypeError."""
+    net = Network()
+    with pytest.raises(TypeError):
+        net.from_nx({"not": "a graph"})
+
+
+def test_neighbors_invalid_type_raises():
+    """neighbors with non-str/int node should raise TypeError."""
+    net = Network()
+    net.add_node(1, label="A")
+    with pytest.raises(TypeError):
+        net.neighbors([1])
+
+
+def test_neighbors_nonexistent_raises():
+    """neighbors with nonexistent node should raise ValueError."""
+    net = Network()
+    net.add_node(1, label="A")
+    with pytest.raises(ValueError):
+        net.neighbors(99)
+
+
+def test_add_legend_happy_path():
+    """add_legend with valid params should populate self.legend correctly."""
+    net = Network()
+    net.add_node(1, label="A", group="team1")
+    net.add_node(2, label="B", group="team2")
+    net.set_group("team1", color="red")
+    net.set_group("team2", color="blue")
+    net.add_legend(
+        use_groups=True,
+        add_nodes=[{"label": "Custom", "color": "green", "shape": "dot"}],
+        add_edges=[{"label": "Link", "color": "gray", "width": 2}],
+        position="right",
+        main="My Legend",
+        ncol=2,
+        width=0.3,
+    )
+    assert net.legend is not None
+    assert net.legend["enabled"] is True
+    assert net.legend["position"] == "right"
+    assert net.legend["main"] == "My Legend"
+    assert net.legend["ncol"] == 2
+    assert net.legend["width"] == 0.3
+    assert len(net.legend["addNodes"]) >= 1
+    assert len(net.legend["addEdges"]) >= 1
+
+
 def test_remove_edge_directed_then_readd():
     """After removing an edge in a directed graph, re-adding should succeed."""
     net = Network(directed=True)

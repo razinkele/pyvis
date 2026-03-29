@@ -54,7 +54,7 @@ The network automatically sends events to Shiny inputs:
 - `input.{output_id}_stabilized` - When physics stabilization finishes
 - `input.{output_id}_ready` - When network is fully initialized
 - `input.{output_id}_animationFinished` - When animation completes
-- `input.{output_id}_configChange` - When configurator changes options
+- `input.{output_id}_configChange` - When configurator changes options (requires configure widget enabled)
 
 Network Control (from Python):
 -----------------------------

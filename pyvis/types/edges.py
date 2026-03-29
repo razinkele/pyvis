@@ -3,7 +3,7 @@
 Covers the vis-network edge options from the vis-network API.
 """
 from dataclasses import dataclass
-from typing import Optional, Union, Literal, ClassVar, Dict
+from typing import Optional, Union, Literal, ClassVar, Dict, List
 
 from .base import OptionsBase
 from .common import Font, Shadow, Scaling
@@ -15,7 +15,7 @@ class EdgeColor(OptionsBase):
     color: Optional[str] = None
     highlight: Optional[str] = None
     hover: Optional[str] = None
-    inherit: Optional[Union[str, bool]] = None
+    inherit: Optional[Union[Literal['from', 'to', 'both'], bool]] = None
     opacity: Optional[float] = None
 
     def __post_init__(self):
@@ -66,7 +66,7 @@ class EdgeSmooth(OptionsBase):
         'straightCross', 'horizontal', 'vertical',
         'curvedCW', 'curvedCCW', 'cubicBezier',
     ]] = None
-    forceDirection: Optional[Union[str, bool]] = None
+    forceDirection: Optional[Union[Literal['horizontal', 'vertical', 'none'], bool]] = None
     roundness: Optional[float] = None
 
 
@@ -107,7 +107,7 @@ class EdgeOptions(OptionsBase):
     length: Optional[int] = None
     hidden: Optional[bool] = None
     physics: Optional[bool] = None
-    dashes: Optional[Union[bool, list]] = None
+    dashes: Optional[Union[bool, List[int]]] = None
     hoverWidth: Optional[float] = None
     selectionWidth: Optional[float] = None
     labelHighlightBold: Optional[bool] = None

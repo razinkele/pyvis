@@ -108,7 +108,7 @@ class Network:
         :type filter_menu: bool
         :type bgcolor: str
         :type font_color: str
-        :type layout: bool
+        :type layout: bool or LayoutOptions
         :type cdn_resources: str
         :type edge_attribute_edit: bool
         """
