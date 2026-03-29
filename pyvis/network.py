@@ -72,7 +72,8 @@ class Network:
                  edge_attribute_edit: bool = False,
                  highlight_degree: int = 2,
                  tooltip_link_override: Optional[bool] = None,
-                 select_node_options: Optional[dict] = None):
+                 select_node_options: Optional[dict] = None,
+                 filter_exclude: Optional[List[str]] = None):
         """
         :param height: The height of the canvas
         :param width: The width of the canvas
@@ -159,6 +160,7 @@ class Network:
             self.select_node_options = {k: v for k, v in select_node_options.items() if k in _SAFE_TOMSELECT_KEYS}
         else:
             self.select_node_options = None
+        self.filter_exclude = filter_exclude if filter_exclude is not None else ["hidden", "savedLabel", "hiddenLabel"]
         self.legend = None
         self.groups = {}
 
@@ -859,7 +861,8 @@ class Network:
                                     legend=self.legend,
                                     groups=self.groups,
                                     highlight_degree=self.highlight_degree,
-                                    select_node_options=self.select_node_options
+                                    select_node_options=self.select_node_options,
+                                    filter_exclude=self.filter_exclude
                                     )
         return self.html
 

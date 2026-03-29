@@ -565,6 +565,8 @@
                       onItemAdd: addValues()
                   });
 
+                  var FILTER_EXCLUDE = {{filter_exclude|tojson|safe}};
+
                   let addProperties = function() {
                       return function () {
                           // loops through the selected network item and adds the attributes to dropdown
@@ -586,8 +588,7 @@
                                   if (allNodes.hasOwnProperty(each)) {
                                       for (let eachProp in allNodes[each]) {
                                           if (allNodes[each].hasOwnProperty(eachProp)
-                                              && (eachProp !== 'hidden' && eachProp !== 'savedLabel'
-                                                  && eachProp !== 'hiddenLabel')) {
+                                              && !FILTER_EXCLUDE.includes(eachProp)) {
                                               propControl.addOption({id: eachProp, title: eachProp})
 
                                           }

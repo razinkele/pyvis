@@ -82,3 +82,27 @@ class TestSelectNodeOptions:
         html = net.generate_html()
         assert "alert(1)" not in html
         assert "ok" in html
+
+
+class TestFilterExclude:
+    def test_default_value(self):
+        net = Network()
+        assert net.filter_exclude == ["hidden", "savedLabel", "hiddenLabel"]
+
+    def test_custom_value(self):
+        net = Network(filter_exclude=["hidden", "custom_prop"])
+        assert net.filter_exclude == ["hidden", "custom_prop"]
+
+    def test_default_in_html(self):
+        net = Network(filter_menu=True)
+        net.add_node(1, label="A")
+        html = net.generate_html()
+        assert "FILTER_EXCLUDE" in html
+        assert '"hidden"' in html
+
+    def test_custom_in_html(self):
+        net = Network(filter_menu=True, filter_exclude=["internal", "temp"])
+        net.add_node(1, label="A")
+        html = net.generate_html()
+        assert '"internal"' in html
+        assert '"temp"' in html
