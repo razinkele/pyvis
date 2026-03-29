@@ -167,3 +167,34 @@ class TestUpdateChangelog:
         assert "### Fixed" in text
         assert "- bug fix" in text
         assert text.index("[4.3]") < text.index("[4.2]")
+
+
+import validate_version
+
+
+class TestValidateVersion:
+    def test_read_code_version(self):
+        ver = validate_version.read_code_version()
+        assert ver is not None
+        assert re.match(r'\d+\.\d+', ver)
+
+    def test_read_meta_version(self):
+        ver = validate_version.read_meta_version()
+        assert ver is not None
+
+    def test_read_recipe_version(self):
+        ver = validate_version.read_recipe_version()
+        assert ver is not None
+
+    def test_read_changelog_version(self):
+        ver = validate_version.read_changelog_version()
+        assert ver is not None
+
+    def test_all_versions_match(self):
+        code = validate_version.read_code_version()
+        meta = validate_version.read_meta_version()
+        recipe = validate_version.read_recipe_version()
+        changelog = validate_version.read_changelog_version()
+        assert code == meta, f"code={code} != meta={meta}"
+        assert code == recipe, f"code={code} != recipe={recipe}"
+        assert code == changelog, f"code={code} != changelog={changelog}"
