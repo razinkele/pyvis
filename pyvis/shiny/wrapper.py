@@ -529,7 +529,7 @@ if SHINY_AVAILABLE:
                           output_pyvis_network and @render_pyvis_network)
                 session: The Shiny session object
             """
-            self.output_id = output_id
+            self.output_id = resolve_id(output_id)
             self.session = session
         
         def _send_command(self, command: str, args: Optional[Dict[str, Any]] = None):
@@ -937,7 +937,7 @@ def _send_network_command(
     import asyncio
 
     message = {
-        "outputId": output_id,
+        "outputId": resolve_id(output_id),
         "command": command,
         "args": args or {}
     }

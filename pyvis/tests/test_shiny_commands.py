@@ -106,3 +106,24 @@ def test_controller_payload(fake_session, run_async, method, args, command, expe
     c = PyVisNetworkController("net", fake_session)
     run_async(getattr(c, method), *args)
     assert fake_session.last() == (command, expected, "net")
+
+
+# --- namespacing (M7) -------------------------------------------------------
+
+class TestNamespacing:
+    def test_standalone_resolves_module_namespace(self, fake_session, run_async):
+        from shiny._namespaces import namespace_context
+        with namespace_context("mod"):
+            run_async(w.network_fit, fake_session, "net")
+        assert fake_session.last()[2] == "mod-net"
+
+    def test_controller_resolves_at_construction(self, fake_session, run_async):
+        from shiny._namespaces import namespace_context
+        with namespace_context("mod"):
+            c = PyVisNetworkController("net", fake_session)
+        run_async(c.fit)
+        assert fake_session.last()[2] == "mod-net"
+
+    def test_no_namespace_is_unchanged(self, fake_session, run_async):
+        run_async(w.network_fit, fake_session, "net")
+        assert fake_session.last()[2] == "net"
