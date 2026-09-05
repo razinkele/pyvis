@@ -212,8 +212,7 @@ class UtilsTestCase(unittest.TestCase):
         self.assertRaises(ValueError, self.g.write_html, "4nodes.hltm")
         self.assertRaises(ValueError, self.g.write_html, "4nodes. htl")
         self.g.write_html("4nodes.html")
-        self.assertTrue("4nodes.html" in os.listdir("."))
-        os.remove("4nodes.html")
+        self.assertTrue(os.path.exists("4nodes.html"))
 
 
 class LayoutTestCase(unittest.TestCase):

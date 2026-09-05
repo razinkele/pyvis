@@ -194,14 +194,15 @@ class TestFalsyLabelBug:
         assert net.node_map[1]["label"] == 1
 
 
-def test_show_does_not_print(tmp_path, capsys):
-    """show() should not print debug output to stdout."""
+def test_show_does_not_print(tmp_path, capsys, no_browser):
+    """show() should not print debug output to stdout and must go through webbrowser.open."""
     net = Network()
     net.add_node(1)
     name = str(tmp_path / "test.html")
     net.show(name, notebook=False)
     captured = capsys.readouterr()
     assert name not in captured.out, "show() should not print the filename"
+    assert no_browser == [name]
 
 
 def test_from_nx_no_show_edge_weights_param():
