@@ -22,3 +22,12 @@ class TestGenerateHtmlInputs:
         net = Network()
         net.add_node(1, title=42)
         assert net.generate_html()
+
+
+class TestNotebookTemplate:
+    def test_write_html_notebook_without_prep(self, tmp_path):
+        net = Network()
+        net.add_node(1)
+        out = tmp_path / "nb.html"
+        net.write_html(str(out), notebook=True)
+        assert out.read_text(encoding="utf-8").strip()

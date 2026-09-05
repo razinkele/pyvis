@@ -871,6 +871,8 @@ class Network:
         if not notebook:
             template = self.templateEnv.get_template(self.path)
         else:
+            if self.template is None:
+                self.prep_notebook()
             template = self.template
 
         nodes, edges, heading, height, width, options = self.get_network_data()
