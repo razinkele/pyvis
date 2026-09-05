@@ -1,41 +1,41 @@
-import asyncio
 import logging
+from unittest.mock import Mock
 
 import pytest
 from pyvis.shiny.wrapper import _log_task_exception
 
 
+def _fake_task(exc=None, cancelled=False):
+    """Build an object with the asyncio.Task surface _log_task_exception uses."""
+    task = Mock()
+    task.cancelled.return_value = cancelled
+    task.exception.return_value = exc
+    return task
+
+
 class TestLogTaskException:
     def test_exception_logged_at_error_level(self, caplog):
         """Failed async tasks should be logged at ERROR, not WARNING."""
-        async def failing_task():
-            raise RuntimeError("connection lost")
-
-        loop = asyncio.new_event_loop()
-        task = loop.create_task(failing_task())
-        try:
-            loop.run_until_complete(task)
-        except RuntimeError:
-            pass
-        finally:
-            with caplog.at_level(logging.ERROR, logger="pyvis.shiny"):
-                _log_task_exception(task)
-            assert "connection lost" in caplog.text
-            assert any(r.levelno == logging.ERROR for r in caplog.records)
-            loop.close()
+        task = _fake_task(RuntimeError("connection lost"))
+        with caplog.at_level(logging.ERROR, logger="pyvis.shiny"):
+            _log_task_exception(task)
+        assert "connection lost" in caplog.text
+        assert any(r.levelno == logging.ERROR for r in caplog.records)
 
     def test_successful_task_no_log(self, caplog):
         """Successful tasks should not produce any log output."""
-        async def ok_task():
-            return "ok"
-
-        loop = asyncio.new_event_loop()
-        task = loop.create_task(ok_task())
-        loop.run_until_complete(task)
+        task = _fake_task(None)
         with caplog.at_level(logging.DEBUG, logger="pyvis.shiny"):
             _log_task_exception(task)
         assert caplog.text == ""
-        loop.close()
+
+    def test_cancelled_task_no_log(self, caplog):
+        """Cancelled tasks must not call exception() (it would raise)."""
+        task = _fake_task(cancelled=True)
+        task.exception.side_effect = AssertionError("must not be called")
+        with caplog.at_level(logging.DEBUG, logger="pyvis.shiny"):
+            _log_task_exception(task)
+        assert caplog.text == ""
 
 
 class TestRenderNetworkNoMutation:
