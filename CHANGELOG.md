@@ -2,6 +2,80 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+Follow-up review pass over the 4.2 codebase: 30 tasks fixing rendering, the Shiny
+integration, typed options, packaging, and docs, backed by a hardened test suite
+(482 tests).
+
+### Fixed
+- **Core rendering:** `from_nx()` now detects cycles and coerces numpy scalars
+  recursively inside nested lists/dicts instead of silently dropping attributes;
+  edge keys and dict-based `add_node()`/`add_edge()` options are validated and
+  applied correctly (including `font_color` on the typed path).
+- **Core rendering:** `get_network_json()` is isolated from caller mutation;
+  `generate_html()` loads the notebook template lazily; nodes render correctly
+  when `physics` is a bare `bool` or a title is not a `str`.
+- **Packaging:** local `lib/` resources are copied beside the generated HTML file
+  and refreshed when stale, instead of silently going missing or going stale.
+- **Shiny module:** the network output releases its listeners and registry entry
+  when cleared or removed, preventing leaks across re-renders; null command
+  arguments, command queueing, container sizing, config fallback, and
+  `configChange` handling were all corrected.
+- **Shiny module:** numeric node ids survive `updateData`, search-restore, and
+  edge-editing round trips; the physics toggle is applied to a copy of the
+  options and only when the control is actually rendered.
+- **Shiny module:** module networks are now built from the documented dict spec;
+  dead `configure()` plumbing was removed and the edge-editing example repaired.
+  `PyVisNetworkController` now delegates to the standalone `network_*` functions
+  instead of duplicating their logic, and module/controller namespace resolution
+  was fixed.
+- **Typed options:** every `Literal` field is now validated at construction time
+  and raises `ValueError` on an invalid value (previously only a couple of
+  fields were checked); `Font` align values and arrow-type sets were corrected.
+- **Docs:** README and API reference examples were corrected (`update_data`
+  and package docstrings, the output config attribute name, stale dataclass
+  counts, stale session summaries, and drifted method signatures — now pinned
+  by a test that parses every documented parameter, not just the first on a
+  line).
+
+### Changed
+- **Behavior:** `Network(height=...)` no longer sizes the Shiny output
+  container — only `output_pyvis_network(height=...)` /
+  `@render_pyvis_network(height=...)` do. This also fixes `fill=True`, which
+  could never work reliably before.
+- **Behavior:** unset renderer options now inherit from the output's
+  `data-pyvis-config` instead of the renderer's old hard-coded defaults.
+- **Packaging:** `ipython` moved from a hard dependency to the `pyvis[notebook]`
+  extra on PyPI (still bundled by conda); `show(notebook=True)` raises a clear
+  `ImportError` naming the extra when it is missing.
+- **Packaging:** Python floor is now consistently 3.9 across `pyproject.toml`,
+  CI, and docs; the CI matrix was widened and a `pyvis[test]` extra was added.
+- **Release tooling:** explicit version bumps now update `CHANGELOG.md` and use
+  a conventional commit type; `## [Unreleased]` sections are folded into the
+  new release heading automatically. The release CI validates the tag against
+  the package version and fails on missing secrets; conda publishing now runs
+  from the tag workflow.
+
+### Removed
+- **Shiny module / JS bindings:** the `cluster()` command was removed from the
+  Shiny controller and the standalone command functions — vis.js requires a
+  `joinCondition` function for clustering, which cannot cross the JSON
+  boundary between Python and JavaScript, so it never actually worked.
+  `cluster_by_connection()`, `cluster_by_hubsize()`, and `open_cluster()`
+  remain and are unaffected.
+- **Repo hygiene:** untracked build artifacts (`lib/`, generated HTML,
+  `__pycache__`) were removed from version control and `.gitignore` was
+  aligned with the tracked paths; stale session-summary docs and an unused
+  animation template were deleted.
+
+### Testing
+- Added a fake-session harness pinning every Shiny command payload, scoped
+  optional-dependency skips to only the tests that need them, replaced
+  vacuous assertions and duplicated tests, and made the whole suite run from
+  a temp `cwd` with the browser stubbed so it no longer depends on ambient
+  state. The suite now runs 482 tests, all passing.
+
 ## [4.2] - 2026-03-28
 
 ### Security
