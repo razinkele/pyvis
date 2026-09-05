@@ -36,8 +36,8 @@ class NodeColor(OptionsBase):
     """Node color configuration with state variants."""
     border: Optional[str] = None
     background: Optional[str] = None
-    highlight: Optional[ColorHighlight] = None
-    hover: Optional[ColorHover] = None
+    highlight: Optional[Union[str, ColorHighlight]] = None
+    hover: Optional[Union[str, ColorHover]] = None
 
 
 @dataclass

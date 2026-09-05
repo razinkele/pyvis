@@ -1,6 +1,6 @@
 """Top-level NetworkOptions that composes all vis-network sub-options."""
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from .base import OptionsBase
 from .nodes import NodeOptions
@@ -22,6 +22,7 @@ class NetworkOptions(OptionsBase):
     width: Optional[str] = None
     height: Optional[str] = None
     locale: Optional[str] = None
+    locales: Optional[Dict[str, Any]] = None
     clickToUse: Optional[bool] = None
     configure: Optional[ConfigureOptions] = None
     nodes: Optional[NodeOptions] = None

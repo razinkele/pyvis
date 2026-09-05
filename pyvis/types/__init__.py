@@ -14,7 +14,7 @@ from .nodes import (
     NodeShape,
 )
 from .edges import (
-    EdgeOptions, EdgeColor, EdgeChosen, EdgeArrows, ArrowConfig,
+    EdgeOptions, EdgeColor, EdgeChosen, EdgeArrows, ArrowConfig, EdgeBackground,
     EdgeSmooth, EdgeSelfReference, EdgeEndPointOffset, EdgeWidthConstraint,
 )
 from .physics import (
@@ -42,7 +42,7 @@ __all__ = [
     'NodeImagePadding', 'NodeMargin', 'NodeShapeProperties',
     'NodeWidthConstraint', 'NodeHeightConstraint', 'NodeShape',
     # Edge
-    'EdgeOptions', 'EdgeColor', 'EdgeChosen', 'EdgeArrows', 'ArrowConfig',
+    'EdgeOptions', 'EdgeColor', 'EdgeChosen', 'EdgeArrows', 'ArrowConfig', 'EdgeBackground',
     'EdgeSmooth', 'EdgeSelfReference', 'EdgeEndPointOffset', 'EdgeWidthConstraint',
     # Physics
     'PhysicsOptions', 'BarnesHut', 'ForceAtlas2Based', 'Repulsion',

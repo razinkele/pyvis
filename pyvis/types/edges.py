@@ -3,10 +3,19 @@
 Covers the vis-network edge options from the vis-network API.
 """
 from dataclasses import dataclass
-from typing import Optional, Union, Literal, ClassVar, Dict, List
+from typing import Any, Optional, Union, Literal, ClassVar, Dict, List
 
 from .base import OptionsBase
 from .common import Font, Shadow, Scaling
+
+
+@dataclass
+class EdgeBackground(OptionsBase):
+    """Edge background (halo behind the line/label)."""
+    enabled: Optional[bool] = None
+    color: Optional[str] = None
+    size: Optional[int] = None
+    dashes: Optional[Union[bool, List[int]]] = None
 
 
 @dataclass
@@ -127,3 +136,4 @@ class EdgeOptions(OptionsBase):
     selfReference: Optional[EdgeSelfReference] = None
     endPointOffset: Optional[EdgeEndPointOffset] = None
     widthConstraint: Optional[Union[bool, int, EdgeWidthConstraint]] = None
+    background: Optional[Union[bool, EdgeBackground, Dict[str, Any]]] = None

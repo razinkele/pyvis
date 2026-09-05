@@ -79,3 +79,27 @@ def test_renames_validation_is_per_class():
     assert Parent(a=1).to_dict() == {"alpha": 1}      # sets Parent._renames_validated = True
     with pytest.raises(TypeError, match="missing"):
         Child(b=1).to_dict()                          # before the fix: inherits the flag, no error
+
+
+class TestNewFields:
+    def test_edge_background(self):
+        assert EdgeOptions(background={"enabled": True, "color": "#eee"}).to_dict()["background"]["enabled"] is True
+
+    def test_node_color_highlight_and_hover_accept_string(self):
+        """L15: dataclasses do not enforce annotations, so check the hint itself."""
+        from typing import get_args, get_type_hints
+        from pyvis.types.nodes import NodeColor
+        hints = get_type_hints(NodeColor)
+        assert str in get_args(hints["highlight"])   # before the fix: (ColorHighlight, NoneType)
+        assert str in get_args(hints["hover"])
+        assert NodeColor(highlight="#f00", hover="#0f0").to_dict() == {"highlight": "#f00", "hover": "#0f0"}
+
+    def test_network_locales_and_control_node_style(self):
+        from pyvis.types import NetworkOptions, ManipulationOptions
+        opts = NetworkOptions(
+            locale="de",
+            manipulation=ManipulationOptions(controlNodeStyle={"shape": "dot"}),
+        )
+        d = opts.to_dict()
+        assert d["locale"] == "de"
+        assert d["manipulation"]["controlNodeStyle"] == {"shape": "dot"}

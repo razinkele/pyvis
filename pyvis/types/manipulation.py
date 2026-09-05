@@ -1,6 +1,6 @@
 """Typed option classes for vis-network manipulation toolbar."""
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from .base import OptionsBase
 
@@ -15,3 +15,4 @@ class ManipulationOptions(OptionsBase):
     editEdge: Optional[bool] = None
     deleteNode: Optional[bool] = None
     deleteEdge: Optional[bool] = None
+    controlNodeStyle: Optional[Dict[str, Any]] = None
