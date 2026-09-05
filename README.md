@@ -1,6 +1,6 @@
 # PyVis — Interactive Network Visualization for Python
 
-![](pyvis/source/tut.gif?raw=true)
+![](docs/tut.gif?raw=true)
 
 PyVis is a Python library for creating and visualizing interactive network graphs, built on top of the [vis.js](https://visjs.github.io/vis-network/docs/network/) JavaScript library. This edition adds type-safe configuration, Shiny for Python integration, security hardening, and performance optimizations over the [upstream project](https://github.com/WestHealth/pyvis).
 
@@ -8,7 +8,7 @@ PyVis is a Python library for creating and visualizing interactive network graph
 
 - **Interactive visualizations** — Pan, zoom, drag nodes, hover tooltips, all in the browser
 - **NetworkX integration** — Convert NetworkX graphs directly with `from_nx()`
-- **Type-safe options** — 46 Python dataclasses covering 100% of the vis-network configuration surface
+- **Type-safe options** — 44 Python dataclasses covering 100% of the vis-network configuration surface
 - **Shiny for Python** — Full bidirectional integration with event handling, viewport control, and live data updates
 - **Multiple physics engines** — Barnes-Hut, Force Atlas 2, repulsion, and hierarchical repulsion
 - **Jupyter support** — Render networks inline in Jupyter notebooks
@@ -113,7 +113,7 @@ net.add_edge(1, 2)
 net.show("typed.html")
 ```
 
-The `pyvis.types` module provides 46 dataclasses covering nodes, edges, physics, layout, interaction, configuration, and manipulation — the full vis-network API surface.
+The `pyvis.types` module provides 44 dataclasses covering nodes, edges, physics, layout, interaction, configuration, and manipulation — the full vis-network API surface.
 
 ## Shiny for Python Integration
 
@@ -182,7 +182,7 @@ See the [Shiny Integration Guide](docs/SHINY_INTEGRATION_GUIDE.md) for complete 
 pytest pyvis/tests/ --ignore=pyvis/tests/test_html.py -v
 ```
 
-259 tests covering core network operations, typed options, Shiny integration, security, error handling, and regression tests for edge cases.
+The suite has 473 tests (run `pytest --co` for the current count) covering core network operations, typed options, Shiny integration, security, error handling, and regression tests for edge cases.
 
 ## Versioning
 
@@ -203,11 +203,11 @@ pyvis/
     edge.py             # Edge representation
     _version.py         # Single source of truth for version
     utils.py            # Validation utilities
-    types/              # Type-safe dataclass options (46 classes)
+    types/              # Type-safe dataclass options (44 classes)
     shiny/              # Shiny for Python integration
         wrapper.py      # Controller, standalone functions, rendering
         bindings.js     # JavaScript binding for vis-network
-    tests/              # 259 tests across 20 modules
+    tests/              # 473 tests across 27 modules (see `pytest --co` for current count)
 auto_version.py         # Version bump + changelog + tag script
 ```
 

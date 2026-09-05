@@ -22,6 +22,33 @@ pip install pyvis shiny
 
 ## Quick Start
 
+### Minimal Example
+
+For a quick, static render with no event handling, use the standalone `render_network()` function:
+
+```python
+from shiny import App, ui, render
+from pyvis.network import Network, CDN_REMOTE
+from pyvis.shiny import render_network
+
+app_ui = ui.page_fluid(
+    ui.h2("My First PyVis Network"),
+    ui.output_ui("network")
+)
+
+def server(input, output, session):
+    @render.ui
+    def network():
+        with Network(cdn_resources=CDN_REMOTE) as net:
+            net.add_nodes([1, 2, 3, 4, 5])
+            net.add_edges([(1, 2), (2, 3), (3, 4), (4, 5), (5, 1)])
+            return render_network(net, height="500px")
+
+app = App(app_ui, server)
+```
+
+Run it with `shiny run app.py` and open `http://localhost:8000`.
+
 ### Basic Network with Event Handling
 
 ```python
