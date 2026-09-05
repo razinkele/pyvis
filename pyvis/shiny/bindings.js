@@ -40,6 +40,50 @@ if (typeof Shiny !== 'undefined') {
         }
     }
 
+    // Tear down a previous network instance: removes global listeners,
+    // deregisters DataSet handlers, disconnects the ResizeObserver, destroys
+    // the vis.js network, and clears the registry entry.
+    function pyvisDestroy(outputId) {
+        const prev = window.pyvisNetworks[outputId];
+        if (!prev) return;
+        // Remove global keydown handler (Esc for modals)
+        if (prev._escHandler) {
+            document.removeEventListener('keydown', prev._escHandler);
+        }
+        // Deregister DataSet listeners
+        if (prev.nodes && prev._statusHandler) {
+            prev.nodes.off('*', prev._statusHandler);
+        }
+        if (prev.edges && prev._statusHandler) {
+            prev.edges.off('*', prev._statusHandler);
+        }
+        // Clear DataSets
+        if (prev.nodes) prev.nodes.clear();
+        if (prev.edges) prev.edges.clear();
+        // Disconnect resize observer
+        if (prev.resizeObserver) prev.resizeObserver.disconnect();
+        // Destroy vis.js network (removes its own event handlers)
+        if (prev.network) prev.network.destroy();
+        delete window.pyvisNetworks[outputId];
+    }
+
+    // Lazily create (once) a MutationObserver that watches for output
+    // elements being removed from the DOM (e.g. Shiny's remove_ui) and
+    // tears down the corresponding network instance. Must be called from
+    // inside renderValue, never at module scope: bindings.js is loaded in
+    // <head> as an HTMLDependency, where document.body is null and
+    // observe(null) would throw and abort the whole binding registration.
+    function pyvisEnsureRemovalObserver() {
+        if (window.__pyvisMutationObserver) return;
+        window.__pyvisMutationObserver = new MutationObserver(function() {
+            Object.keys(window.pyvisNetworks).forEach(function(id) {
+                var ref = window.pyvisNetworks[id];
+                if (ref && ref.container && !document.contains(ref.container)) pyvisDestroy(id);
+            });
+        });
+        window.__pyvisMutationObserver.observe(document.documentElement, { childList: true, subtree: true });
+    }
+
     class PyVisOutputBinding extends Shiny.OutputBinding {
 
         find(scope) {
@@ -47,12 +91,15 @@ if (typeof Shiny !== 'undefined') {
         }
 
         renderValue(el, payload) {
+            const outputId = el.id;
+            pyvisEnsureRemovalObserver();
+
             if (!payload) {
+                pyvisDestroy(outputId);
                 el.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No network data</p>';
                 return;
             }
 
-            const outputId = el.id;
             var datasetConfig = {};
             if (el.dataset.pyvisConfig) {
                 try { datasetConfig = JSON.parse(el.dataset.pyvisConfig) || {}; } catch (e) { datasetConfig = {}; }
@@ -68,27 +115,7 @@ if (typeof Shiny !== 'undefined') {
             const enabledEvents = config.events || null; // null = all
 
             // Clean up previous instance
-            if (window.pyvisNetworks[outputId]) {
-                const prev = window.pyvisNetworks[outputId];
-                // Remove global keydown handler (Esc for modals)
-                if (prev._escHandler) {
-                    document.removeEventListener('keydown', prev._escHandler);
-                }
-                // Deregister DataSet listeners
-                if (prev.nodes && prev._statusHandler) {
-                    prev.nodes.off('*', prev._statusHandler);
-                }
-                if (prev.edges && prev._statusHandler) {
-                    prev.edges.off('*', prev._statusHandler);
-                }
-                // Clear DataSets
-                if (prev.nodes) prev.nodes.clear();
-                if (prev.edges) prev.edges.clear();
-                // Disconnect resize observer
-                if (prev.resizeObserver) prev.resizeObserver.disconnect();
-                // Destroy vis.js network (removes its own event handlers)
-                if (prev.network) prev.network.destroy();
-            }
+            pyvisDestroy(outputId);
 
             // Build container HTML
             el.innerHTML = '';

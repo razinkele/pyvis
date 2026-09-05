@@ -148,3 +148,18 @@ class TestCommandRobustness:
             "() => window.pyvisNetworks['net'].network.listeners('configChange').length"
         )
         assert n == 1
+
+
+class TestCleanup:
+    def test_null_payload_cleans_up_previous_instance(self, pyvis_page):
+        render(pyvis_page, [{"id": 1}], [])
+        pyvis_page.evaluate(
+            "() => window.__pyvisBinding.renderValue(document.getElementById('net'), null)"
+        )
+        assert pyvis_page.evaluate("() => window.pyvisNetworks['net']") is None
+
+    def test_removing_element_disconnects_observers(self, pyvis_page):
+        render(pyvis_page, [{"id": 1}], [])
+        pyvis_page.evaluate("() => document.getElementById('net').remove()")
+        pyvis_page.wait_for_timeout(50)
+        assert pyvis_page.evaluate("() => window.pyvisNetworks['net']") is None

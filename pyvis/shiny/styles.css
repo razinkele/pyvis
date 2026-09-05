@@ -128,11 +128,6 @@
     background: var(--pyvis-control-hover);
 }
 
-.pyvis-btn-icon {
-    font-size: 14px;
-    line-height: 1;
-}
-
 /* === Network Canvas === */
 .pyvis-network-canvas {
     flex: 1;
