@@ -6,6 +6,7 @@ directed and undirected graphs, various physics simulations, and integration
 with NetworkX and Jupyter notebooks.
 """
 
+import copy
 import json
 import logging
 import numbers
@@ -31,7 +32,20 @@ __all__ = ['Network']
 logger = logging.getLogger(__name__)
 
 # Constants for node attributes
-VALID_BATCH_NODE_ARGS = ["size", "value", "title", "x", "y", "label", "color", "shape"]
+VALID_BATCH_NODE_ARGS = ["size", "value", "title", "x", "y", "label", "color", "shape", "group"]
+
+
+def _edge_key(source, to, directed):
+    """Build a hashable key for edge deduplication.
+
+    For undirected graphs, uses a frozenset of (type name, id) pairs so
+    that ids of different types (e.g. 1 and '1') are never conflated,
+    regardless of call order.
+    """
+    if directed:
+        return (source, to)
+    return frozenset(((type(source).__name__, source), (type(to).__name__, to)))
+
 
 # Constants for CDN resources
 CDN_LOCAL = "local"
@@ -151,7 +165,7 @@ class Network:
         :param neighborhood_highlight: When True, clicking a node highlights its neighbors. Default False.
         :param heading: Heading text displayed above the visualization. Default "".
         :param highlight_degree: Degree of neighbors to highlight (default 2). Must be a non-negative integer.
-        :param tooltip_link_override: Override auto-detection of HTML tooltips. True forces on, False forces off, None auto-detects.
+        :param tooltip_link_override: Override auto-detection of link tooltips (titles containing "href"). True forces on, False forces off, None auto-detects.
         :param select_node_options: Dict of TomSelect options for node selector. Only safe keys accepted.
         :param filter_exclude: List of node property names to exclude from filter menu.
 
@@ -323,8 +337,8 @@ class Network:
         """
         Exit context manager - cleanup resources.
 
-        Automatically cleans up temporary HTML files and caches on exit.
-        Does not suppress exceptions.
+        Clears the adjacency-list cache. Does not delete files and does
+        not suppress exceptions.
         """
         # Clear caches to free memory
         self._adj_list_cache = None
@@ -409,8 +423,8 @@ class Network:
                      triangleDown, square and icon.
 
         :param title: Title to be displayed when the user hovers over the node.
-                      The title can be an HTML element or a string containing
-                      plain text or HTML.
+                      The title is rendered as plain text; HTML is not
+                      interpreted.
 
         :param value: When a value is set, the nodes will be scaled using the
                       options in the scaling object defined above.
@@ -444,7 +458,7 @@ class Network:
         :type physics: bool (optional)
         :type shape: str (optional)
         :type size: num (optional)
-        :type title: str or html element (optional)
+        :type title: str (optional)
         :type value: num (optional)
         :type x: num (optional)
         :type y: num (optional)
@@ -540,7 +554,7 @@ class Network:
                 # Single options applied to all nodes
                 opts_dict = options.to_dict()
                 for node in nodes:
-                    self.add_node(node, **opts_dict)
+                    self.add_node(node, **copy.deepcopy(opts_dict))
                 return
             elif isinstance(options, list):
                 if len(options) != len(nodes):
@@ -625,11 +639,7 @@ class Network:
             raise ValueError(f"non existent node '{to}'")
 
         # O(1) duplicate detection using edge set
-        if self.directed:
-            edge_key = (source, to)
-        else:
-            # For undirected graphs, use sorted tuple for consistent key
-            edge_key = tuple(sorted([source, to], key=lambda x: str(x)))
+        edge_key = _edge_key(source, to, self.directed)
 
         if edge_key not in self._edge_set:
             if options is not None:
@@ -810,12 +820,7 @@ class Network:
         for edge in self.edges:
             if edge['from'] == n_id or edge['to'] == n_id:
                 # Remove from edge set
-                if self.directed:
-                    edge_key = (edge['from'], edge['to'])
-                else:
-                    edge_key = tuple(sorted(
-                        [edge['from'], edge['to']], key=lambda x: str(x)
-                    ))
+                edge_key = _edge_key(edge['from'], edge['to'], self.directed)
                 self._edge_set.discard(edge_key)
             else:
                 edges_to_keep.append(edge)
@@ -846,12 +851,7 @@ class Network:
                          (edge['from'] == to and edge['to'] == source))
             if match:
                 self.edges.pop(i)
-                if self.directed:
-                    edge_key = (source, to)
-                else:
-                    edge_key = tuple(sorted(
-                        [source, to], key=lambda x: str(x)
-                    ))
+                edge_key = _edge_key(source, to, self.directed)
                 self._edge_set.discard(edge_key)
                 self._adj_list_cache = None
                 return
@@ -890,10 +890,9 @@ class Network:
         """
         nodes, edges, heading, height, width, options = self.get_network_data()
 
-        import copy
         return {
-            "nodes": [dict(n) for n in nodes],
-            "edges": [dict(e) for e in edges],
+            "nodes": copy.deepcopy(nodes),
+            "edges": copy.deepcopy(edges),
             "options": copy.deepcopy(options),
             "heading": heading,
             "height": height,
@@ -907,8 +906,8 @@ class Network:
             "directed": self.directed,
             "bgcolor": self.bgcolor,
             "highlight_degree": self.highlight_degree,
-            "select_node_options": self.select_node_options,
-            "filter_exclude": self.filter_exclude,
+            "select_node_options": copy.deepcopy(self.select_node_options),
+            "filter_exclude": copy.deepcopy(self.filter_exclude),
             "font_color": self.font_color,
             "tooltip_link_override": self.tooltip_link_override,
         }
@@ -1148,7 +1147,7 @@ class Network:
         """
         if not os.path.isfile(dot):
             raise FileNotFoundError(f"DOT file not found: {dot!r}")
-        with open(dot, "r") as file:
+        with open(dot, "r", encoding="utf-8") as file:
             s = file.read()
         if not s.strip():
             raise ValueError(f"DOT file is empty: {dot!r}")
@@ -1275,7 +1274,8 @@ class Network:
                             node_data[n]['size'] = default_node_size
                         node_data[n]['size'] = float(node_size_transf(node_data[n]['size']))
                         processed_nodes.add(n)
-                        self.add_node(n, **node_data[n])
+                        attrs = {k: v for k, v in node_data[n].items() if k not in ("options", "font_color", "n_id")}
+                        self.add_node(n, **attrs)
 
                 # Only inject weight when user has provided neither value nor width
                 if "value" not in e[2] and "width" not in e[2]:
@@ -1293,7 +1293,8 @@ class Network:
             if 'size' not in data:
                 data['size'] = default_node_size
             data['size'] = float(node_size_transf(data['size']))
-            self.add_node(node, **data)
+            attrs = {k: v for k, v in data.items() if k not in ("options", "font_color", "n_id")}
+            self.add_node(node, **attrs)
 
     def get_nodes(self) -> List[Union[str, int]]:
         """
