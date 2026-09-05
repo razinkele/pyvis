@@ -10,6 +10,39 @@ from pyvis.network import Network
 DOC = Path(__file__).resolve().parents[2] / "docs" / "API_REFERENCE.md"
 
 
+_OPENERS = {"(": ")", "[": "]", "{": "}"}
+_CLOSERS = set(_OPENERS.values())
+
+
+def split_params(signature_text):
+    """Split a parameter list on the commas that separate parameters.
+
+    Commas nested inside brackets (``Dict[str, Any]``) or inside a quoted
+    default (``sep=", "``) do not separate parameters, so track bracket depth
+    and quote state rather than calling ``str.split(",")``.
+    """
+    parts, current, depth, quote = [], [], 0, None
+    for ch in signature_text:
+        if quote is not None:
+            current.append(ch)
+            if ch == quote:
+                quote = None
+            continue
+        if ch in ("'", '"'):
+            quote = ch
+        elif ch in _OPENERS:
+            depth += 1
+        elif ch in _CLOSERS:
+            depth -= 1
+        elif ch == "," and depth == 0:
+            parts.append("".join(current))
+            current = []
+            continue
+        current.append(ch)
+    parts.append("".join(current))
+    return [p for p in (part.strip() for part in parts) if p]
+
+
 def documented_params(method_name):
     text = DOC.read_text(encoding="utf-8")
     m = re.search(
@@ -20,10 +53,14 @@ def documented_params(method_name):
     )
     if not m:
         pytest.fail(f"{method_name} block not found in API_REFERENCE.md")
-    # Known limitation: the ^-anchored regex only catches the first parameter of
-    # a single-line signature block; multi-line blocks are checked in full.
-    names = re.findall(r"^\s*(\w+)\s*[:=,)]", m.group(1), re.M)
-    return set(names) - {"self"}
+    names = set()
+    for part in split_params(m.group(1)):
+        # Strip the * / ** of varargs forms and any annotation or default, so
+        # both single-line and multi-line signature blocks are read in full.
+        name = re.split(r"[:=]", part.lstrip("*"), 1)[0].strip()
+        if name.isidentifier():
+            names.add(name)
+    return names - {"self"}
 
 
 @pytest.mark.parametrize(
