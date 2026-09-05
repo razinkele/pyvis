@@ -865,10 +865,9 @@ class Network:
             use_link_template = False
             for n in self.nodes:
                 title = n.get("title", None)
-                if title:
-                    if "href" in title:
-                        use_link_template = True
-                        break
+                if isinstance(title, str) and "href" in title:
+                    use_link_template = True
+                    break
         if not notebook:
             template = self.templateEnv.get_template(self.path)
         else:
@@ -877,8 +876,11 @@ class Network:
         nodes, edges, heading, height, width, options = self.get_network_data()
 
         # check if physics is enabled
-        if 'physics' in options and 'enabled' in options['physics']:
-            physics_enabled = options['physics']['enabled']
+        physics_opt = options.get('physics', True)
+        if isinstance(physics_opt, bool):
+            physics_enabled = physics_opt
+        elif isinstance(physics_opt, dict):
+            physics_enabled = physics_opt.get('enabled', True)
         else:
             physics_enabled = True
 
