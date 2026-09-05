@@ -48,3 +48,28 @@ class TestFromNxNumpy:
         assert node["level"] == 1 and isinstance(node["level"], int)
         assert node["value"] == pytest.approx(0.5)
         assert net.edges[0]["width"] == 2.0
+
+
+class TestOptionsArgument:
+    def test_add_node_accepts_plain_dict(self):
+        net = Network()
+        net.add_node(1, options={"size": 40, "color": "red"})
+        assert net.node_map[1]["size"] == 40
+        assert net.node_map[1]["color"] == "red"
+
+    def test_add_edge_accepts_plain_dict(self):
+        net = Network()
+        net.add_nodes([1, 2])
+        net.add_edge(1, 2, options={"width": 3})
+        assert net.edges[0]["width"] == 3
+
+    def test_add_node_rejects_other_types(self):
+        net = Network()
+        with pytest.raises(TypeError):
+            net.add_node(1, options="size=40")
+
+    def test_typed_options_get_network_font_color(self):
+        from pyvis.types import NodeOptions
+        net = Network(font_color="white")
+        net.add_node(1, options=NodeOptions(size=10))
+        assert net.node_map[1]["font"]["color"] == "white"

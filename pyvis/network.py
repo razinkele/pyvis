@@ -418,7 +418,15 @@ class Network:
             raise TypeError("Node id must be a string or an integer")
 
         if n_id not in self.node_map:
-            if options is not None and hasattr(options, 'to_dict'):
+            if options is not None:
+                if hasattr(options, 'to_dict'):
+                    opts = options.to_dict()
+                elif isinstance(options, dict):
+                    opts = dict(options)
+                else:
+                    raise TypeError(
+                        f"options must be a NodeOptions or dict, got {type(options).__name__}"
+                    )
                 if kw_options:
                     warnings.warn(
                         "Both options= and **kwargs were provided to add_node(). "
@@ -426,11 +434,15 @@ class Network:
                         UserWarning,
                         stacklevel=2,
                     )
-                # Typed path: serialize to dict
-                opts = options.to_dict()
                 opts['id'] = n_id
                 if 'label' not in opts:
                     opts['label'] = label if label is not None else n_id
+                if self.font_color:
+                    font = opts.get('font')
+                    if isinstance(font, dict):
+                        font.setdefault('color', self.font_color)
+                    elif font is None:
+                        opts['font'] = {'color': self.font_color}
                 self.node_map[n_id] = opts
             else:
                 # Legacy path: unchanged behavior
@@ -585,7 +597,15 @@ class Network:
             edge_key = tuple(sorted([source, to], key=lambda x: str(x)))
 
         if edge_key not in self._edge_set:
-            if options is not None and hasattr(options, 'to_dict'):
+            if options is not None:
+                if hasattr(options, 'to_dict'):
+                    opts = options.to_dict()
+                elif isinstance(options, dict):
+                    opts = dict(options)
+                else:
+                    raise TypeError(
+                        f"options must be an EdgeOptions or dict, got {type(options).__name__}"
+                    )
                 if kw_options:
                     warnings.warn(
                         "Both options= and **kwargs were provided to add_edge(). "
@@ -594,7 +614,6 @@ class Network:
                         stacklevel=2,
                     )
                 # Typed path
-                opts = options.to_dict()
                 opts['from'] = source
                 opts['to'] = to
                 if self.directed and 'arrows' not in opts:
