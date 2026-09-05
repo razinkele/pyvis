@@ -49,6 +49,64 @@ class TestFromNxNumpy:
         assert node["value"] == pytest.approx(0.5)
         assert net.edges[0]["width"] == 2.0
 
+    def test_list_attribute_with_numpy_ints_is_coerced(self):
+        np = pytest.importorskip("numpy")
+        nx = pytest.importorskip("networkx")
+        g = nx.Graph()
+        g.add_node("a", tags=[np.int64(1), np.int64(2)])
+        g.add_node("b")
+        net = Network()
+        net.from_nx(g)
+        node = next(n for n in net.nodes if n["id"] == "a")
+        assert node["tags"] == [1, 2]
+        assert all(isinstance(t, int) for t in node["tags"])
+
+    def test_dict_attribute_with_numpy_value_is_coerced(self):
+        np = pytest.importorskip("numpy")
+        nx = pytest.importorskip("networkx")
+        g = nx.Graph()
+        g.add_node("a", meta={"x": np.int64(3)})
+        g.add_node("b")
+        net = Network()
+        net.from_nx(g)
+        node = next(n for n in net.nodes if n["id"] == "a")
+        assert node["meta"] == {"x": 3}
+        assert isinstance(node["meta"]["x"], int)
+
+    def test_nested_list_inside_dict_is_coerced(self):
+        np = pytest.importorskip("numpy")
+        nx = pytest.importorskip("networkx")
+        g = nx.Graph()
+        g.add_node("a", meta={"values": [np.int64(1), np.float64(2.5)]})
+        g.add_node("b")
+        net = Network()
+        net.from_nx(g)
+        node = next(n for n in net.nodes if n["id"] == "a")
+        assert node["meta"] == {"values": [1, 2.5]}
+        assert isinstance(node["meta"]["values"][0], int)
+        assert isinstance(node["meta"]["values"][1], float)
+
+    def test_truly_unserializable_attribute_still_dropped(self):
+        nx = pytest.importorskip("networkx")
+        g = nx.Graph()
+        g.add_node("a", handle=object())
+        g.add_node("b")
+        net = Network()
+        with pytest.warns(UserWarning, match="not JSON-serializable"):
+            net.from_nx(g)
+        node = next(n for n in net.nodes if n["id"] == "a")
+        assert "handle" not in node
+
+    def test_bool_attribute_stays_bool(self):
+        nx = pytest.importorskip("networkx")
+        g = nx.Graph()
+        g.add_node("a", active=True)
+        g.add_node("b")
+        net = Network()
+        net.from_nx(g)
+        node = next(n for n in net.nodes if n["id"] == "a")
+        assert node["active"] is True
+
 
 class TestOptionsArgument:
     def test_add_node_accepts_plain_dict(self):

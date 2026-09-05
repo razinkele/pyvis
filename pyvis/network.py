@@ -51,12 +51,25 @@ _SAFE_TOMSELECT_KEYS = frozenset({"sortField", "maxOptions", "placeholder", "cre
 def _to_json_native(value):
     """Coerce numpy scalars and other numeric types to plain Python numbers.
 
+    Recurses into lists, tuples and dicts so that numpy scalars nested
+    inside a container (e.g. ``[np.int64(1)]`` or ``{"x": np.int64(1)}``)
+    are coerced element-by-element instead of causing the whole container
+    to be treated as unserialisable. Dict keys are validated (and left
+    unchanged) rather than recursed into.
+
     Returns the value unchanged when it is already JSON-serialisable and
     raises TypeError when it is not.
     """
-    if isinstance(value, bool) or value is None or isinstance(value, (str, int, float, list, dict)):
-        json.dumps(value)
+    if isinstance(value, bool) or value is None or isinstance(value, str):
         return value
+    if isinstance(value, (list, tuple)):
+        return [_to_json_native(v) for v in value]
+    if isinstance(value, dict):
+        coerced = {}
+        for k, v in value.items():
+            json.dumps(k)  # raises TypeError for a non-JSON-valid key
+            coerced[k] = _to_json_native(v)
+        return coerced
     if isinstance(value, numbers.Integral):
         return int(value)
     if isinstance(value, numbers.Real):
