@@ -22,7 +22,7 @@ class FontStyle(OptionsBase):
     vadjust: Optional[int] = None
 
 
-VALID_FONT_ALIGNS = ('horizontal', 'left', 'center', 'right')
+VALID_FONT_ALIGNS = ('left', 'center', 'right', 'horizontal', 'top', 'middle', 'bottom')
 
 
 @dataclass
@@ -34,7 +34,7 @@ class Font(OptionsBase):
     background: Optional[str] = None
     strokeWidth: Optional[int] = None
     strokeColor: Optional[str] = None
-    align: Optional[Literal['horizontal', 'left', 'center', 'right']] = None
+    align: Optional[Literal['left', 'center', 'right', 'horizontal', 'top', 'middle', 'bottom']] = None
     vadjust: Optional[int] = None
     multi: Optional[Union[bool, str]] = None
     bold: Optional[FontStyle] = None
@@ -43,10 +43,7 @@ class Font(OptionsBase):
     mono: Optional[FontStyle] = None
 
     def __post_init__(self):
-        if self.align is not None and self.align not in VALID_FONT_ALIGNS:
-            raise ValueError(
-                f"align must be one of {VALID_FONT_ALIGNS}, got {self.align!r}"
-            )
+        super().__post_init__()
 
 
 @dataclass

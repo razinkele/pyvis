@@ -19,6 +19,7 @@ class EdgeColor(OptionsBase):
     opacity: Optional[float] = None
 
     def __post_init__(self):
+        super().__post_init__()
         if self.opacity is not None and not (0.0 <= self.opacity <= 1.0):
             raise ValueError(
                 f"opacity must be between 0.0 and 1.0, got {self.opacity}"
@@ -37,7 +38,10 @@ class ArrowConfig(OptionsBase):
     """Configuration for a single arrow endpoint (to/middle/from)."""
     enabled: Optional[bool] = None
     scaleFactor: Optional[float] = None
-    type: Optional[Literal['arrow', 'bar', 'circle', 'image']] = None
+    type: Optional[Literal[
+        'arrow', 'bar', 'box', 'circle', 'crow', 'curve', 'diamond',
+        'image', 'inv_curve', 'inv_triangle', 'triangle', 'vee',
+    ]] = None
     src: Optional[str] = None
     imageWidth: Optional[int] = None
     imageHeight: Optional[int] = None
