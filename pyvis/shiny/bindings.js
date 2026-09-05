@@ -548,9 +548,18 @@ if (typeof Shiny !== 'undefined') {
                         from: getEl('links-from').value,
                         to: getEl('links-to').value
                     };
-                    // Try numeric conversion (vis.js node ids may be numbers)
-                    if (!isNaN(Number(updatedEdge.from))) updatedEdge.from = Number(updatedEdge.from);
-                    if (!isNaN(Number(updatedEdge.to))) updatedEdge.to = Number(updatedEdge.to);
+                    // Resolve against the real node ids: <select> values are always
+                    // strings, but the DataSet may key nodes by number. Never coerce
+                    // blindly (that would turn '007' into 7).
+                    function realId(value) {
+                        var ids = nodesDataSet.getIds();
+                        for (var i = 0; i < ids.length; i++) {
+                            if (String(ids[i]) === String(value)) return ids[i];
+                        }
+                        return value;
+                    }
+                    updatedEdge.from = realId(updatedEdge.from);
+                    updatedEdge.to = realId(updatedEdge.to);
                     edgesDataSet.update(updatedEdge);
                     var cb = manipCallback;
                     closeModals();
@@ -850,8 +859,9 @@ if (typeof Shiny !== 'undefined') {
                     if (!query) {
                         // Restore all
                         var updates = [];
-                        Object.keys(originalColors).forEach(function(id) {
-                            updates.push({ id: id, color: originalColors[id], opacity: 1.0 });
+                        Object.keys(originalColors).forEach(function(key) {
+                            var entry = originalColors[key];
+                            updates.push({ id: entry.id, color: entry.color, opacity: 1.0 });
                         });
                         if (updates.length) nodesDataSet.update(updates);
                         originalColors = {};
@@ -879,14 +889,16 @@ if (typeof Shiny !== 'undefined') {
                     // Save originals and dim non-matches
                     var updates = [];
                     dims.forEach(function(node) {
-                        if (!originalColors[node.id]) {
-                            originalColors[node.id] = node.color;
+                        if (!(node.id in originalColors)) {
+                            // Store the real id alongside the color: object keys
+                            // stringify, so numeric ids would be lost otherwise.
+                            originalColors[node.id] = { id: node.id, color: node.color };
                         }
                         updates.push({ id: node.id, opacity: 0.15 });
                     });
                     matches.forEach(function(node) {
                         if (originalColors[node.id]) {
-                            updates.push({ id: node.id, color: originalColors[node.id], opacity: 1.0 });
+                            updates.push({ id: node.id, color: originalColors[node.id].color, opacity: 1.0 });
                             delete originalColors[node.id];
                         } else {
                             updates.push({ id: node.id, opacity: 1.0 });
@@ -1095,25 +1107,16 @@ if (typeof Shiny !== 'undefined') {
             // Batch update with diff
             case 'updateData':
                 if (args.nodes) {
-                    var currentIds = {};
-                    nodes.getIds().forEach(function(id) { currentIds[id] = true; });
-                    var newIds = {};
-                    args.nodes.forEach(function(n) { newIds[n.id] = true; });
-                    // Remove deleted
-                    Object.keys(currentIds).forEach(function(id) {
-                        if (!newIds[id]) nodes.remove(id);
-                    });
-                    // Add/update
+                    // Sets preserve id types; object keys would stringify them.
+                    var keepNodes = new Set(args.nodes.map(function(n) { return n.id; }));
+                    var dropNodes = nodes.getIds().filter(function(id) { return !keepNodes.has(id); });
+                    if (dropNodes.length) nodes.remove(dropNodes);
                     nodes.update(args.nodes);
                 }
                 if (args.edges) {
-                    var currentEdgeIds = {};
-                    edges.getIds().forEach(function(id) { currentEdgeIds[id] = true; });
-                    var newEdgeIds = {};
-                    args.edges.forEach(function(e) { newEdgeIds[e.id] = true; });
-                    Object.keys(currentEdgeIds).forEach(function(id) {
-                        if (!newEdgeIds[id]) edges.remove(id);
-                    });
+                    var keepEdges = new Set(args.edges.map(function(e) { return e.id; }));
+                    var dropEdges = edges.getIds().filter(function(id) { return !keepEdges.has(id); });
+                    if (dropEdges.length) edges.remove(dropEdges);
                     edges.update(args.edges);
                 }
                 break;
