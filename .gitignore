@@ -146,7 +146,6 @@ dmypy.json
 ehthumbs.db
 Thumbs.db
 
-
 # Project specific
 pyvis/full_graph.txt
 pyvis/output.txt
