@@ -30,10 +30,10 @@ net.add_edge(1, 3, color="orange")
 net.add_edge(2, 4, color="red", arrows="to")
 
 # Enable manipulation mode (required for the edit buttons to appear)
-net.show_buttons(filter_=['manipulation'])
+net.set_options({"manipulation": {"enabled": True}})
 
 # Save and show the network
-net.show("edge_attribute_editing_example.html")
+net.show("edge_attribute_editing_example.html", notebook=False)
 
 print("Network created successfully!")
 print("\nHow to use edge attribute editing:")

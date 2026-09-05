@@ -249,7 +249,6 @@ class Network:
                 )
         self.widget = False
         self.template = None
-        self.conf = False
         self.neighborhood_highlight = neighborhood_highlight
         self.select_menu = select_menu
         self.filter_menu = filter_menu
@@ -971,7 +970,6 @@ class Network:
                                     widget=self.widget,
                                     bgcolor=self.bgcolor,
                                     font_color=self.font_color,
-                                    conf=self.conf,
                                     tooltip_link=use_link_template,
                                     neighborhood_highlight=self.neighborhood_highlight,
                                     select_menu=self.select_menu,

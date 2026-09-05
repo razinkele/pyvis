@@ -291,3 +291,11 @@ class TestSmallCoreFixes:
         net.add_node(1)
         net.set_template_dir(str(tmp_path), "t.html")
         assert net.generate_html() == "CUSTOM 1"
+
+
+class TestExamples:
+    def test_edge_attribute_example_runs(self, tmp_path, no_browser):
+        import runpy
+        from pathlib import Path
+        example = Path(__file__).resolve().parents[2] / "examples" / "edge_attribute_editing_example.py"
+        runpy.run_path(str(example), run_name="__main__")

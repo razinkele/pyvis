@@ -33,10 +33,10 @@ net.add_node(2, label="Node 2")
 net.add_edge(1, 2, label="My Edge", color="red")
 
 # Enable manipulation toolbar (required)
-net.show_buttons(filter_=['manipulation'])
+net.set_options({"manipulation": {"enabled": True}})
 
 # Save and display
-net.show("my_network.html")
+net.show("my_network.html", notebook=False)
 ```
 
 ### User Interaction
@@ -128,7 +128,7 @@ Both features can coexist and work independently:
 
 The edge attribute editing feature requires:
 1. `edge_attribute_edit=True` parameter set
-2. Manipulation mode enabled (via `show_buttons(filter_=['manipulation'])` or similar)
+2. Manipulation mode enabled (via `set_options({"manipulation": {"enabled": True}})` or similar)
 3. At least one edge selected in the network
 
 ## Examples
@@ -142,7 +142,7 @@ net = Network(edge_attribute_edit=True)
 net.add_node(1, "A")
 net.add_node(2, "B")
 net.add_edge(1, 2, label="Connection")
-net.show_buttons(filter_=['manipulation'])
+net.set_options({"manipulation": {"enabled": True}})
 net.show("example.html")
 ```
 
@@ -168,7 +168,7 @@ net.add_edge(1, 2, color="red", width=2, label="Red edge")
 net.add_edge(2, 3, color="blue", width=3, dashes=True)
 net.add_edge(3, 4, arrows="to", label="Arrow edge")
 
-net.show_buttons(filter_=['manipulation'])
+net.set_options({"manipulation": {"enabled": True}})
 net.show("styled_network.html")
 ```
 
@@ -186,7 +186,7 @@ net = Network(edge_attribute_edit=True)
 net.from_nx(G)
 
 # Enable manipulation
-net.show_buttons(filter_=['manipulation'])
+net.set_options({"manipulation": {"enabled": True}})
 
 net.show("dynamic_network.html")
 ```
@@ -232,7 +232,7 @@ The edge attribute editing feature is compatible with all modern browsers:
 
 **Solutions**:
 1. Ensure `edge_attribute_edit=True` is set
-2. Enable manipulation mode: `net.show_buttons(filter_=['manipulation'])`
+2. Enable manipulation mode: `net.set_options({"manipulation": {"enabled": True}})`
 3. Check that the manipulation toolbar is visible
 4. Verify JavaScript console for errors
 5. Ensure vis.js version is 10.0.2+

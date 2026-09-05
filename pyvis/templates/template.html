@@ -168,14 +168,6 @@
              }
              {% endif %}
 
-             {% if conf %}
-             #config {
-                 float: left;
-                 width: 400px;
-                 height: 600px;
-             }
-             {% endif %}
-
              {% if tooltip_link %}
              /* position absolute is important and the container has to be relative or absolute as well. */
           div.popup {
@@ -467,10 +459,6 @@
               </div>
             </div>
         {% endif %}
-        {% if conf %}
-            <div id="config"></div>
-        {% endif %}
-
         <script type="{{ 'module' if cdn_resources == 'remote_esm' else 'text/javascript' }}">
                   var HIGHLIGHT_DEGREE = {{highlight_degree|tojson|safe}};
 
@@ -793,12 +781,6 @@
 
                   {% endif %}
 
-
-                  {% if conf %}
-                  // if this network requires displaying the configure window,
-                  // put it in its div
-                  options.configure["container"] = document.getElementById("config");
-                  {% endif %}
 
                   {% if edge_attribute_edit %}
                   // Enable vis.js manipulation with editEdge.editWithoutDrag
