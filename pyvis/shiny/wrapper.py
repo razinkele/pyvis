@@ -1219,6 +1219,23 @@ def _network_from_spec(spec: Dict[str, Any]) -> 'PyVisNetwork':
     return net
 
 
+def _apply_physics(net: 'PyVisNetwork', enabled: bool) -> 'PyVisNetwork':
+    """Return a copy of net with physics.enabled merged into its options.
+
+    Shallow copy plus a deep copy of ``options`` on purpose: ``copy.deepcopy(net)``
+    raises TypeError once ``net.template`` holds a jinja2 Template.
+    """
+    import copy
+    out = copy.copy(net)
+    out.options = copy.deepcopy(net.options)
+    physics = out.options.get('physics')
+    if not isinstance(physics, dict):
+        physics = {}
+    physics['enabled'] = bool(enabled)
+    out.options['physics'] = physics
+    return out
+
+
 # =============================================================================
 # Shiny Module for reusable network visualization
 # =============================================================================
@@ -1251,11 +1268,6 @@ if SHINY_AVAILABLE:
                     ui.accordion_panel(
                         "Network Controls",
                         ui.input_checkbox("physics", "Enable Physics", value=True),
-                        ui.input_slider(
-                            "node_spacing", 
-                            "Node Spacing", 
-                            min=50, max=300, value=150
-                        ),
                     ),
                     open=False
                 )
@@ -1275,17 +1287,21 @@ if SHINY_AVAILABLE:
         input, output, session,
         network_data: reactive.Value,
         on_node_select: Optional[Callable[[Dict[str, Any]], None]] = None,
-        on_edge_select: Optional[Callable[[Dict[str, Any]], None]] = None
+        on_edge_select: Optional[Callable[[Dict[str, Any]], None]] = None,
+        show_controls: bool = True
     ):
         """
         Server function for the PyVis network module.
-        
+
         Args:
             input, output, session: Shiny server parameters.
-            network_data: A reactive.Value containing a PyVis Network or 
+            network_data: A reactive.Value containing a PyVis Network or
                          data to create one (dict with 'nodes' and 'edges').
             on_node_select: Callback when a node is selected.
             on_edge_select: Callback when an edge is selected.
+            show_controls: Whether the physics control is rendered by the UI.
+                Pass the same value you gave `pyvis_network_ui`; when False,
+                the physics input is not read.
         """
         from pyvis.network import Network
         
@@ -1303,25 +1319,18 @@ if SHINY_AVAILABLE:
             else:
                 raise TypeError(f"Expected Network or dict, got {type(data)}")
             
-            # Apply physics setting
-            if hasattr(input, 'physics'):
-                physics_on = input.physics()
-                net.set_options({"physics": {"enabled": physics_on}})
-            
+            if show_controls and 'physics' in input:
+                net = _apply_physics(net, input.physics())
             return net
-        
+
         @output
         @render.text
         def selection_info():
-            node_event = input.network_selectNode()
-            edge_event = input.network_selectEdge()
-            
             info = []
-            if node_event:
-                info.append(f"Selected Node: {node_event.get('nodeId', 'N/A')}")
-            if edge_event:
-                info.append(f"Selected Edge: {edge_event.get('edgeId', 'N/A')}")
-            
+            if 'network_selectNode' in input and input.network_selectNode():
+                info.append(f"Selected Node: {input.network_selectNode().get('nodeId', 'N/A')}")
+            if 'network_selectEdge' in input and input.network_selectEdge():
+                info.append(f"Selected Edge: {input.network_selectEdge().get('edgeId', 'N/A')}")
             return "\n".join(info) if info else "Click on a node or edge to see details"
         
         # Handle callbacks
