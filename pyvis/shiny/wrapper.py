@@ -1186,6 +1186,39 @@ def network_update_data(
     })
 
 
+def _network_from_spec(spec: Dict[str, Any]) -> 'PyVisNetwork':
+    """Build a Network from {'nodes': [...], 'edges': [...]}.
+
+    Nodes may be bare ids or dicts with an 'id' key. Edges may be
+    (from, to) pairs or dicts with 'from'/'source' and 'to' keys. Any
+    other dict keys are passed through as vis.js options.
+    """
+    from pyvis.network import Network
+    net = Network(height="100%", width="100%")
+    for node in spec.get('nodes', []):
+        if isinstance(node, dict):
+            attrs = dict(node)
+            if 'id' not in attrs:
+                raise ValueError(f"node dict is missing the 'id' key: {node!r}")
+            n_id = attrs.pop('id')
+            net.add_node(n_id, **attrs)
+        else:
+            net.add_node(node)
+    for edge in spec.get('edges', []):
+        if isinstance(edge, dict):
+            attrs = dict(edge)
+            source = attrs.pop('from', attrs.pop('source', None))
+            to = attrs.pop('to', None)
+            if source is None or to is None:
+                raise ValueError(f"edge dict needs 'from' (or 'source') and 'to' keys: {edge!r}")
+            net.add_edge(source, to, **attrs)
+        elif isinstance(edge, (list, tuple)) and len(edge) >= 2:
+            net.add_edge(edge[0], edge[1])
+        else:
+            raise ValueError(f"unsupported edge spec: {edge!r}")
+    return net
+
+
 # =============================================================================
 # Shiny Module for reusable network visualization
 # =============================================================================
@@ -1266,19 +1299,7 @@ if SHINY_AVAILABLE:
                 net = data
             elif isinstance(data, dict):
                 # Create network from dict specification
-                net = Network(height="100%", width="100%")
-
-                for node in data.get('nodes', []):
-                    if isinstance(node, dict):
-                        net.add_node(**node)
-                    else:
-                        net.add_node(node)
-                
-                for edge in data.get('edges', []):
-                    if isinstance(edge, dict):
-                        net.add_edge(**edge)
-                    elif isinstance(edge, (list, tuple)) and len(edge) >= 2:
-                        net.add_edge(edge[0], edge[1])
+                net = _network_from_spec(data)
             else:
                 raise TypeError(f"Expected Network or dict, got {type(data)}")
             
