@@ -173,7 +173,7 @@ See the [Shiny Integration Guide](docs/SHINY_INTEGRATION_GUIDE.md) for complete 
 
 ## Documentation
 
-- **[API Reference](docs/API_REFERENCE.md)** — Complete reference for Network class, typed options (50 dataclasses), Shiny integration, and all public methods
+- **[API Reference](docs/API_REFERENCE.md)** — Complete reference for Network class, typed options (44 dataclasses), Shiny integration, and all public methods
 - **[Shiny Integration Guide](docs/SHINY_INTEGRATION_GUIDE.md)** — Detailed guide for using PyVis with Shiny for Python
 
 ## Testing
