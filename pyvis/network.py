@@ -8,6 +8,7 @@ with NetworkX and Jupyter notebooks.
 
 import json
 import logging
+import numbers
 import os
 import re
 import shutil
@@ -45,6 +46,25 @@ _CSS_COLOR_RE = re.compile(
     r'^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+|rgba?\(\s*[\d.,\s%]+\)|hsla?\(\s*[\d.,\s%]+\))$'
 )
 _SAFE_TOMSELECT_KEYS = frozenset({"sortField", "maxOptions", "placeholder", "create", "closeAfterSelect", "hideSelected"})
+
+
+def _to_json_native(value):
+    """Coerce numpy scalars and other numeric types to plain Python numbers.
+
+    Returns the value unchanged when it is already JSON-serialisable and
+    raises TypeError when it is not.
+    """
+    if isinstance(value, bool) or value is None or isinstance(value, (str, int, float, list, dict)):
+        json.dumps(value)
+        return value
+    if isinstance(value, numbers.Integral):
+        return int(value)
+    if isinstance(value, numbers.Real):
+        return float(value)
+    if hasattr(value, "item"):          # numpy generic
+        return _to_json_native(value.item())
+    json.dumps(value)                   # raises TypeError for anything else
+    return value
 
 
 class Network:
@@ -1165,12 +1185,12 @@ class Network:
         node_data = {n: dict(data) for n, data in nodes}
         edge_list = [(u, v, dict(data)) for u, v, data in edges]
 
-        # Warn about non-JSON-serializable attributes and remove them
-        import json as _json
+        # Coerce numpy scalars/numeric types and warn about attributes that
+        # are still not JSON-serializable, removing those.
         for n, data in node_data.items():
             for k, v in list(data.items()):
                 try:
-                    _json.dumps(v)
+                    data[k] = _to_json_native(v)
                 except (TypeError, ValueError):
                     warnings.warn(
                         f"Node {n!r} attribute '{k}' is not JSON-serializable "
@@ -1181,7 +1201,7 @@ class Network:
         for e in edge_list:
             for k, v in list(e[2].items()):
                 try:
-                    _json.dumps(v)
+                    e[2][k] = _to_json_native(v)
                 except (TypeError, ValueError):
                     warnings.warn(
                         f"Edge ({e[0]}, {e[1]}) attribute '{k}' is not JSON-serializable "
