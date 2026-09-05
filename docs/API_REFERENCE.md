@@ -80,6 +80,10 @@ Network(
     heading: str = "",
     cdn_resources: str = "local",
     edge_attribute_edit: bool = False,
+    highlight_degree: int = 2,
+    tooltip_link_override: Optional[bool] = None,
+    select_node_options: Optional[dict] = None,
+    filter_exclude: Optional[List[str]] = None,
 )
 ```
 
@@ -96,8 +100,12 @@ Network(
 | `font_color` | `str\|None` | `None` | Default font color for labels |
 | `layout` | `bool\|None` | `None` | Enable hierarchical layout when `True` |
 | `heading` | `str` | `""` | Heading text displayed above the graph |
-| `cdn_resources` | `str` | `"local"` | Resource loading: `"local"`, `"in_line"`, or `"remote"` |
+| `cdn_resources` | `str` | `"local"` | Resource loading: `"local"`, `"in_line"`, `"remote"`, or `"remote_esm"` (pull resources from the CDN as ES modules) |
 | `edge_attribute_edit` | `bool` | `False` | Enable edge attribute editing UI |
+| `highlight_degree` | `int` | `2` | Degree of neighbors to highlight. Must be a non-negative integer |
+| `tooltip_link_override` | `bool\|None` | `None` | Override auto-detection of link tooltips (titles containing `href`). `True` forces on, `False` forces off, `None` auto-detects |
+| `select_node_options` | `dict\|None` | `None` | Dict of TomSelect options for the node selector. Only safe keys accepted |
+| `filter_exclude` | `list[str]\|None` | `None` | Node property names to exclude from the filter menu. When `None`, defaults to `["hidden", "savedLabel", "hiddenLabel"]` |
 
 **Example:**
 ```python
@@ -129,7 +137,7 @@ Add a single node to the network.
 | `label` | `str\|int\|None` | `None` | Display label (defaults to `n_id` if omitted) |
 | `shape` | `str` | `"dot"` | Node shape (see [NodeShape](#nodeoptions) for all values) |
 | `color` | `str` | `"#97c2fc"` | Node color |
-| `options` | `dict\|None` | `None` | Options dict passed directly to vis.js |
+| `options` | `NodeOptions\|dict\|None` | `None` | A typed [`NodeOptions`](#nodeoptions) object or a plain dict of vis.js options. When given, `**kw_options` is ignored |
 | `**kw_options` | | | Additional properties: `size`, `title`, `value`, `x`, `y`, `group`, `hidden`, `physics`, etc. |
 
 **Example:**
@@ -195,7 +203,7 @@ Add an edge between two existing nodes.
 |-----------|------|---------|-------------|
 | `source` | `str\|int` | *required* | Source node ID |
 | `to` | `str\|int` | *required* | Destination node ID |
-| `options` | `dict\|None` | `None` | Options dict passed directly to vis.js |
+| `options` | `EdgeOptions\|dict\|None` | `None` | A typed [`EdgeOptions`](#edge-options) object or a plain dict of vis.js options. When given, `**kw_options` is ignored |
 | `**kw_options` | | | Additional properties: `value`, `width`, `title`, `hidden`, `color`, `arrows`, `physics`, etc. |
 
 **Example:**
@@ -394,7 +402,7 @@ Returns `(nodes, edges, heading, height, width, options_json)` for template inje
 get_network_json() -> dict
 ```
 
-Returns structured network data as a dictionary with keys: `nodes`, `edges`, `options`, `heading`, `height`, `width`, `groups`, `legend`, `neighborhood_highlight`, `select_menu`, `filter_menu`, `edge_attribute_edit`, `directed`, `bgcolor`. Used for JavaScript rendering without HTML templates.
+Returns structured network data as a dictionary with keys: `nodes`, `edges`, `options`, `heading`, `height`, `width`, `groups`, `legend`, `neighborhood_highlight`, `select_menu`, `filter_menu`, `edge_attribute_edit`, `directed`, `bgcolor`, `highlight_degree`, `select_node_options`, `filter_exclude`, `font_color`, `tooltip_link_override`. Used for JavaScript rendering without HTML templates.
 
 ---
 
@@ -510,11 +518,7 @@ Generate and write HTML visualization to a file. Optionally open in browser.
 #### `generate_html`
 
 ```python
-generate_html(
-    name: str = "index.html",
-    local: bool = True,
-    notebook: bool = False,
-) -> str
+generate_html(notebook: bool = False) -> str
 ```
 
 Generate HTML content as a string without writing to file.
@@ -1535,13 +1539,12 @@ def server(input, output, session):
 | `add_edges` | `(edges)` | Add multiple edges |
 | `update_edge` | `(edge)` | Update an existing edge |
 | `remove_edge` | `(edge_id)` | Remove an edge by ID |
-| `update_data` | `(nodes: List[dict], edges: List[dict])` | Diff-based full data update |
+| `update_data` | `(nodes: List[dict], edges: List[dict])` | Diff-based full data update. Each edge must carry a stable `id`; edges without an id are treated as new on every call |
 
 #### Clustering Methods
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `cluster` | `(join_condition: dict = None, cluster_node_properties: dict = None, cluster_edge_properties: dict = None)` | Create a cluster |
 | `cluster_by_connection` | `(node_id, cluster_node_properties: dict = None)` | Cluster by connected node |
 | `cluster_by_hubsize` | `(hubsize: int = None, cluster_node_properties: dict = None)` | Cluster nodes with many connections |
 | `open_cluster` | `(cluster_node_id)` | Expand a cluster |
@@ -1623,7 +1626,7 @@ network_unselect_all(session, output_id)
 
 ```python
 network_fit(session, output_id, node_ids: List = None, animation: bool|dict = True)
-network_focus(session, output_id, node_id, scale: float = 1.0, animation: bool|dict = True)
+network_focus(session, output_id, node_id, scale: float = 1.0, animation: bool|dict = True, locked: bool = True)
 network_move_to(session, output_id, position: dict = None, scale: float = None, animation: bool|dict = True)
 ```
 
@@ -1647,10 +1650,11 @@ network_remove_edge(session, output_id, edge_id)
 network_update_data(session, output_id, nodes: List[dict], edges: List[dict])
 ```
 
+For `network_update_data`, each edge must carry a stable `id`; edges without an id are treated as new on every call.
+
 #### Clustering
 
 ```python
-network_cluster(session, output_id, join_condition: dict = None, cluster_node_properties: dict = None)
 network_open_cluster(session, output_id, cluster_node_id)
 ```
 
@@ -1674,8 +1678,10 @@ network_set_node_template_mode(session, output_id, enabled: bool)
 ```python
 network_get_positions(session, output_id, node_ids: List = None)
 network_get_selection(session, output_id)
-network_get_data(session, output_id)
+network_get_all_data(session, output_id)
 ```
+
+`network_get_data` is a backwards-compatible alias of `network_get_all_data`.
 
 ---
 
