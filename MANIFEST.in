@@ -22,6 +22,5 @@ recursive-exclude * .pytest_cache
 recursive-exclude .github *
 recursive-exclude docs *
 recursive-exclude examples *.html
-recursive-exclude examples/lib *
 recursive-exclude notebooks/lib *
 recursive-exclude notebooks *.html

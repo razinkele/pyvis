@@ -129,7 +129,10 @@ dmypy.json
 # IDE specific
 .vscode/
 .idea/
-.claude/
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/release-notes/
 *.swp
 *.swo
 *~
@@ -143,8 +146,6 @@ dmypy.json
 ehthumbs.db
 Thumbs.db
 
-# Planning docs
-docs/plans/
 
 # Project specific
 pyvis/full_graph.txt
@@ -160,6 +161,9 @@ pyvis/make.bat
 conda-bld/
 conda-output/
 output/
+conda-build-output/
+demo_test.py
+demo_output.html
 
 # Generated screenshots / images from demo testing
 *.png
