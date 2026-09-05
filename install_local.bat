@@ -70,7 +70,7 @@ echo Installation Successful!
 echo ============================================================
 echo.
 echo Quick test:
-echo   python test_new_features.py
+echo   python -m pytest pyvis/tests -q
 echo.
 echo Run benchmarks:
 echo   python benchmark_improvements.py

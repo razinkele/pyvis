@@ -40,11 +40,12 @@ echo Build Complete!
 echo ============================================================
 echo.
 echo Created files in dist/:
-echo   - pyvis-4.0.0-py3-none-any.whl  (wheel package)
-echo   - pyvis-4.0.0.tar.gz            (source distribution)
+echo   - pyvis-^<version^>-py3-none-any.whl  (wheel package)
+echo   - pyvis-^<version^>.tar.gz            (source distribution)
+for %%f in (dist\*.whl) do echo   - %%f
 echo.
 echo To install:
-echo   pip install dist\pyvis-4.0.0-py3-none-any.whl
+echo   pip install dist\pyvis-^<version^>-py3-none-any.whl
 echo.
 echo Or in development mode:
 echo   pip install -e .

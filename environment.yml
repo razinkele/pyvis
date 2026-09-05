@@ -9,7 +9,7 @@ channels:
 
 dependencies:
   # Python version
-  - python>=3.6
+  - python>=3.9
 
   # Core dependencies
   - jinja2>=2.9.6

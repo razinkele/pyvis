@@ -299,3 +299,20 @@ class TestExamples:
         from pathlib import Path
         example = Path(__file__).resolve().parents[2] / "examples" / "edge_attribute_editing_example.py"
         runpy.run_path(str(example), run_name="__main__")
+
+
+class TestNotebookExtra:
+    def test_show_notebook_without_ipython_gives_clear_error(self, monkeypatch, tmp_path):
+        import builtins
+        real_import = builtins.__import__
+
+        def fake_import(name, *a, **k):
+            if name.startswith("IPython"):
+                raise ImportError("no IPython")
+            return real_import(name, *a, **k)
+
+        monkeypatch.setattr(builtins, "__import__", fake_import)
+        net = Network()
+        net.add_node(1)
+        with pytest.raises(ImportError, match=r"pyvis\[notebook\]"):
+            net.show(str(tmp_path / "x.html"), notebook=True)

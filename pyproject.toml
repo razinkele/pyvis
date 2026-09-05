@@ -35,7 +35,6 @@ classifiers = [
 dependencies = [
     "jinja2>=2.9.6",
     "networkx>=1.11",
-    "ipython>=5.3.0",
     "jsonpickle>=1.4.1",
 ]
 
@@ -44,6 +43,11 @@ dependencies = [
 shiny = [
     "shiny>=0.6.0",
     "htmltools",
+]
+
+# Notebook support (IPython is only needed for show(notebook=True))
+notebook = [
+    "ipython>=5.3.0",
 ]
 
 # Development dependencies
@@ -55,14 +59,23 @@ dev = [
     "mypy",
 ]
 
+# Test dependencies (pytest-playwright provides the `page` fixture)
+test = [
+    "pytest>=6.0",
+    "pytest-cov",
+    "playwright>=1.40",
+    "pytest-playwright>=0.4",
+    "numpy",
+]
+
 # Full installation with all optional features
 all = [
-    "pyvis[shiny,dev]",
+    "pyvis[shiny,notebook,dev,test]",
 ]
 
 [project.urls]
 Homepage = "https://github.com/razinkele/pyvis"
-Documentation = "https://pyvis.readthedocs.io"
+Documentation = "https://github.com/razinkele/pyvis#readme"
 Repository = "https://github.com/razinkele/pyvis"
 "Bug Tracker" = "https://github.com/razinkele/pyvis/issues"
 Changelog = "https://github.com/razinkele/pyvis/blob/master/CHANGELOG.md"
@@ -92,7 +105,7 @@ python_functions = "test_*"
 
 [tool.black]
 line-length = 100
-target-version = ['py38', 'py39', 'py310', 'py311']
+target-version = ['py39', 'py310', 'py311', 'py312', 'py313']
 include = '\.pyi?$'
 exclude = '''
 /(
@@ -109,7 +122,7 @@ exclude = '''
 '''
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false

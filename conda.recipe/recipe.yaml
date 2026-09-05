@@ -18,14 +18,15 @@ build:
 
 requirements:
   host:
-    - python >=3.8
+    - python >=3.9
     - pip
     - setuptools >=45
     - wheel
   run:
-    - python >=3.8
+    - python >=3.9
     - jinja2 >=2.9.6
     - networkx >=1.11
+    # optional on PyPI (pyvis[notebook]); kept as a hard dep here because conda has no extras
     - ipython >=5.3.0
     - jsonpickle >=1.4.1
 

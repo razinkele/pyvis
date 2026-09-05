@@ -1067,7 +1067,13 @@ class Network:
             self.write_html(name, open_browser=True)
         if notebook:
             # Lazy import - only load IPython when needed for notebook mode
-            from IPython.display import IFrame
+            try:
+                from IPython.display import IFrame
+            except ImportError as e:
+                raise ImportError(
+                    "show(notebook=True) needs IPython. "
+                    "Install with: pip install 'pyvis[notebook]'"
+                ) from e
             return IFrame(name, width=self.width, height=self.height)
 
     def prep_notebook(self,
