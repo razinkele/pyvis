@@ -12,7 +12,8 @@ from pathlib import Path
 
 import networkx as nx
 import pytest
-from playwright.sync_api import Page, expect
+playwright = pytest.importorskip("playwright.sync_api")
+Page, expect = playwright.Page, playwright.expect
 
 from pyvis.network import Network
 

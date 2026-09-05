@@ -44,17 +44,15 @@ class TestRenderNetworkNoMutation:
 
         The old code mutated network.cdn_resources, then restored it.
         A concurrent observer could see the mutated state. The fix uses
-        a shallow copy so the original is never touched. We verify this
+        a deep copy so the original is never touched. We verify this
         by patching generate_html at the CLASS level to observe the
         original network's cdn_resources mid-call.
         """
         from unittest.mock import patch
         from pyvis.network import Network
 
-        try:
-            from pyvis.shiny.wrapper import render_network
-        except ImportError:
-            pytest.skip("Shiny not installed")
+        pytest.importorskip("shiny")
+        from pyvis.shiny.wrapper import render_network
 
         net = Network(cdn_resources="local")
         net.add_node(1, label="A")

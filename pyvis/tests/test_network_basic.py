@@ -4,8 +4,6 @@ import os
 import networkx as nx
 import pytest
 
-np = pytest.importorskip("numpy")
-
 from ..network import Network
 
 
@@ -79,14 +77,11 @@ def test_add_edge():
     assert(net.get_adj_list()[0] == set([2, 1, 3, 4, 5, 6, 7, 8, 9]))
 
 def test_add_numpy_nodes():
-    """
-    Test adding numpy array nodes since these
-    nodes will have specific numpy types
-    """
-    arrayNodes = np.array([1,2,3,4])
+    """numpy integer ids must be accepted and normalised."""
+    np = pytest.importorskip("numpy")
     g = Network()
-    g.add_nodes(np.array([1,2,3,4]))
-    assert g.get_nodes() == [1,2,3,4]
+    g.add_nodes(np.array([1, 2, 3, 4]))
+    assert g.get_nodes() == [1, 2, 3, 4]
 
 
 def test_get_network_json():
