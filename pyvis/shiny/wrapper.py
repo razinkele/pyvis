@@ -162,6 +162,13 @@ __all__ = [
     'network_set_node_template_mode',
     'network_get_positions',
     'network_get_selection',
+    'network_add_nodes',
+    'network_add_edges',
+    'network_cluster_by_connection',
+    'network_cluster_by_hubsize',
+    'network_get_scale',
+    'network_get_view_position',
+    'network_get_all_data',
     'network_get_data',
     'network_update_data',
 ]
@@ -550,10 +557,7 @@ if SHINY_AVAILABLE:
                 node_ids: List of node IDs to select
                 highlight_edges: Whether to highlight connected edges
             """
-            self._send_command("selectNodes", {
-                "nodeIds": node_ids,
-                "highlightEdges": highlight_edges
-            })
+            network_select_nodes(self.session, self.output_id, node_ids, highlight_edges)
         
         def select_edges(self, edge_ids: List[Any]):
             """
@@ -562,11 +566,11 @@ if SHINY_AVAILABLE:
             Args:
                 edge_ids: List of edge IDs to select
             """
-            self._send_command("selectEdges", {"edgeIds": edge_ids})
+            network_select_edges(self.session, self.output_id, edge_ids)
         
         def unselect_all(self):
             """Clear all selections."""
-            self._send_command("unselectAll")
+            network_unselect_all(self.session, self.output_id)
         
         # === Viewport Methods ===
         
@@ -583,10 +587,7 @@ if SHINY_AVAILABLE:
                 animation: True for default animation, False for instant,
                           or dict with duration/easingFunction
             """
-            args = {"animation": animation}
-            if node_ids is not None:
-                args["nodes"] = node_ids
-            self._send_command("fit", args)
+            network_fit(self.session, self.output_id, node_ids, animation)
         
         def focus(
             self,
@@ -604,14 +605,7 @@ if SHINY_AVAILABLE:
                 animation: Animation settings
                 locked: Whether to lock view to this node
             """
-            self._send_command("focus", {
-                "nodeId": node_id,
-                "options": {
-                    "scale": scale,
-                    "animation": animation,
-                    "locked": locked
-                }
-            })
+            network_focus(self.session, self.output_id, node_id, scale, animation, locked)
         
         def move_to(
             self,
@@ -627,22 +621,17 @@ if SHINY_AVAILABLE:
                 scale: Zoom scale
                 animation: Animation settings
             """
-            args = {"animation": animation}
-            if position is not None:
-                args["position"] = position
-            if scale is not None:
-                args["scale"] = scale
-            self._send_command("moveTo", args)
+            network_move_to(self.session, self.output_id, position, scale, animation)
         
         # === Physics Methods ===
         
         def start_physics(self):
             """Start the physics simulation."""
-            self._send_command("startSimulation")
+            network_start_physics(self.session, self.output_id)
         
         def stop_physics(self):
             """Stop the physics simulation."""
-            self._send_command("stopSimulation")
+            network_stop_physics(self.session, self.output_id)
         
         def stabilize(self, iterations: int = 100):
             """
@@ -651,7 +640,7 @@ if SHINY_AVAILABLE:
             Args:
                 iterations: Maximum iterations to run
             """
-            self._send_command("stabilize", {"iterations": iterations})
+            network_stabilize(self.session, self.output_id, iterations)
         
         # === Data Manipulation Methods ===
         
@@ -662,9 +651,7 @@ if SHINY_AVAILABLE:
                 node: Node data dict or typed NodeOptions with at least 'id',
                       optionally 'label', 'color', 'shape', etc.
             """
-            if isinstance(node, OptionsBase):
-                node = node.to_dict()
-            self._send_command("addNode", {"node": node})
+            network_add_node(self.session, self.output_id, node)
         
         def add_nodes(self, nodes):
             """Add multiple nodes. Accepts list of dicts or typed NodeOptions.
@@ -672,8 +659,7 @@ if SHINY_AVAILABLE:
             Args:
                 nodes: List of node data dicts or typed NodeOptions
             """
-            nodes = [n.to_dict() if isinstance(n, OptionsBase) else n for n in nodes]
-            self._send_command("addNodes", {"nodes": nodes})
+            network_add_nodes(self.session, self.output_id, nodes)
         
         def update_node(self, node):
             """Update an existing node. Accepts dict or typed NodeOptions.
@@ -681,9 +667,7 @@ if SHINY_AVAILABLE:
             Args:
                 node: Node data dict or typed NodeOptions with 'id' and properties to update
             """
-            if isinstance(node, OptionsBase):
-                node = node.to_dict()
-            self._send_command("updateNode", {"node": node})
+            network_update_node(self.session, self.output_id, node)
         
         def remove_node(self, node_id: Any):
             """
@@ -692,7 +676,7 @@ if SHINY_AVAILABLE:
             Args:
                 node_id: ID of the node to remove
             """
-            self._send_command("removeNode", {"nodeId": node_id})
+            network_remove_node(self.session, self.output_id, node_id)
         
         def add_edge(self, edge):
             """Add a new edge. Accepts dict or typed EdgeOptions.
@@ -701,9 +685,7 @@ if SHINY_AVAILABLE:
                 edge: Edge data dict or typed EdgeOptions with 'from', 'to',
                       and optionally 'id', 'label', 'color', etc.
             """
-            if isinstance(edge, OptionsBase):
-                edge = edge.to_dict()
-            self._send_command("addEdge", {"edge": edge})
+            network_add_edge(self.session, self.output_id, edge)
         
         def add_edges(self, edges):
             """Add multiple edges. Accepts list of dicts or typed EdgeOptions.
@@ -711,8 +693,7 @@ if SHINY_AVAILABLE:
             Args:
                 edges: List of edge data dicts or typed EdgeOptions
             """
-            edges = [e.to_dict() if isinstance(e, OptionsBase) else e for e in edges]
-            self._send_command("addEdges", {"edges": edges})
+            network_add_edges(self.session, self.output_id, edges)
         
         def update_edge(self, edge):
             """Update an existing edge. Accepts dict or typed EdgeOptions.
@@ -720,9 +701,7 @@ if SHINY_AVAILABLE:
             Args:
                 edge: Edge data dict or typed EdgeOptions with 'id' and properties to update
             """
-            if isinstance(edge, OptionsBase):
-                edge = edge.to_dict()
-            self._send_command("updateEdge", {"edge": edge})
+            network_update_edge(self.session, self.output_id, edge)
         
         def remove_edge(self, edge_id: Any):
             """
@@ -731,7 +710,7 @@ if SHINY_AVAILABLE:
             Args:
                 edge_id: ID of the edge to remove
             """
-            self._send_command("removeEdge", {"edgeId": edge_id})
+            network_remove_edge(self.session, self.output_id, edge_id)
         
         # === Clustering Methods ===
         
@@ -770,10 +749,8 @@ if SHINY_AVAILABLE:
                 node_id: ID of the node to cluster around
                 cluster_node_properties: Properties for the cluster node
             """
-            self._send_command("clusterByConnection", {
-                "nodeId": node_id,
-                "options": cluster_node_properties or {}
-            })
+            network_cluster_by_connection(self.session, self.output_id, node_id,
+                                          cluster_node_properties)
         
         def cluster_by_hubsize(
             self,
@@ -787,10 +764,8 @@ if SHINY_AVAILABLE:
                 hubsize: Minimum connection count to cluster (default: auto)
                 cluster_node_properties: Properties for cluster nodes
             """
-            self._send_command("clusterByHubsize", {
-                "hubsize": hubsize,
-                "options": cluster_node_properties or {}
-            })
+            network_cluster_by_hubsize(self.session, self.output_id, hubsize,
+                                       cluster_node_properties)
         
         def open_cluster(self, cluster_node_id: Any):
             """
@@ -799,7 +774,7 @@ if SHINY_AVAILABLE:
             Args:
                 cluster_node_id: ID of the cluster node to open
             """
-            self._send_command("openCluster", {"nodeId": cluster_node_id})
+            network_open_cluster(self.session, self.output_id, cluster_node_id)
         
         # === Options Methods ===
         
@@ -809,9 +784,7 @@ if SHINY_AVAILABLE:
             Args:
                 options: vis.js network options dict or typed NetworkOptions
             """
-            if isinstance(options, OptionsBase):
-                options = options.to_dict()
-            self._send_command("setOptions", {"options": options})
+            network_set_options(self.session, self.output_id, options)
         
         # === Query Methods (responses come back as inputs) ===
         
@@ -823,35 +796,35 @@ if SHINY_AVAILABLE:
             Args:
                 node_ids: Optional list of node IDs (default: all nodes)
             """
-            self._send_command("getPositions", {"nodeIds": node_ids})
+            network_get_positions(self.session, self.output_id, node_ids)
         
         def get_selection(self):
             """
             Request current selection.
             Response available at: input.{output_id}_response_selection
             """
-            self._send_command("getSelection")
+            network_get_selection(self.session, self.output_id)
         
         def get_scale(self):
             """
             Request current zoom scale.
             Response available at: input.{output_id}_response_scale
             """
-            self._send_command("getScale")
+            network_get_scale(self.session, self.output_id)
         
         def get_view_position(self):
             """
             Request current view position.
             Response available at: input.{output_id}_response_viewPosition
             """
-            self._send_command("getViewPosition")
+            network_get_view_position(self.session, self.output_id)
         
         def get_all_data(self):
             """
             Request all network data (nodes, edges, positions, view).
             Response available at: input.{output_id}_response_allData
             """
-            self._send_command("getAllData")
+            network_get_all_data(self.session, self.output_id)
 
         # === Theme ===
 
@@ -861,7 +834,7 @@ if SHINY_AVAILABLE:
             Args:
                 theme: "light" or "dark"
             """
-            self._send_command("setTheme", {"theme": theme})
+            network_set_theme(self.session, self.output_id, theme)
 
         # === Manipulation ===
 
@@ -874,7 +847,7 @@ if SHINY_AVAILABLE:
             Args:
                 enabled: True to show the toolbar, False to hide it.
             """
-            self._send_command("toggleManipulation", {"enabled": enabled})
+            network_toggle_manipulation(self.session, self.output_id, enabled)
 
         def set_edge_edit_mode(self, mode: str) -> None:
             """Switch edge editing between attribute modal and link reconnection.
@@ -884,7 +857,7 @@ if SHINY_AVAILABLE:
                       arrows) via a modal, or "links" to reconnect edge endpoints
                       (from/to nodes) via a dropdown modal.
             """
-            self._send_command("setEdgeEditMode", {"mode": mode})
+            network_set_edge_edit_mode(self.session, self.output_id, mode)
 
         def set_node_template_mode(self, enabled: bool) -> None:
             """Toggle template-from-existing mode for the Add Node modal.
@@ -896,7 +869,7 @@ if SHINY_AVAILABLE:
             Args:
                 enabled: True to show template chips, False for default behavior.
             """
-            self._send_command("setNodeTemplateMode", {"enabled": enabled})
+            network_set_node_template_mode(self.session, self.output_id, enabled)
 
         # === Diff-based Update ===
 
@@ -910,7 +883,7 @@ if SHINY_AVAILABLE:
                 nodes: Full list of node dicts (each must have an 'id' key).
                 edges: Full list of edge dicts (each must have 'from'/'to' keys).
             """
-            self._send_command("updateData", {"nodes": nodes, "edges": edges})
+            network_update_data(self.session, self.output_id, nodes, edges)
 
 else:
     
@@ -995,12 +968,13 @@ def network_focus(
     output_id: str,
     node_id: Any,
     scale: float = 1.0,
-    animation: Union[bool, Dict] = True
+    animation: Union[bool, Dict] = True,
+    locked: bool = True
 ):
     """Focus camera on a specific node."""
     _send_network_command(session, output_id, "focus", {
         "nodeId": node_id,
-        "options": {"scale": scale, "animation": animation}
+        "options": {"scale": scale, "animation": animation, "locked": locked}
     })
 
 
@@ -1042,11 +1016,23 @@ def network_add_node(session: 'Session', output_id: str, node):
     _send_network_command(session, output_id, "addNode", {"node": node})
 
 
+def network_add_nodes(session: 'Session', output_id: str, nodes: List[Any]):
+    """Add several nodes. Accepts dicts or typed NodeOptions."""
+    nodes = [n.to_dict() if isinstance(n, OptionsBase) else n for n in nodes]
+    _send_network_command(session, output_id, "addNodes", {"nodes": nodes})
+
+
 def network_add_edge(session: 'Session', output_id: str, edge):
     """Add an edge to the network. Accepts dict or typed EdgeOptions."""
     if isinstance(edge, OptionsBase):
         edge = edge.to_dict()
     _send_network_command(session, output_id, "addEdge", {"edge": edge})
+
+
+def network_add_edges(session: 'Session', output_id: str, edges: List[Any]):
+    """Add several edges. Accepts dicts or typed EdgeOptions."""
+    edges = [e.to_dict() if isinstance(e, OptionsBase) else e for e in edges]
+    _send_network_command(session, output_id, "addEdges", {"edges": edges})
 
 
 def network_update_node(session: 'Session', output_id: str, node):
@@ -1086,6 +1072,36 @@ def network_cluster(
     if cluster_node_properties:
         args["clusterNodeProperties"] = cluster_node_properties
     _send_network_command(session, output_id, "cluster", args)
+
+
+def network_cluster_by_connection(
+    session: 'Session',
+    output_id: str,
+    node_id: Any,
+    cluster_node_properties: Optional[Dict] = None
+):
+    """Cluster all nodes connected to a specific node."""
+    _send_network_command(session, output_id, "clusterByConnection", {
+        "nodeId": node_id,
+        "options": cluster_node_properties or {}
+    })
+
+
+def network_cluster_by_hubsize(
+    session: 'Session',
+    output_id: str,
+    hubsize: Optional[int] = None,
+    cluster_node_properties: Optional[Dict] = None
+):
+    """Cluster all nodes with more than hubsize connections.
+
+    ``hubsize`` is omitted from the payload when None so vis.js applies its
+    own automatic threshold.
+    """
+    args: Dict[str, Any] = {"options": cluster_node_properties or {}}
+    if hubsize is not None:
+        args["hubsize"] = hubsize
+    _send_network_command(session, output_id, "clusterByHubsize", args)
 
 
 def network_open_cluster(session: 'Session', output_id: str, cluster_node_id: Any):
@@ -1158,9 +1174,23 @@ def network_get_selection(session: 'Session', output_id: str):
     _send_network_command(session, output_id, "getSelection")
 
 
-def network_get_data(session: 'Session', output_id: str):
+def network_get_scale(session: 'Session', output_id: str):
+    """Request the current zoom scale (response: input.{output_id}_response_scale)."""
+    _send_network_command(session, output_id, "getScale")
+
+
+def network_get_view_position(session: 'Session', output_id: str):
+    """Request the view centre (response: input.{output_id}_response_viewPosition)."""
+    _send_network_command(session, output_id, "getViewPosition")
+
+
+def network_get_all_data(session: 'Session', output_id: str):
     """Request all network data (response: input.{output_id}_response_allData)."""
     _send_network_command(session, output_id, "getAllData")
+
+
+#: Backwards-compatible alias for :func:`network_get_all_data`.
+network_get_data = network_get_all_data
 
 
 def network_update_data(

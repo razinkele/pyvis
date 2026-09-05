@@ -33,7 +33,14 @@ STANDALONE = [
     (w.network_set_edge_edit_mode, ("net", "modal"), "setEdgeEditMode", {"mode": "modal"}),
     (w.network_set_node_template_mode, ("net", False), "setNodeTemplateMode", {"enabled": False}),
     (w.network_get_selection, ("net",), "getSelection", {}),
-    (w.network_get_data, ("net",), "getAllData", {}),
+    (w.network_get_all_data, ("net",), "getAllData", {}),
+    (w.network_get_scale, ("net",), "getScale", {}),
+    (w.network_get_view_position, ("net",), "getViewPosition", {}),
+    (w.network_add_nodes, ("net", [{"id": 1}, {"id": 2}]), "addNodes", {"nodes": [{"id": 1}, {"id": 2}]}),
+    (w.network_add_edges, ("net", [{"from": 1, "to": 2}]), "addEdges", {"edges": [{"from": 1, "to": 2}]}),
+    (w.network_cluster_by_connection, ("net", 3), "clusterByConnection", {"nodeId": 3, "options": {}}),
+    (w.network_cluster_by_hubsize, ("net", 3), "clusterByHubsize", {"hubsize": 3, "options": {}}),
+    (w.network_focus, ("net", 7), "focus", {"nodeId": 7, "options": {"scale": 1.0, "animation": True, "locked": True}}),
     (w.network_update_data, ("net", [{"id": 1}], [{"id": "e", "from": 1, "to": 1}]), "updateData", {"nodes": [{"id": 1}], "edges": [{"id": "e", "from": 1, "to": 1}]}),
 ]
 
@@ -83,7 +90,6 @@ def test_controller_has_no_cluster_method():
     assert not hasattr(w, "network_cluster")
 
 
-@pytest.mark.xfail(strict=True, reason="H10 controller path fixed in Task 16")
 def test_cluster_by_hubsize_omits_none(fake_session, run_async):
     run_async(PyVisNetworkController("net", fake_session).cluster_by_hubsize)
     assert "hubsize" not in fake_session.last()[1]
@@ -96,6 +102,7 @@ CONTROLLER = [
     ("unselect_all", (), "unselectAll", {}),
     ("fit", (), "fit", {"animation": True}),
     ("cluster_by_hubsize", (3,), "clusterByHubsize", {"hubsize": 3, "options": {}}),
+    ("focus", (7,), "focus", {"nodeId": 7, "options": {"scale": 1.0, "animation": True, "locked": True}}),
     ("set_options", ({"physics": False},), "setOptions", {"options": {"physics": False}}),
     ("update_data", ([{"id": 1}], []), "updateData", {"nodes": [{"id": 1}], "edges": []}),
 ]
@@ -127,3 +134,18 @@ class TestNamespacing:
     def test_no_namespace_is_unchanged(self, fake_session, run_async):
         run_async(w.network_fit, fake_session, "net")
         assert fake_session.last()[2] == "net"
+
+
+# --- controller/standalone parity (M32) -------------------------------------
+
+def test_every_controller_method_has_a_standalone_twin():
+    import inspect
+    skip = {"_send_command", "cluster"}   # cluster is deleted in Task 18 (H11); until then its twin lacks cluster_edge_properties
+    for name, member in inspect.getmembers(PyVisNetworkController, inspect.isfunction):
+        if name.startswith("__") or name in skip:
+            continue
+        twin = getattr(w, f"network_{name}", None)
+        assert twin is not None, f"missing network_{name}"
+        c_params = list(inspect.signature(member).parameters)[1:]          # drop self
+        t_params = list(inspect.signature(twin).parameters)[2:]            # drop session, output_id
+        assert c_params == t_params, f"{name}: {c_params} != {t_params}"
