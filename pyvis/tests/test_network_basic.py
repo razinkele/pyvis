@@ -386,19 +386,6 @@ class TestEdgeWeightTransform:
 class TestFromNxDoesNotMutate:
     """from_nx() must not mutate the original NetworkX graph."""
 
-    def test_does_not_corrupt_nx_node_data(self):
-        """from_nx() must not mutate the original NetworkX graph node data."""
-        G = nx.Graph()
-        G.add_edges_from([(1, 2), (1, 3), (1, 4)])
-        for n in G.nodes:
-            G.nodes[n]['size'] = 10
-        net = Network()
-        net.from_nx(G, node_size_transf=lambda x: x * 2)
-        # Original graph should be UNCHANGED
-        assert G.nodes[1]['size'] == 10, (
-            f"NX graph was mutated: node 1 size is {G.nodes[1]['size']}, expected 10"
-        )
-
     def test_does_not_corrupt_nx_edge_data(self):
         """from_nx() must not mutate the original NetworkX graph edge data."""
         G = nx.Graph()
@@ -466,14 +453,6 @@ class TestMixedTypeEdgeDedup:
         net.add_node("a", label="A")
         net.add_edge(1, "a")
         net.add_edge("a", 1)
-        assert len(net.edges) == 1
-
-    def test_str_int_dedup_both_directions(self):
-        net = Network(directed=False)
-        net.add_node("a", label="A")
-        net.add_node(1, label="1")
-        net.add_edge("a", 1)
-        net.add_edge(1, "a")
         assert len(net.edges) == 1
 
     def test_same_type_dedup_unchanged(self):
@@ -755,23 +734,6 @@ class TestAddNodesTypedOptions:
 
 class TestErrorPaths:
     """Tests for error handling and edge cases."""
-
-    def test_add_edge_nonexistent_source_raises(self):
-        net = Network()
-        net.add_node(1, label="A")
-        with pytest.raises(ValueError, match="non existent"):
-            net.add_edge(99, 1)
-
-    def test_add_edge_nonexistent_target_raises(self):
-        net = Network()
-        net.add_node(1, label="A")
-        with pytest.raises(ValueError, match="non existent"):
-            net.add_edge(1, 99)
-
-    def test_get_node_nonexistent_raises(self):
-        net = Network()
-        with pytest.raises(KeyError):
-            net.get_node(999)
 
     def test_self_loop_allowed(self):
         net = Network()

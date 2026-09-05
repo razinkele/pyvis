@@ -26,11 +26,10 @@ from pyvis.types import (
 )
 
 
-def test_all_exports_importable():
-    """Verify that all public types are importable from pyvis.types."""
-    assert NodeOptions is not None
-    assert EdgeOptions is not None
-    assert NetworkOptions is not None
+def test_all_exports_resolve():
+    import pyvis.types as t
+    for name in t.__all__:
+        assert getattr(t, name) is not None, name
 
 
 def test_network_options_compose():

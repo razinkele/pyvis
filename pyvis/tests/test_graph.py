@@ -64,7 +64,7 @@ class NodeTestCase(unittest.TestCase):
     def test_adding_nodes(self):
         g = self.g
         g.add_nodes(range(5))
-        self.assertTrue(g.get_nodes(), range(5))
+        self.assertEqual(g.get_nodes(), list(range(5)))
 
     def test_adding_nodes_with_props(self):
         g = self.g
@@ -157,7 +157,8 @@ class EdgeTestCase(unittest.TestCase):
         self.assertEqual(self.g.neighbors(1), set([0, 2, 3]))
         self.assertEqual(self.g.neighbors(2), set([0, 1, 3]))
         self.assertEqual(self.g.neighbors(3), set([0, 1, 2]))
-        self.assertTrue("weight" not in [es for es in self.g.edges])
+        for edge in self.g.edges:
+            self.assertNotIn("weight", edge)
 
     def test_add_edges_weights(self):
         self.g.add_edges(

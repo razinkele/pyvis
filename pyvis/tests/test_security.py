@@ -52,6 +52,12 @@ class TestXSSPrevention:
         html = net.generate_html()
         # vis.js script tag should be present and functional
         assert '<script src="' in html or "<script src='" in html
+        from pyvis import vis_config
+        assert vis_config.VIS_JS_UNPKG in html
+        idx = html.index(vis_config.VIS_JS_UNPKG)
+        tag = html[html.rfind("<script", 0, idx):html.index(">", idx)]
+        assert 'src="' + vis_config.VIS_JS_UNPKG + '"' in tag
+        assert "&amp;" not in tag and "&quot;" not in tag
 
 
 class TestFromDOTValidation:
