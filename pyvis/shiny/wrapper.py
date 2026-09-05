@@ -153,7 +153,6 @@ __all__ = [
     'network_update_edge',
     'network_remove_node',
     'network_remove_edge',
-    'network_cluster',
     'network_open_cluster',
     'network_set_options',
     'network_set_theme',
@@ -539,10 +538,6 @@ if SHINY_AVAILABLE:
             self.output_id = resolve_id(output_id)
             self.session = session
         
-        def _send_command(self, command: str, args: Optional[Dict[str, Any]] = None):
-            """Send a command to the network via custom message."""
-            _send_network_command(self.session, self.output_id, command, args)
-        
         # === Selection Methods ===
         
         def select_nodes(
@@ -713,30 +708,7 @@ if SHINY_AVAILABLE:
             network_remove_edge(self.session, self.output_id, edge_id)
         
         # === Clustering Methods ===
-        
-        def cluster(
-            self,
-            join_condition: Optional[Dict] = None,
-            cluster_node_properties: Optional[Dict] = None,
-            cluster_edge_properties: Optional[Dict] = None
-        ):
-            """
-            Create a cluster of nodes.
-            
-            Args:
-                join_condition: Options for determining which nodes to cluster
-                cluster_node_properties: Properties for the cluster node
-                cluster_edge_properties: Properties for cluster edges
-            """
-            args = {}
-            if join_condition:
-                args["joinCondition"] = join_condition
-            if cluster_node_properties:
-                args["clusterNodeProperties"] = cluster_node_properties
-            if cluster_edge_properties:
-                args["clusterEdgeProperties"] = cluster_edge_properties
-            self._send_command("cluster", args)
-        
+
         def cluster_by_connection(
             self,
             node_id: Any,
@@ -1060,21 +1032,6 @@ def network_remove_edge(session: 'Session', output_id: str, edge_id: Any):
     _send_network_command(session, output_id, "removeEdge", {"edgeId": edge_id})
 
 
-def network_cluster(
-    session: 'Session',
-    output_id: str,
-    join_condition: Optional[Dict] = None,
-    cluster_node_properties: Optional[Dict] = None
-):
-    """Create a cluster."""
-    args = {}
-    if join_condition:
-        args["joinCondition"] = join_condition
-    if cluster_node_properties:
-        args["clusterNodeProperties"] = cluster_node_properties
-    _send_network_command(session, output_id, "cluster", args)
-
-
 def network_cluster_by_connection(
     session: 'Session',
     output_id: str,
@@ -1166,8 +1123,15 @@ def network_get_positions(
     output_id: str,
     node_ids: Optional[List[Any]] = None
 ):
-    """Request node positions (response: input.{output_id}_response_positions)."""
-    _send_network_command(session, output_id, "getPositions", {"nodeIds": node_ids})
+    """Request node positions (response: input.{output_id}_response_positions).
+
+    ``node_ids`` is omitted from the payload when None so vis.js returns
+    positions for all nodes instead of an empty result.
+    """
+    args: Dict[str, Any] = {}
+    if node_ids is not None:
+        args["nodeIds"] = node_ids
+    _send_network_command(session, output_id, "getPositions", args)
 
 
 def network_get_selection(session: 'Session', output_id: str):

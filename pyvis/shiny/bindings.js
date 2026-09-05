@@ -1119,9 +1119,7 @@ if (typeof Shiny !== 'undefined') {
                 break;
 
             // Clustering
-            case 'cluster':
-                network.cluster(args);
-                break;
+            // 'cluster' is not supported: vis.js requires a joinCondition function which cannot cross JSON.
             case 'clusterByConnection':
                 network.clusterByConnection(args.nodeId, args.options);
                 break;

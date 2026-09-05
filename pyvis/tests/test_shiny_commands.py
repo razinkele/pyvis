@@ -42,6 +42,7 @@ STANDALONE = [
     (w.network_cluster_by_hubsize, ("net", 3), "clusterByHubsize", {"hubsize": 3, "options": {}}),
     (w.network_focus, ("net", 7), "focus", {"nodeId": 7, "options": {"scale": 1.0, "animation": True, "locked": True}}),
     (w.network_update_data, ("net", [{"id": 1}], [{"id": "e", "from": 1, "to": 1}]), "updateData", {"nodes": [{"id": 1}], "edges": [{"id": "e", "from": 1, "to": 1}]}),
+    (w.network_get_positions, ("net",), "getPositions", {}),
 ]
 
 
@@ -76,15 +77,13 @@ def test_fake_to_dict_object_is_sent_verbatim(fake_session, run_async):
     assert fake_session.last()[1]["node"] is fake
 
 
-# --- fixed in Task 18: keep strict xfail until then ---------------------------
+# --- fixed in Task 18 --------------------------------------------------------
 
-@pytest.mark.xfail(strict=True, reason="H10 fixed in Task 18")
 def test_get_positions_omits_none(fake_session, run_async):
     run_async(w.network_get_positions, fake_session, "net", None)
     assert "nodeIds" not in fake_session.last()[1]
 
 
-@pytest.mark.xfail(strict=True, reason="H11 fixed in Task 18")
 def test_controller_has_no_cluster_method():
     assert not hasattr(PyVisNetworkController, "cluster")
     assert not hasattr(w, "network_cluster")
@@ -105,6 +104,7 @@ CONTROLLER = [
     ("focus", (7,), "focus", {"nodeId": 7, "options": {"scale": 1.0, "animation": True, "locked": True}}),
     ("set_options", ({"physics": False},), "setOptions", {"options": {"physics": False}}),
     ("update_data", ([{"id": 1}], []), "updateData", {"nodes": [{"id": 1}], "edges": []}),
+    ("get_positions", (), "getPositions", {}),
 ]
 
 
@@ -140,7 +140,7 @@ class TestNamespacing:
 
 def test_every_controller_method_has_a_standalone_twin():
     import inspect
-    skip = {"_send_command", "cluster"}   # cluster is deleted in Task 18 (H11); until then its twin lacks cluster_edge_properties
+    skip = {"_send_command"}
     for name, member in inspect.getmembers(PyVisNetworkController, inspect.isfunction):
         if name.startswith("__") or name in skip:
             continue

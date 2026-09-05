@@ -193,7 +193,6 @@ ctrl = PyVisNetworkController("my_network", session)
 
 | Method | Description | Parameters |
 |--------|-------------|------------|
-| `cluster(join_condition, cluster_node_properties)` | Create cluster | Cluster options |
 | `cluster_by_connection(node_id, properties)` | Cluster around node | Hub node ID |
 | `cluster_by_hubsize(hubsize, properties)` | Cluster by connections | Min connections |
 | `open_cluster(cluster_node_id)` | Expand cluster | Cluster ID |
