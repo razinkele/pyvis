@@ -164,3 +164,5 @@ output/
 # Generated screenshots / images from demo testing
 *.png
 !pyvis/source/**/*.png
+# SDD scratch workspace (briefs, reports, review packages)
+.superpowers/
