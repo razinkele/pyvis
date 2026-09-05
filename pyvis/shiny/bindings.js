@@ -53,7 +53,11 @@ if (typeof Shiny !== 'undefined') {
             }
 
             const outputId = el.id;
-            const config = payload.config || {};
+            var datasetConfig = {};
+            if (el.dataset.pyvisConfig) {
+                try { datasetConfig = JSON.parse(el.dataset.pyvisConfig) || {}; } catch (e) { datasetConfig = {}; }
+            }
+            const config = Object.assign({}, datasetConfig, payload.config || {});
             const theme = config.theme || 'light';
             const showToolbar = config.showToolbar !== false;
             const showSearch = config.showSearch !== false;
@@ -88,8 +92,6 @@ if (typeof Shiny !== 'undefined') {
 
             // Build container HTML
             el.innerHTML = '';
-            el.style.height = payload.height || '600px';
-            el.style.width = payload.width || '100%';
 
             const container = document.createElement('div');
             container.className = 'pyvis-container pyvis-theme-' + theme + (fill ? ' pyvis-fill' : '');
@@ -842,6 +844,14 @@ if (typeof Shiny !== 'undefined') {
                 });
             }
 
+            // Bound unconditionally; the gate is inside so the configurator
+            // handler exists even when `events` omits it.
+            network.on('configChange', function(params) {
+                if (shouldBind('configChange')) {
+                    Shiny.setInputValue(outputId + '_configChange', pyvisSafeClone(params), {priority: 'event'});
+                }
+            });
+
             // Ready event (always sent)
             Shiny.setInputValue(outputId + '_ready', {
                 nodeCount: nodesDataSet.length,
@@ -1018,6 +1028,11 @@ if (typeof Shiny !== 'undefined') {
             }
 
             console.debug('PyVis Shiny v3: initialized ' + outputId + ' (' + nodesDataSet.length + ' nodes, ' + edgesDataSet.length + ' edges)');
+
+            // Replay any commands that arrived before this network existed.
+            var pending = window.pyvisPendingCommands[outputId] || [];
+            delete window.pyvisPendingCommands[outputId];
+            pending.forEach(pyvisHandleCommand);
         }
     }
 
@@ -1028,14 +1043,25 @@ if (typeof Shiny !== 'undefined') {
     );
 
     // === COMMAND HANDLER ===
-    Shiny.addCustomMessageHandler('pyvis-command', function(message) {
+    window.pyvisPendingCommands = window.pyvisPendingCommands || {};
+
+    // Treat an explicit null argument as absent so vis.js applies its default
+    // (e.g. getPositions(undefined) returns every node).
+    function pyvisUndefNulls(obj) {
+        if (!obj || typeof obj !== 'object') return obj;
+        Object.keys(obj).forEach(function(k) { if (obj[k] === null) obj[k] = undefined; });
+        return obj;
+    }
+
+    function pyvisHandleCommand(message) {
         var outputId = message.outputId;
         var command = message.command;
-        var args = message.args || {};
+        var args = pyvisUndefNulls(message.args || {});
         var ref = window.pyvisNetworks[outputId];
 
         if (!ref || !ref.network) {
-            console.warn('PyVis: network not found for', outputId);
+            (window.pyvisPendingCommands[outputId] = window.pyvisPendingCommands[outputId] || []).push(message);
+            console.debug('PyVis: queued command until render:', command, outputId);
             return;
         }
 
@@ -1205,7 +1231,9 @@ if (typeof Shiny !== 'undefined') {
         } catch (e) {
             console.error('PyVis: command "' + command + '" failed for "' + outputId + '":', e);
         }
-    });
+    }
+
+    Shiny.addCustomMessageHandler('pyvis-command', pyvisHandleCommand);
 
     // Safe DOM class operations for app-level theming.
     // Accepts: { selector: "body", action: "add"|"remove"|"toggle", className: "app-light" }

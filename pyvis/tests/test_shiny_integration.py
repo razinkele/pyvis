@@ -118,3 +118,33 @@ def test_package_docstring_example_adds_both_nodes():
     import pyvis.shiny
     first_example = pyvis.shiny.__doc__.split("```")[1]
     assert "net.add_node(2" in first_example
+
+
+@pytest.mark.skipif(not SHINY_AVAILABLE, reason="Shiny not installed")
+def test_transform_config_omits_unset_keys(_isolated_running_loop):
+    """M10: renderer config only carries keys the user set, so data-pyvis-config can fill the rest.
+
+    ``_isolated_running_loop`` clears the running-loop pointer that pytest-playwright
+    leaks into the session (see conftest) so ``asyncio.run`` can start here.
+    """
+    import asyncio
+    from pyvis.shiny.wrapper import render_pyvis_network
+    from pyvis.network import Network
+    net = Network()
+    net.add_node(1)
+    r = render_pyvis_network(lambda: net)
+    data = asyncio.run(r.transform(net))
+    assert data["config"] == {}
+
+
+@pytest.mark.skipif(not SHINY_AVAILABLE, reason="Shiny not installed")
+def test_transform_payload_has_no_height_or_width(_isolated_running_loop):
+    """Renderer dimensions belong to the output container, not the payload."""
+    import asyncio
+    from pyvis.shiny.wrapper import render_pyvis_network
+    from pyvis.network import Network
+    net = Network(height="750px")
+    net.add_node(1)
+    r = render_pyvis_network(lambda: net)
+    data = asyncio.run(r.transform(net))
+    assert "height" not in data and "width" not in data

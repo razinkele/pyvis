@@ -377,14 +377,20 @@ if SHINY_AVAILABLE:
         Args:
             height: Height of the rendered network (default: "600px").
             width: Width of the rendered network (default: "100%").
-            theme: Color theme, "light" or "dark" (default: "light").
-            show_toolbar: Show the toolbar panel (default: True).
-            show_search: Show node search input (default: True).
-            show_layout_switcher: Show layout toggle (default: True).
-            show_export: Show export button (default: True).
-            show_status: Show status bar (default: True).
-            fill: Whether the container should fill its parent (default: False).
+            theme: Color theme, "light" or "dark" (default: None, inherits
+                from ``output_pyvis_network``).
+            show_toolbar: Show the toolbar panel (default: None, inherits).
+            show_search: Show node search input (default: None, inherits).
+            show_layout_switcher: Show layout toggle (default: None, inherits).
+            show_export: Show export button (default: None, inherits).
+            show_status: Show status bar (default: None, inherits).
+            fill: Whether the container should fill its parent (default: None,
+                inherits).
             events: List of event names to bind, or None for all (default: None).
+
+        Unset (``None``) options are omitted from the payload so the values
+        already encoded in the output container's ``data-pyvis-config``
+        attribute apply.
 
         Example:
             ```python
@@ -412,13 +418,13 @@ if SHINY_AVAILABLE:
             *,
             height: str = "600px",
             width: str = "100%",
-            theme: str = "light",
-            show_toolbar: bool = True,
-            show_search: bool = True,
-            show_layout_switcher: bool = True,
-            show_export: bool = True,
-            show_status: bool = True,
-            fill: bool = False,
+            theme: Optional[str] = None,
+            show_toolbar: Optional[bool] = None,
+            show_search: Optional[bool] = None,
+            show_layout_switcher: Optional[bool] = None,
+            show_export: Optional[bool] = None,
+            show_status: Optional[bool] = None,
+            fill: Optional[bool] = None,
             events: Optional[List[str]] = None,
         ):
             self.height = height
@@ -435,18 +441,21 @@ if SHINY_AVAILABLE:
 
         def auto_output_ui(self, id: str = "") -> 'Tag':
             """Generate the output UI for Shiny Express mode."""
+            overrides = {
+                "theme": self.theme,
+                "show_toolbar": self.show_toolbar,
+                "show_search": self.show_search,
+                "show_layout_switcher": self.show_layout_switcher,
+                "show_export": self.show_export,
+                "show_status": self.show_status,
+                "fill": self.fill,
+                "events": self.events,
+            }
             return output_pyvis_network(
                 id or self.output_id,
                 height=self.height,
                 width=self.width,
-                theme=self.theme,
-                show_toolbar=self.show_toolbar,
-                show_search=self.show_search,
-                show_layout_switcher=self.show_layout_switcher,
-                show_export=self.show_export,
-                show_status=self.show_status,
-                fill=self.fill,
-                events=self.events,
+                **{k: v for k, v in overrides.items() if v is not None},
             )
 
         async def transform(self, value: PyVisNetwork) -> Jsonifiable:
@@ -469,7 +478,14 @@ if SHINY_AVAILABLE:
 
             data = value.get_network_json()
 
-            data["config"] = {
+            # Dimensions belong to the output container (set by
+            # output_pyvis_network), not to the rendered payload.
+            data.pop("height", None)
+            data.pop("width", None)
+
+            # Only send keys the user actually set, so the container's
+            # data-pyvis-config attribute can supply the rest.
+            data["config"] = {k: v for k, v in {
                 "theme": self.theme,
                 "showToolbar": self.show_toolbar,
                 "showSearch": self.show_search,
@@ -478,7 +494,7 @@ if SHINY_AVAILABLE:
                 "showStatus": self.show_status,
                 "fill": self.fill,
                 "events": self.events,
-            }
+            }.items() if v is not None}
 
             return data
 

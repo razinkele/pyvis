@@ -103,3 +103,48 @@ class TestNumericIds:
         pyvis_page.click("#net-links-modal [data-action=save]")
         edge = pyvis_page.evaluate("() => window.pyvisNetworks['net'].edges.get('e')")
         assert edge["from"] == "8" and edge["to"] == "007"
+
+
+class TestCommandRobustness:
+    def test_null_node_ids_means_all(self, pyvis_page):
+        """H10: a null argument must be treated as absent, not as a value."""
+        render(pyvis_page, [{"id": 1}, {"id": 2}], [])
+        command(pyvis_page, "getPositions", {"nodeIds": None})
+        pos = pyvis_page.evaluate("() => window.Shiny.inputs['net_response_positions']")
+        assert set(pos) == {"1", "2"}
+
+    def test_command_before_render_is_queued(self, pyvis_page):
+        """M13: commands arriving before the network exists are replayed after render."""
+        command(pyvis_page, "selectNodes", {"nodeIds": [2]})
+        render(pyvis_page, [{"id": 1}, {"id": 2}], [])
+        pyvis_page.wait_for_timeout(100)
+        sel = pyvis_page.evaluate(
+            "() => window.pyvisNetworks['net'].network.getSelectedNodes()"
+        )
+        assert sel == [2]
+
+    def test_render_does_not_override_container_height(self, pyvis_page):
+        """M9: the output container owns its dimensions, not the payload."""
+        pyvis_page.evaluate("() => { document.getElementById('net').style.height = '123px'; }")
+        render(pyvis_page, [{"id": 1}], [], height="900px")
+        h = pyvis_page.evaluate("() => document.getElementById('net').style.height")
+        assert h == "123px"
+
+    def test_config_falls_back_to_data_attribute(self, pyvis_page):
+        """M10: output_pyvis_network params are merged under the payload config."""
+        pyvis_page.evaluate(
+            "() => { document.getElementById('net').dataset.pyvisConfig ="
+            " JSON.stringify({theme: 'dark'}); }"
+        )
+        render(pyvis_page, [{"id": 1}], [], config={"showSearch": False})
+        assert pyvis_page.evaluate("() => !!document.querySelector('#net .pyvis-theme-dark')")
+
+    def test_config_change_handler_is_registered(self, pyvis_page):
+        """M11: the vis configurator cannot be driven headlessly, so assert the
+        handler is bound via the public Emitter API (vis stores listeners under
+        network._callbacks['$configChange']; listeners() hides that prefix)."""
+        render(pyvis_page, [{"id": 1}], [])
+        n = pyvis_page.evaluate(
+            "() => window.pyvisNetworks['net'].network.listeners('configChange').length"
+        )
+        assert n == 1
