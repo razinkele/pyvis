@@ -881,7 +881,8 @@ if SHINY_AVAILABLE:
 
             Args:
                 nodes: Full list of node dicts (each must have an 'id' key).
-                edges: Full list of edge dicts (each must have 'from'/'to' keys).
+                edges: Full list of edge dicts. Each must carry a stable 'id';
+                    edges without an id are treated as new on every call.
             """
             network_update_data(self.session, self.output_id, nodes, edges)
 
@@ -1208,7 +1209,8 @@ def network_update_data(
         session: The Shiny session object.
         output_id: The ID of the network output.
         nodes: Full list of node dicts (each must have an 'id' key).
-        edges: Full list of edge dicts (each must have 'from'/'to' keys).
+        edges: Full list of edge dicts. Each must carry a stable 'id';
+            edges without an id are treated as new on every call.
     """
     _send_network_command(session, output_id, "updateData", {
         "nodes": nodes,

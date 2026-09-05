@@ -1761,7 +1761,7 @@ Network events are automatically sent as Shiny inputs using the pattern `input.{
 | `input.{id}_stabilizationProgress` | Physics stabilization progress update |
 | `input.{id}_stabilized` | Physics stabilization complete |
 | `input.{id}_animationFinished` | Animation completed |
-| `input.{id}_configChange` | Configuration editor changed options |
+| `input.{id}_configChange` | Configuration editor changed options (emitted only when `configure` is enabled in the network options; wired in bindings.js) |
 
 #### Query Response Inputs
 

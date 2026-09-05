@@ -1,5 +1,6 @@
 """Tests for Shiny integration (Python-side, no browser required)."""
 import json
+import re
 import pytest
 from pyvis.network import Network
 
@@ -97,3 +98,23 @@ class TestShinyWrapper:
         tag = output_pyvis_network("test_net")
         html = str(tag)
         assert 'vis-network' in html or 'pyvis' in html
+
+
+@pytest.mark.skipif(not SHINY_AVAILABLE, reason="Shiny not installed")
+class TestOutputConfig:
+    def test_output_config_attribute_holds_the_json(self):
+        import html as html_mod
+        import json
+        from pyvis.shiny import output_pyvis_network
+        markup = html_mod.unescape(str(output_pyvis_network("n", theme="dark", show_toolbar=False)))
+        m = re.search(r'data-pyvis-config="(\{.*?\})"', markup)
+        assert m, markup
+        assert json.loads(m.group(1))["theme"] == "dark"
+
+
+def test_package_docstring_example_adds_both_nodes():
+    """M33: the first fenced example must add node 2 before add_edge(1, 2).
+    The second ('Advanced Usage') example already does, so only the first block is inspected."""
+    import pyvis.shiny
+    first_example = pyvis.shiny.__doc__.split("```")[1]
+    assert "net.add_node(2" in first_example
