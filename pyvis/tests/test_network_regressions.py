@@ -107,6 +107,66 @@ class TestFromNxNumpy:
         node = next(n for n in net.nodes if n["id"] == "a")
         assert node["active"] is True
 
+    def test_self_referential_list_is_dropped_not_crashed(self):
+        nx = pytest.importorskip("networkx")
+        cyclic = []
+        cyclic.append(cyclic)
+        g = nx.Graph()
+        g.add_node("a", loop=cyclic)
+        g.add_node("b")
+        net = Network()
+        with pytest.warns(UserWarning, match="not JSON-serializable"):
+            net.from_nx(g)
+        node = next(n for n in net.nodes if n["id"] == "a")
+        assert "loop" not in node
+
+    def test_self_referential_dict_is_dropped_not_crashed(self):
+        nx = pytest.importorskip("networkx")
+        cyclic = {}
+        cyclic["self"] = cyclic
+        g = nx.Graph()
+        g.add_node("a", loop=cyclic)
+        g.add_node("b")
+        net = Network()
+        with pytest.warns(UserWarning, match="not JSON-serializable"):
+            net.from_nx(g)
+        node = next(n for n in net.nodes if n["id"] == "a")
+        assert "loop" not in node
+
+    def test_dict_attribute_with_tuple_key_is_dropped(self):
+        nx = pytest.importorskip("networkx")
+        g = nx.Graph()
+        g.add_node("a", meta={(1, 2): "v"})
+        g.add_node("b")
+        net = Network()
+        with pytest.warns(UserWarning, match="not JSON-serializable"):
+            net.from_nx(g)
+        node = next(n for n in net.nodes if n["id"] == "a")
+        assert "meta" not in node
+
+    def test_dag_shared_inner_list_is_not_mistaken_for_cycle(self):
+        nx = pytest.importorskip("networkx")
+        np = pytest.importorskip("numpy")
+        shared = [np.int64(1), np.int64(2)]
+        g = nx.Graph()
+        g.add_node("a", left=shared, right=shared)
+        g.add_node("b")
+        net = Network()
+        net.from_nx(g)
+        node = next(n for n in net.nodes if n["id"] == "a")
+        assert node["left"] == [1, 2]
+        assert node["right"] == [1, 2]
+
+    def test_dict_with_int_and_bool_keys_passes_through(self):
+        nx = pytest.importorskip("networkx")
+        g = nx.Graph()
+        g.add_node("a", meta={2: "two", False: "no"})
+        g.add_node("b")
+        net = Network()
+        net.from_nx(g)
+        node = next(n for n in net.nodes if n["id"] == "a")
+        assert node["meta"] == {2: "two", False: "no"}
+
 
 class TestOptionsArgument:
     def test_add_node_accepts_plain_dict(self):

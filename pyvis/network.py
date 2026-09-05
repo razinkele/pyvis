@@ -48,34 +48,56 @@ _CSS_COLOR_RE = re.compile(
 _SAFE_TOMSELECT_KEYS = frozenset({"sortField", "maxOptions", "placeholder", "create", "closeAfterSelect", "hideSelected"})
 
 
-def _to_json_native(value):
+def _to_json_native(value, _seen=None):
     """Coerce numpy scalars and other numeric types to plain Python numbers.
 
     Recurses into lists, tuples and dicts so that numpy scalars nested
     inside a container (e.g. ``[np.int64(1)]`` or ``{"x": np.int64(1)}``)
     are coerced element-by-element instead of causing the whole container
-    to be treated as unserialisable. Dict keys are validated (and left
-    unchanged) rather than recursed into.
+    to be treated as unserialisable. Dict keys are validated against the
+    JSON key rules (``str``, ``int``, ``float``, ``bool`` or ``None`` only)
+    rather than recursed into.
+
+    Container identity (``id()``) is tracked along the current recursion
+    path (``_seen``, popped again once a container's children have been
+    processed) so a genuine cycle (a container that contains itself,
+    directly or indirectly) raises ``ValueError`` instead of overflowing
+    the recursion stack. The same container appearing twice in a DAG
+    (not on the same path) is legal and is coerced normally each time.
+
+    A depth cap was deliberately not added: cycle detection already
+    prevents unbounded recursion for the failure mode that was reported,
+    and an arbitrary depth limit would risk truncating legitimate deep
+    (but finite and non-cyclic) attribute structures that have not been
+    shown to occur in practice.
 
     Returns the value unchanged when it is already JSON-serialisable and
-    raises TypeError when it is not.
+    raises TypeError when it is not. Raises ValueError for a circular
+    reference.
     """
     if isinstance(value, bool) or value is None or isinstance(value, str):
         return value
-    if isinstance(value, (list, tuple)):
-        return [_to_json_native(v) for v in value]
-    if isinstance(value, dict):
-        coerced = {}
-        for k, v in value.items():
-            json.dumps(k)  # raises TypeError for a non-JSON-valid key
-            coerced[k] = _to_json_native(v)
-        return coerced
+    if isinstance(value, (list, tuple, dict)):
+        if _seen is None:
+            _seen = set()
+        container_id = id(value)
+        if container_id in _seen:
+            raise ValueError("Circular reference detected")
+        _seen = _seen | {container_id}
+        if isinstance(value, dict):
+            coerced = {}
+            for k, v in value.items():
+                if not (isinstance(k, (str, int, float)) or k is None):
+                    raise TypeError(f"dict key {k!r} is not a valid JSON key")
+                coerced[k] = _to_json_native(v, _seen)
+            return coerced
+        return [_to_json_native(v, _seen) for v in value]
     if isinstance(value, numbers.Integral):
         return int(value)
     if isinstance(value, numbers.Real):
         return float(value)
     if hasattr(value, "item"):          # numpy generic
-        return _to_json_native(value.item())
+        return _to_json_native(value.item(), _seen)
     json.dumps(value)                   # raises TypeError for anything else
     return value
 
