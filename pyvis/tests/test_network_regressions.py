@@ -191,3 +191,24 @@ class TestOptionsArgument:
         net = Network(font_color="white")
         net.add_node(1, options=NodeOptions(size=10))
         assert net.node_map[1]["font"]["color"] == "white"
+
+
+class TestLocalResources:
+    def test_lib_is_written_beside_output(self, tmp_path):
+        out_dir = tmp_path / "reports" / "q3"
+        out_dir.mkdir(parents=True)
+        net = Network(cdn_resources="local")
+        net.add_node(1)
+        net.write_html(str(out_dir / "graph.html"))
+        assert (out_dir / "lib" / "bindings" / "utils.js").exists()
+        assert (out_dir / "lib" / "tom-select" / "tom-select.css").exists()
+        assert not (tmp_path / "lib").exists()
+
+    def test_lib_is_refreshed_when_stale(self, tmp_path):
+        net = Network(cdn_resources="local")
+        net.add_node(1)
+        net.write_html(str(tmp_path / "a.html"))
+        stale = tmp_path / "lib" / "bindings" / "utils.js"
+        stale.write_text("stale", encoding="utf-8")
+        net.write_html(str(tmp_path / "a.html"))
+        assert stale.read_text(encoding="utf-8") != "stale"

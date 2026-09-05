@@ -1018,15 +1018,16 @@ class Network:
         html = self.generate_html(notebook=notebook)
 
         if self.cdn_resources == CDN_LOCAL:
+            out_dir = os.path.dirname(os.path.abspath(getcwd_name))
+            lib_root = os.path.join(out_dir, "lib")
+            src_root = os.path.join(os.path.dirname(__file__), "templates", "lib")
             try:
-                if not os.path.exists("lib"):
-                    os.makedirs("lib")
-                if not os.path.exists("lib/bindings"):
-                    shutil.copytree(f"{os.path.dirname(__file__)}/templates/lib/bindings", "lib/bindings")
-                if not os.path.exists(os.getcwd()+"/lib/tom-select"):
-                    shutil.copytree(f"{os.path.dirname(__file__)}/templates/lib/tom-select", "lib/tom-select")
-                if not os.path.exists(os.getcwd()+f"/lib/{vis_config.LOCAL_LIB_DIR}"):
-                    shutil.copytree(f"{os.path.dirname(__file__)}/templates/lib/{vis_config.LOCAL_LIB_DIR}", f"lib/{vis_config.LOCAL_LIB_DIR}")
+                for sub in ("bindings", "tom-select", vis_config.LOCAL_LIB_DIR):
+                    shutil.copytree(
+                        os.path.join(src_root, sub),
+                        os.path.join(lib_root, sub),
+                        dirs_exist_ok=True,
+                    )
             except OSError as e:
                 raise OSError(
                     f"Failed to copy pyvis resources: {e}. "
