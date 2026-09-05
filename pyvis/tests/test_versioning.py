@@ -208,3 +208,53 @@ class TestParseVersionErrors:
     def test_alpha_rejected(self):
         with pytest.raises(ValueError, match="plain integer"):
             auto_version.parse_version("4.2.0-beta")
+
+
+class TestExplicitBumpCollectsChangelog:
+    def test_explicit_part_still_categorizes_commits(self, monkeypatch):
+        import auto_version as av
+        monkeypatch.setattr(av, "get_last_tag", lambda: "v4.2")
+        monkeypatch.setattr(av, "get_commits_since", lambda tag: [
+            {"sha": "a", "subject": "feat: a thing", "body": ""},
+            {"sha": "b", "subject": "fix: a bug", "body": ""},
+        ])
+        categorized = av.collect_changes()
+        descriptions = {d for descs in categorized.values() for d in descs}
+        assert descriptions == {"a thing", "a bug"}
+        assert len(categorized) == 2      # feat and fix land in two different COMMIT_TYPES categories
+
+    def test_commit_message_is_conventional(self):
+        import re
+        import auto_version as av
+        assert re.match(r"^(chore|build)(\([^)]+\))?: ", av.release_commit_message("4.3"))
+
+    def test_no_bump_and_no_changes_exits_before_changelog(self, monkeypatch, tmp_path):
+        import auto_version as av
+        monkeypatch.setattr(av, "get_last_tag", lambda: "v4.2")
+        monkeypatch.setattr(av, "get_commits_since", lambda tag: [{"sha": "c", "subject": "docs: typo", "body": ""}])
+        written = []
+        monkeypatch.setattr(av, "update_changelog", lambda v, c: written.append(v))
+        monkeypatch.setattr(av, "read_version", lambda: "4.2")
+        with pytest.raises(SystemExit):
+            av.main_plan(["--no-commit"])
+        assert written == []
+
+    def test_explicit_part_without_commits_refuses_to_tag(self, monkeypatch):
+        """H16: never tag a version that would have no CHANGELOG entry."""
+        import auto_version as av
+        monkeypatch.setattr(av, "get_last_tag", lambda: "v4.2")
+        monkeypatch.setattr(av, "get_commits_since", lambda tag: [])
+        monkeypatch.setattr(av, "read_version", lambda: "4.2")
+        with pytest.raises(SystemExit) as exc:
+            av.main_plan(["patch"])
+        assert exc.value.code == 1
+
+    def test_update_changelog_folds_unreleased(self, monkeypatch, tmp_path):
+        import auto_version as av
+        cl = tmp_path / "CHANGELOG.md"
+        cl.write_text("# Changelog\n\n## [Unreleased]\n\n### Fixed\n- hand-written note\n\n## [4.2] - 2026-03-28\n\n- old\n", encoding="utf-8")
+        monkeypatch.setattr(av, "CHANGELOG", cl)
+        av.update_changelog("4.3", {"Added": ["a thing"]})
+        text = cl.read_text(encoding="utf-8")
+        assert "[Unreleased]" not in text
+        assert text.index("## [4.3]") < text.index("hand-written note") < text.index("## [4.2]")

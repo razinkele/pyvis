@@ -144,6 +144,19 @@ def determine_bump(commits):
     return bump_type, categorized
 
 
+def collect_changes():
+    """Return the categorized commits since the last tag (empty dict if none)."""
+    commits = get_commits_since(get_last_tag())
+    if not commits:
+        return {}
+    _, categorized = determine_bump(commits)
+    return categorized
+
+
+def release_commit_message(version):
+    return f"chore(release): bump version to {version}"
+
+
 def update_meta_yaml(new_version):
     text = META_YAML.read_text(encoding="utf-8")
     text, count = re.subn(
@@ -187,6 +200,12 @@ def update_changelog(new_version, categorized):
                 lines.append(f"- {entry}\n")
     new_section = "".join(lines)
     text = CHANGELOG.read_text(encoding="utf-8")
+    m = re.search(r"^## \[Unreleased\][^\n]*\n(.*?)(?=^## \[|\Z)", text, flags=re.MULTILINE | re.DOTALL)
+    if m:
+        unreleased_body = m.group(1).strip("\n")
+        text = text[:m.start()] + text[m.end():]
+        if unreleased_body:
+            new_section += "\n" + unreleased_body + "\n"
     first_heading = text.find("\n## ")
     if first_heading == -1:
         text = text + "\n" + new_section
@@ -195,8 +214,12 @@ def update_changelog(new_version, categorized):
     CHANGELOG.write_text(text, encoding="utf-8")
 
 
-def main():
-    args = sys.argv[1:]
+def main_plan(args):
+    """Decide what a run would do, without touching any file.
+
+    Returns ``(current, new_version, categorized, no_commit)`` or exits.
+    """
+    args = list(args)
     no_commit = "--no-commit" in args
     if no_commit:
         args.remove("--no-commit")
@@ -206,7 +229,14 @@ def main():
     if args:
         part = args[0]
         new_version = bump(current, part)
-        categorized = {}
+        categorized = collect_changes()
+        if not categorized and not no_commit:
+            last_tag = get_last_tag()
+            print(
+                f"Refusing to tag {new_version}: no commits since {last_tag}, "
+                "CHANGELOG would have no entry"
+            )
+            sys.exit(1)
     else:
         last_tag = get_last_tag()
         commits = get_commits_since(last_tag)
@@ -215,15 +245,19 @@ def main():
             sys.exit(0)
         bump_type, categorized = determine_bump(commits)
         if bump_type is None:
-            print("No version-bumping commits found (only docs/build/test/chore).")
-            print("Changelog will still be updated.")
-            new_version = current
-        else:
-            new_version = bump(current, bump_type)
+            print(f"Nothing to release: no version-bumping commits since {last_tag}")
+            sys.exit(0)
+        new_version = bump(current, bump_type)
 
     if new_version == current and not categorized:
         print("Nothing to do.")
         sys.exit(0)
+
+    return current, new_version, categorized, no_commit
+
+
+def main():
+    current, new_version, categorized, no_commit = main_plan(sys.argv[1:])
 
     print(f"Version: {current} -> {new_version}")
 
@@ -256,7 +290,8 @@ def main():
     else:
         print(f"  Skipped {RECIPE_YAML} (not found)")
 
-    if categorized:
+    changelog_updated = bool(categorized) and new_version != current
+    if changelog_updated:
         update_changelog(new_version, categorized)
         print(f"  Updated {CHANGELOG}")
 
@@ -269,11 +304,11 @@ def main():
         files_to_stage.append(str(META_YAML))
     if RECIPE_YAML.exists():
         files_to_stage.append(str(RECIPE_YAML))
-    if categorized:
+    if changelog_updated:
         files_to_stage.append(str(CHANGELOG))
     subprocess.run(["git", "add"] + files_to_stage, check=True, cwd=ROOT, timeout=60)
     subprocess.run(
-        ["git", "commit", "-m", f"release: bump version to {new_version}"],
+        ["git", "commit", "-m", release_commit_message(new_version)],
         check=True, cwd=ROOT, timeout=60
     )
     subprocess.run(

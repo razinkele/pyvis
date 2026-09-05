@@ -186,9 +186,9 @@ pytest pyvis/tests/ --ignore=pyvis/tests/test_html.py -v
 Version is managed from a single source of truth: `pyvis/_version.py`. Use the bump script for releases:
 
 ```bash
-python bump_version.py patch   # 4.2 -> 4.2.1
-python bump_version.py minor   # 4.2 -> 4.3
-python bump_version.py major   # 4.2 -> 5.0
+python auto_version.py          # bump from conventional commits, update CHANGELOG, commit, tag
+python auto_version.py minor    # explicit bump; CHANGELOG still built from commits
+python auto_version.py --no-commit   # dry run: update files only
 ```
 
 ## Project Structure
@@ -205,7 +205,7 @@ pyvis/
         wrapper.py      # Controller, standalone functions, rendering
         bindings.js     # JavaScript binding for vis-network
     tests/              # 259 tests across 20 modules
-bump_version.py         # Version bump + tag script
+auto_version.py         # Version bump + changelog + tag script
 ```
 
 ## License
