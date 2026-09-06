@@ -263,6 +263,28 @@ class TestSmallCoreFixes:
         assert "ignored" not in net.node_map["a"] and "n_id" not in net.node_map["a"]
         assert net.node_map["a"]["size"] == 10.0
 
+    def test_from_nx_preserves_per_node_font_color(self):
+        """A per-node font_color attribute must survive from_nx (both the edge
+        loop and the isolates loop) instead of being filtered out."""
+        nx = pytest.importorskip("networkx")
+        g = nx.Graph()
+        g.add_node("a", font_color="red")
+        g.add_edge("a", "b")            # "a" goes through the edge loop
+        g.add_node("lonely", font_color="green")    # isolates loop
+        net = Network(font_color="blue")
+        net.from_nx(g)
+        assert net.node_map["a"]["font"]["color"] == "red"
+        assert net.node_map["lonely"]["font"]["color"] == "green"
+        # a node without the attribute still inherits the network default
+        assert net.node_map["b"]["font"]["color"] == "blue"
+
+    def test_add_node_font_color_kwarg_overrides_network_default(self):
+        net = Network(font_color="blue")
+        net.add_node(1, font_color="red")
+        net.add_node(2)
+        assert net.node_map[1]["font"]["color"] == "red"
+        assert net.node_map[2]["font"]["color"] == "blue"
+
     def test_add_nodes_accepts_group(self):
         net = Network()
         net.add_nodes([1, 2], group=["g1", "g2"])

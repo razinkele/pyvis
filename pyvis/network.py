@@ -498,10 +498,16 @@ class Network:
                     node_label = label
                 else:
                     node_label = n_id
+                # A per-node font_color kwarg (e.g. carried over by from_nx)
+                # overrides the network-wide default. None means "inherit";
+                # False means "no color" (handled by Node).
+                node_font_color = kw_options.pop("font_color", None)
+                if node_font_color is None:
+                    node_font_color = self.font_color
                 if "group" in kw_options:
-                    n = Node(n_id, shape, label=node_label, font_color=self.font_color, **kw_options)
+                    n = Node(n_id, shape, label=node_label, font_color=node_font_color, **kw_options)
                 else:
-                    n = Node(n_id, shape, label=node_label, color=color, font_color=self.font_color, **kw_options)
+                    n = Node(n_id, shape, label=node_label, color=color, font_color=node_font_color, **kw_options)
                 self.node_map[n_id] = n.options
             # Invalidate adjacency list cache
             self._adj_list_cache = None
@@ -885,7 +891,9 @@ class Network:
         Returns:
             dict with keys: nodes, edges, options, heading, height, width,
             groups, legend, neighborhood_highlight, select_menu, filter_menu,
-            edge_attribute_edit, directed, bgcolor
+            edge_attribute_edit, directed, bgcolor, highlight_degree,
+            select_node_options, filter_exclude, font_color,
+            tooltip_link_override
         """
         nodes, edges, heading, height, width, options = self.get_network_data()
 
@@ -1278,7 +1286,7 @@ class Network:
                             node_data[n]['size'] = default_node_size
                         node_data[n]['size'] = float(node_size_transf(node_data[n]['size']))
                         processed_nodes.add(n)
-                        attrs = {k: v for k, v in node_data[n].items() if k not in ("options", "font_color", "n_id")}
+                        attrs = {k: v for k, v in node_data[n].items() if k not in ("options", "n_id")}
                         self.add_node(n, **attrs)
 
                 # Only inject weight when user has provided neither value nor width
@@ -1297,7 +1305,7 @@ class Network:
             if 'size' not in data:
                 data['size'] = default_node_size
             data['size'] = float(node_size_transf(data['size']))
-            attrs = {k: v for k, v in data.items() if k not in ("options", "font_color", "n_id")}
+            attrs = {k: v for k, v in data.items() if k not in ("options", "n_id")}
             self.add_node(node, **attrs)
 
     def get_nodes(self) -> List[Union[str, int]]:
