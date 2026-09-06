@@ -3,6 +3,29 @@
 All notable changes to this project are documented in this file.
 
 
+
+## [4.3.1] - 2026-09-06
+
+Packaging-only release. 4.3.0 was tagged but never published: both publish
+jobs failed, so no artifact for it exists on PyPI or anaconda.org. Everything
+described under 4.3.0 below ships here instead.
+
+### Breaking Changes
+- **The PyPI distribution is now `pyvis-optimized`.** The `pyvis` name on PyPI
+  belongs to the upstream WestHealth project, which this fork cannot publish
+  under. Install with `pip install pyvis-optimized` (and
+  `pyvis-optimized[shiny]`, `[notebook]`, `[dev]`, `[test]`, `[all]` for the
+  extras). **The import package is unchanged** — `from pyvis.network import
+  Network` still works, so no code changes are needed. The conda package on
+  anaconda.org keeps its existing name, `razinka/pyvis`.
+
+### Fixed
+- The conda release job failed with `conda: error: argument COMMAND: invalid
+  choice: 'build'` on conda 26, which dispatches `conda build` through a
+  plugin that is not reliably registered in the session that installs it. The
+  workflow now calls the `conda-build` entry point directly and verifies the
+  built artifact exists before uploading.
+
 ## [4.3.0] - 2026-09-06
 
 
