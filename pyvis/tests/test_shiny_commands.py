@@ -29,6 +29,7 @@ STANDALONE = [
     (w.network_open_cluster, ("net", "c1"), "openCluster", {"nodeId": "c1"}),
     (w.network_set_options, ("net", {"physics": {"enabled": False}}), "setOptions", {"options": {"physics": {"enabled": False}}}),
     (w.network_set_theme, ("net", "dark"), "setTheme", {"theme": "dark"}),
+    (w.network_destroy, ("net",), "destroy", {}),
     (w.network_toggle_manipulation, ("net", True), "toggleManipulation", {"enabled": True}),
     (w.network_set_edge_edit_mode, ("net", "modal"), "setEdgeEditMode", {"mode": "modal"}),
     (w.network_set_node_template_mode, ("net", False), "setNodeTemplateMode", {"enabled": False}),
@@ -103,6 +104,7 @@ CONTROLLER = [
     ("cluster_by_hubsize", (3,), "clusterByHubsize", {"hubsize": 3, "options": {}}),
     ("focus", (7,), "focus", {"nodeId": 7, "options": {"scale": 1.0, "animation": True, "locked": True}}),
     ("set_options", ({"physics": False},), "setOptions", {"options": {"physics": False}}),
+    ("destroy", (), "destroy", {}),
     ("update_data", ([{"id": 1}], []), "updateData", {"nodes": [{"id": 1}], "edges": []}),
     ("get_positions", (), "getPositions", {}),
 ]

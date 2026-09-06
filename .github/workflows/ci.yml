@@ -25,7 +25,7 @@ jobs:
           pip install -e ".[dev,shiny,test]"
       - name: Run tests
         run: |
-          python -m pytest pyvis/tests/ --ignore=pyvis/tests/test_html.py --ignore=pyvis/tests/test_bindings_js.py -v
+          python -m pytest pyvis/tests/ --ignore=pyvis/tests/test_html.py --ignore=pyvis/tests/test_bindings_js.py --ignore=pyvis/tests/test_shiny_e2e.py -v
 
   browser:
     runs-on: ubuntu-latest
@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -e ".[shiny,test]" && python -m playwright install --with-deps chromium
-      - run: python -m pytest pyvis/tests/test_html.py pyvis/tests/test_bindings_js.py -v
+      - run: python -m pytest pyvis/tests/test_html.py pyvis/tests/test_bindings_js.py pyvis/tests/test_shiny_e2e.py -v
 
   validate-version:
     runs-on: ubuntu-latest

@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Derived from vis_config so a vis-network upgrade does not break this file.
 VIS_JS = ROOT / "templates" / "lib" / vis_config.LOCAL_LIB_DIR / "vis-network.min.js"
 BINDINGS = ROOT / "shiny" / "bindings.js"
+STYLES = ROOT / "shiny" / "styles.css"
 
 STUB = """
 window.Shiny = {
@@ -31,6 +32,11 @@ SEARCH_INPUT = "#net .pyvis-search input"
 @pytest.fixture
 def pyvis_page(page):
     page.set_content('<div id="net" class="pyvis-network-output"></div>')
+    # styles.css matters, not just for looks: .pyvis-container is display:flex
+    # and .pyvis-network-canvas is flex:1, which is what lets the canvas track
+    # the container's height. Without it the layout collapses to block flow and
+    # resize behaviour cannot be observed faithfully.
+    page.add_style_tag(path=str(STYLES))
     page.add_script_tag(path=str(VIS_JS))
     page.add_script_tag(content=STUB)
     page.add_script_tag(path=str(BINDINGS))
@@ -166,3 +172,42 @@ class TestCleanup:
         pyvis_page.evaluate("() => document.getElementById('net').remove()")
         pyvis_page.wait_for_timeout(50)
         assert pyvis_page.evaluate("() => window.pyvisNetworks['net']") is None
+
+
+class TestResizeAndTeardown:
+    """The binding keeps its own ResizeObserver rather than implementing
+    Shiny's `resize()` hook, so Shiny's native visibility detection (1.6.1+)
+    never drives it. These pin the behaviour that observer is responsible for.
+    """
+
+    def test_canvas_follows_container_resize(self, pyvis_page):
+        render(pyvis_page, [{"id": 1}, {"id": 2}], [{"id": "e", "from": 1, "to": 2}])
+        pyvis_page.evaluate("() => { document.getElementById('net').style.height = '300px'; }")
+        pyvis_page.wait_for_timeout(400)   # ResizeObserver handler is debounced 150ms
+        before = pyvis_page.evaluate("() => document.querySelector('#net canvas').height")
+        pyvis_page.evaluate("() => { document.getElementById('net').style.height = '600px'; }")
+        pyvis_page.wait_for_timeout(400)
+        after = pyvis_page.evaluate("() => document.querySelector('#net canvas').height")
+        assert after > before, f"canvas did not grow with its container: {before} -> {after}"
+
+    def test_canvas_recovers_after_being_hidden(self, pyvis_page):
+        """A network inside a hidden panel (display:none) collapses to zero
+        size; showing it again must restore a drawable canvas."""
+        render(pyvis_page, [{"id": 1}], [])
+        pyvis_page.evaluate("() => { document.getElementById('net').style.height = '400px'; }")
+        pyvis_page.wait_for_timeout(400)
+        pyvis_page.evaluate("() => { document.getElementById('net').style.display = 'none'; }")
+        pyvis_page.wait_for_timeout(300)
+        pyvis_page.evaluate("() => { document.getElementById('net').style.display = ''; }")
+        pyvis_page.wait_for_timeout(400)
+        assert pyvis_page.evaluate("() => document.querySelector('#net canvas').height") > 0
+
+    def test_destroy_command_tears_down_the_instance(self, pyvis_page):
+        """The `destroy` command releases the instance without removing the
+        element, for servers driving teardown from session.on_destroy."""
+        render(pyvis_page, [{"id": 1}], [])
+        assert pyvis_page.evaluate("() => !!window.pyvisNetworks['net']")
+        command(pyvis_page, "destroy", {})
+        assert pyvis_page.evaluate("() => window.pyvisNetworks['net']") is None
+        # the element survives, so a later render can reuse it
+        assert pyvis_page.evaluate("() => !!document.getElementById('net')")

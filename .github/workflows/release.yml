@@ -91,7 +91,7 @@ jobs:
           CODE=$(python -c "import pyvis._version as v; print(v.__version__)")
           test "$TAG" = "$CODE" || { echo "::error::tag v$TAG != code $CODE"; exit 1; }
       - run: python validate_version.py
-      - run: python -m pytest pyvis/tests/ --ignore=pyvis/tests/test_html.py --ignore=pyvis/tests/test_bindings_js.py -v
+      - run: python -m pytest pyvis/tests/ --ignore=pyvis/tests/test_html.py --ignore=pyvis/tests/test_bindings_js.py --ignore=pyvis/tests/test_shiny_e2e.py -v
 
   publish-pypi:
     needs: test

@@ -68,7 +68,15 @@ class Stabilization(OptionsBase):
 
 @dataclass
 class Wind(OptionsBase):
-    """Constant wind force applied to all nodes."""
+    """Constant wind force applied to all nodes.
+
+    vis-network 10.1.0 also accepts a JavaScript function here, called with a
+    node id, so wind can vary per node. That form is not expressible from
+    Python: options cross to the browser as JSON, and a function cannot. The
+    same limitation removed the Shiny ``cluster()`` command, which needed a
+    ``joinCondition`` function. Use ``x``/``y`` for the constant force, or set
+    a function directly in JavaScript if you need the per-node form.
+    """
     x: Optional[float] = None
     y: Optional[float] = None
 

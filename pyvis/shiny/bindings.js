@@ -1198,6 +1198,14 @@ if (typeof Shiny !== 'undefined') {
                     .replace(/pyvis-theme-\w+/, 'pyvis-theme-' + newTheme);
                 break;
 
+            // Explicit teardown, for a server that knows the output is going
+            // away (e.g. from session.on_destroy) before the DOM node is
+            // removed. Releases the vis network, its DataSets, the resize
+            // observer and the global keydown handler.
+            case 'destroy':
+                pyvisDestroy(outputId);
+                break;
+
             // Queries - responses sent back as Shiny inputs
             case 'getPositions':
                 Shiny.setInputValue(outputId + '_response_positions',

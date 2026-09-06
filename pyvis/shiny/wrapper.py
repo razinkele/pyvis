@@ -156,6 +156,7 @@ __all__ = [
     'network_open_cluster',
     'network_set_options',
     'network_set_theme',
+    'network_destroy',
     'network_toggle_manipulation',
     'network_set_edge_edit_mode',
     'network_set_node_template_mode',
@@ -825,6 +826,20 @@ if SHINY_AVAILABLE:
             """
             network_set_theme(self.session, self.output_id, theme)
 
+        def destroy(self):
+            """Tear down the client-side network and release its resources.
+
+            Intended for session lifecycle hooks, which Shiny gained in 1.6.1::
+
+                ctrl = PyVisNetworkController("network", session)
+                session.on_destroy(ctrl.destroy)
+
+            Removing the output element from the DOM already triggers the same
+            teardown; this covers the case where the element outlives the
+            network.
+            """
+            network_destroy(self.session, self.output_id)
+
         # === Manipulation ===
 
         def toggle_manipulation(self, enabled: bool) -> None:
@@ -1100,6 +1115,23 @@ def network_set_theme(session: 'Session', output_id: str, theme: str):
         theme: "light" or "dark"
     """
     _send_network_command(session, output_id, "setTheme", {"theme": theme})
+
+
+def network_destroy(session: 'Session', output_id: str):
+    """Tear down the client-side network and release its resources.
+
+    Frees the vis-network instance, its DataSets, the resize observer and the
+    document-level keydown handler for this output. The output element itself
+    is left in place; re-rendering builds a fresh network.
+
+    Removing the output from the DOM already triggers the same teardown, so
+    this is for the case where the server knows the network is finished with
+    while the element survives. Pair it with session lifecycle hooks::
+
+        ctrl = PyVisNetworkController("network", session)
+        session.on_destroy(ctrl.destroy)   # or session.on_ended(...)
+    """
+    _send_network_command(session, output_id, "destroy")
 
 
 def network_toggle_manipulation(session: 'Session', output_id: str, enabled: bool):
