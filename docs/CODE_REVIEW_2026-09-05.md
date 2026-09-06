@@ -173,3 +173,40 @@
 ## 5. Appendix: verification coverage
 
 Claims refuted by the adversarial verifier per dimension: network-core 3, template-security 1, shiny-async 3, js-python-contract 1, typed-options 0, test-quality 1, packaging-ci 0, repo-hygiene 1 (10 total). Unverified claims: 0. Several confirmed findings had their severity lowered by the verifier (stale lib copy, shared sub-dicts, height override, null-payload leak, edge select coercion, custom shape, test_html_naming, README counts, `_ul`, CI browser gap), and those corrected severities are the ones used above.
+
+---
+
+## 6. Closure verification (2026-09-07)
+
+All 81 findings are closed: **76 fixed, 5 superseded, 0 open.**
+
+Verified by checking that each prescribed *fix* is present, not merely that the
+evidence string is gone. That distinction matters: `categorized = {}` from H16
+still appears in `auto_version.py`, but as the accumulator inside
+`determine_bump` — unrelated to the bug. Absence of a pattern proves nothing
+once code has been renamed or moved, so every line number in sections 2-4 above
+is stale and was ignored.
+
+Five findings no longer apply because the codebase moved past them rather than
+because they were patched:
+
+| Finding | Superseded by |
+|---------|---------------|
+| H15, M28 | `conda-publish.yml` deleted; conda is now a job in `release.yml` |
+| M14 | vis-network is 10.1.2, not the 10.0.2 the finding enumerated |
+| M22 | distribution renamed to `pyvis-optimized` |
+| M26 | Python floor is 3.10; the finding argued for aligning on 3.9 |
+
+Four findings initially looked open and were confirmed fixed on inspection —
+recorded here because each shows a way an automated sweep misleads:
+
+- **L6** — the corrected `__exit__` docstring reads "Does not delete files",
+  which matches a naive search for the bug it describes.
+- **L23** — coverage landed in `test_network_regressions.py`, not the file the
+  finding named.
+- **M21** — the vacuous test was deleted outright and replaced by a behavioural
+  one in `test_shiny_commands.py`, so searching for the old class name finds
+  nothing either way.
+- **L21** — duplicate test names remain, but every pair sits in a distinct
+  class. No module-level duplicate shadows another test.
+
