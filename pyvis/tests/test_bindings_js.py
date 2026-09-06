@@ -211,3 +211,23 @@ class TestResizeAndTeardown:
         assert pyvis_page.evaluate("() => window.pyvisNetworks['net']") is None
         # the element survives, so a later render can reuse it
         assert pyvis_page.evaluate("() => !!document.getElementById('net')")
+
+    def test_pending_resize_after_teardown_does_not_throw(self, pyvis_page):
+        """A debounced resize callback can still be scheduled when the instance
+        is torn down. Disconnecting the observer does not cancel that timer, so
+        the late call must not reach the destroyed vis network. Found by the
+        end-to-end test on CI, where a physics toggle re-rendered mid-debounce.
+        """
+        render(pyvis_page, [{"id": 1}], [])
+        pyvis_page.evaluate("() => { document.getElementById('net').style.height = '400px'; }")
+
+        errors = []
+        pyvis_page.on("pageerror", lambda e: errors.append(str(e)))
+
+        # Resize (schedules the 150ms debounce) then destroy before it fires.
+        pyvis_page.evaluate("() => { document.getElementById('net').style.height = '500px'; }")
+        command(pyvis_page, "destroy", {})
+        pyvis_page.wait_for_timeout(500)   # let the stale timer elapse
+
+        assert pyvis_page.evaluate("() => window.pyvisNetworks['net']") is None
+        assert not errors, f"stale resize callback threw after teardown: {errors}"

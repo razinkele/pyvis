@@ -4,6 +4,33 @@ All notable changes to this project are documented in this file.
 
 
 
+## [Unreleased]
+
+### Breaking Changes
+- **Python 3.10 is now the minimum.** 3.9 is dropped. Under 3.9 the resolver
+  silently installed Shiny 1.5.0 while development targeted 1.7.0, so the
+  version actually being tested was not the version being shipped.
+
+### Added
+- `network_destroy(session, output_id)` and `PyVisNetworkController.destroy()`
+  tear down the client-side network without removing its element. Intended for
+  `session.on_destroy` / `session.on_ended`, so a closing session releases the
+  vis instance instead of leaving it registered.
+- End-to-end tests that run a real Shiny app in a real browser, covering the
+  module UI, the namespaced output id, and the `show_controls` physics path.
+
+### Fixed
+- A resize callback scheduled just before teardown no longer runs against a
+  destroyed network. Disconnecting the ResizeObserver stops new callbacks but
+  does not cancel a pending debounce timer, so the late call raised "Cannot
+  read properties of undefined (reading 'setSize')" during a re-render.
+- The browser test harness now loads `styles.css`, so the flex layout the
+  canvas sizing depends on is present and resize behaviour is observed
+  faithfully rather than against collapsed block flow.
+
+### Changed
+- Bundled vis-network upgraded from 10.0.2 to 10.1.2.
+
 ## [4.3.1] - 2026-09-06
 
 Packaging-only release. 4.3.0 was tagged but never published: both publish

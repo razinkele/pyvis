@@ -1037,7 +1037,15 @@ if (typeof Shiny !== 'undefined') {
             }
 
             // === RESIZE OBSERVER ===
+            // The handler is debounced, so a callback can already be scheduled
+            // when the instance is torn down by a re-render or an explicit
+            // destroy. Disconnecting the observer stops new callbacks but does
+            // not cancel a pending timer, and the late call would then reach a
+            // destroyed vis network ("Cannot read properties of undefined
+            // (reading 'setSize')"). Bail out unless this ref is still the
+            // registered instance for this output.
             var resizeHandler = pyvisDebounce(function() {
+                if (window.pyvisNetworks[outputId] !== ref) return;
                 network.setSize(canvasDiv.offsetWidth + 'px', canvasDiv.offsetHeight + 'px');
                 network.redraw();
             }, 150);
