@@ -1087,7 +1087,7 @@ class Network:
             except ImportError as e:
                 raise ImportError(
                     "show(notebook=True) needs IPython. "
-                    "Install with: pip install 'pyvis[notebook]'"
+                    "Install with: pip install 'pyvis-optimized[notebook]'"
                 ) from e
             return IFrame(name, width=self.width, height=self.height)
 

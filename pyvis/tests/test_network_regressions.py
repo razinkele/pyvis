@@ -336,5 +336,5 @@ class TestNotebookExtra:
         monkeypatch.setattr(builtins, "__import__", fake_import)
         net = Network()
         net.add_node(1)
-        with pytest.raises(ImportError, match=r"pyvis\[notebook\]"):
+        with pytest.raises(ImportError, match=r"pyvis-optimized\[notebook\]"):
             net.show(str(tmp_path / "x.html"), notebook=True)

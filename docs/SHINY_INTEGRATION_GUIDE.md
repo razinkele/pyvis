@@ -17,7 +17,7 @@ The integration provides:
 ## Installation
 
 ```python
-pip install pyvis shiny
+pip install pyvis-optimized shiny
 ```
 
 ## Quick Start

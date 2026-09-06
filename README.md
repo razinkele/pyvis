@@ -20,17 +20,17 @@ PyVis is a Python library for creating and visualizing interactive network graph
 **Requires Python >= 3.9**
 
 ```bash
-pip install pyvis
+pip install pyvis-optimized
 ```
 
 With optional dependencies:
 
 ```bash
-pip install pyvis[shiny]     # Shiny for Python integration
-pip install pyvis[notebook]  # Jupyter/IPython notebook support
-pip install pyvis[dev]       # Development tools (pytest, black, mypy)
-pip install pyvis[test]      # Test dependencies (pytest, playwright)
-pip install pyvis[all]       # Everything
+pip install pyvis-optimized[shiny]     # Shiny for Python integration
+pip install pyvis-optimized[notebook]  # Jupyter/IPython notebook support
+pip install pyvis-optimized[dev]       # Development tools (pytest, black, mypy)
+pip install pyvis-optimized[test]      # Test dependencies (pytest, playwright)
+pip install pyvis-optimized[all]       # Everything
 ```
 
 The conda package always includes IPython; on PyPI it is the `notebook` extra.
@@ -49,7 +49,7 @@ pip install .
 | [jinja2](https://jinja.palletsprojects.com/) >= 2.9.6 | HTML template rendering |
 | [jsonpickle](https://jsonpickle.github.io/) >= 1.4.1 | JSON serialization |
 
-Optional: [ipython](https://ipython.org/) >= 5.3.0 (`pyvis[notebook]`), [shiny](https://shiny.posit.co/py/) >= 0.6.0 and [htmltools](https://pypi.org/project/htmltools/) (`pyvis[shiny]`)
+Optional: [ipython](https://ipython.org/) >= 5.3.0 (`pyvis-optimized[notebook]`), [shiny](https://shiny.posit.co/py/) >= 0.6.0 and [htmltools](https://pypi.org/project/htmltools/) (`pyvis-optimized[shiny]`)
 
 ## Quick Start
 
@@ -182,7 +182,7 @@ See the [Shiny Integration Guide](docs/SHINY_INTEGRATION_GUIDE.md) for complete 
 pytest pyvis/tests/ --ignore=pyvis/tests/test_html.py -v
 ```
 
-That command runs 480 tests covering core network operations, typed options, Shiny integration, security, error handling, and regression tests for edge cases. The full suite is 484 (run `pytest --co` for the current count); the four extra are the Playwright browser tests in `test_html.py`, which need `pip install pyvis[test]` followed by `python -m playwright install chromium`.
+That command runs 480 tests covering core network operations, typed options, Shiny integration, security, error handling, and regression tests for edge cases. The full suite is 484 (run `pytest --co` for the current count); the four extra are the Playwright browser tests in `test_html.py`, which need `pip install pyvis-optimized[test]` followed by `python -m playwright install chromium`.
 
 ## Versioning
 
