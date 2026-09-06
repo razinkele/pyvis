@@ -416,6 +416,13 @@ class Network:
                       it are: image, circularImage, diamond, dot, star,
                       triangle, triangleDown, square and icon.
 
+        :param font_color: Colour of this node's label, overriding the
+                           network-wide font_color given to Network(). Omit it
+                           (or pass None) to inherit the network default; pass
+                           False to render the label with no explicit colour.
+                           Accepted as a keyword argument alongside the other
+                           vis-network node attributes.
+
         :param size: The size is used to determine the size of node shapes that
                      do not have the label inside of them. These shapes are:
                      image, circularImage, diamond, dot, star, triangle,
@@ -493,7 +500,7 @@ class Network:
                         opts['font'] = {'color': self.font_color}
                 self.node_map[n_id] = opts
             else:
-                # Legacy path: unchanged behavior
+                # Legacy path: Node() builds the option dict from kwargs
                 if label is not None:
                     node_label = label
                 else:

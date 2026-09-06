@@ -47,7 +47,7 @@ net.add_legend(
     width=0.2
 )
 
-net.show("network_with_legend.html")
+net.show("network_with_legend.html", notebook=False)
 ```
 
 ## API Reference
@@ -121,7 +121,7 @@ net.add_legend(
     width=0.15
 )
 
-net.show("network.html")
+net.show("network.html", notebook=False)
 ```
 
 ### Example 2: Custom Legend Entries
@@ -160,7 +160,7 @@ net.add_legend(
     add_edges=custom_edges
 )
 
-net.show("custom_legend.html")
+net.show("custom_legend.html", notebook=False)
 ```
 
 ### Example 3: Multi-Column Legend
