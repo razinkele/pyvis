@@ -35,7 +35,7 @@ jobs:
   preflight:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: PyPI token is present and well formed
@@ -77,11 +77,11 @@ jobs:
     needs: preflight
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - run: pip install -e ".[dev,shiny,test]"
@@ -99,10 +99,10 @@ jobs:
     outputs:
       version: ${{ steps.meta.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - id: meta
@@ -139,7 +139,7 @@ jobs:
             exit 1
           fi
           echo "$NAME $VERSION is live on PyPI."
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: pypi-dist
           path: dist/*
@@ -151,13 +151,13 @@ jobs:
       run:
         shell: bash -el {0}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
       # conda-forge is pinned explicitly: the runner's implicit `defaults`
       # channel does not carry every host dependency the recipe needs.
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@v4
         with:
           auto-update-conda: true
           python-version: "3.11"
@@ -202,7 +202,7 @@ jobs:
             exit 1
           fi
           echo "razinka/pyvis $VERSION is live on anaconda.org."
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: conda-pkg
           path: ${{ steps.build.outputs.pkg }}
@@ -214,10 +214,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
       - id: version
@@ -228,7 +228,7 @@ jobs:
           sed -n "/## \[$VERSION\]/,/^## \[/{ /^## \[$VERSION\]/p; /^## \[/!p; }" CHANGELOG.md > release_notes.md
           test -s release_notes.md || { echo "::error::CHANGELOG.md has no [$VERSION] section"; exit 1; }
           { echo "body<<EOF"; cat release_notes.md; echo "EOF"; } >> "$GITHUB_OUTPUT"
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.RELEASE_REF }}
           body: ${{ steps.changelog.outputs.body }}
