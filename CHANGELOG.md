@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file.
 
 
 
-## [Unreleased]
+## [4.4.0] - 2026-09-06
 
 ### Breaking Changes
 - **Python 3.10 is now the minimum.** 3.9 is dropped. Under 3.9 the resolver

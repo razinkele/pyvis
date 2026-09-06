@@ -1549,6 +1549,20 @@ def server(input, output, session):
 | `cluster_by_hubsize` | `(hubsize: int = None, cluster_node_properties: dict = None)` | Cluster nodes with many connections |
 | `open_cluster` | `(cluster_node_id)` | Expand a cluster |
 
+#### Lifecycle Methods
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `destroy` | `()` | Tear down the client-side network and release its resources. The output element survives, so a later render can reuse it |
+
+Register it with the session so a closing browser tab does not leave the vis
+instance registered:
+
+```python
+ctrl = PyVisNetworkController("network", session)
+session.on_destroy(ctrl.destroy)      # or session.on_ended(ctrl.destroy)
+```
+
 #### Options Methods
 
 | Method | Signature | Description |
@@ -1656,6 +1670,12 @@ For `network_update_data`, each edge must carry a stable `id`; edges without an 
 
 ```python
 network_open_cluster(session, output_id, cluster_node_id)
+```
+
+#### Lifecycle
+
+```python
+network_destroy(session, output_id)
 ```
 
 #### Options
