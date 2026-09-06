@@ -2,7 +2,8 @@ name: Release
 
 # Tag pushes release automatically. workflow_dispatch re-runs a release for an
 # existing tag without minting a new version, so fixing a CI fault does not
-# cost a version number.
+# cost a version number. Set dry_run to build and check everything without
+# publishing anything.
 on:
   push:
     tags:
@@ -13,12 +14,67 @@ on:
         description: "Existing tag to release, e.g. v4.3.1"
         required: true
         type: string
+      dry_run:
+        description: "Build and verify, but publish nothing"
+        type: boolean
+        default: false
+
+# Never let two releases of the same tag interleave their uploads.
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 env:
   RELEASE_REF: ${{ inputs.tag || github.ref_name }}
+  DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
 
 jobs:
+  # Credentials are checked before anything expensive runs. The conda build
+  # alone takes ~4.5 minutes, and a malformed token used to surface only at
+  # the upload step at the very end of it.
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: PyPI token is present and well formed
+        env:
+          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          TOKEN="$(printf '%s' "$PYPI_API_TOKEN" | tr -d '[:space:]')"
+          if [ -z "$TOKEN" ]; then
+            echo "::error::PYPI_API_TOKEN is not set. Add it with: gh secret set PYPI_API_TOKEN -R $GITHUB_REPOSITORY"
+            exit 1
+          fi
+          case "$TOKEN" in
+            pypi-*) ;;
+            *)
+              echo "::error::PYPI_API_TOKEN does not start with 'pypi-'. The secret usually holds pasted text (a shell command, a username) rather than the token itself."
+              exit 1
+              ;;
+          esac
+          echo "PyPI token looks like a token."
+      - name: Anaconda token is present and actually authenticates
+        env:
+          ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
+        run: |
+          TOKEN="$(printf '%s' "$ANACONDA_TOKEN" | tr -d '[:space:]')"
+          if [ -z "$TOKEN" ]; then
+            echo "::error::ANACONDA_TOKEN is not set. Add it with: gh secret set ANACONDA_TOKEN -R $GITHUB_REPOSITORY"
+            exit 1
+          fi
+          pip install --quiet anaconda-client
+          # whoami is the cheapest call that proves the token is valid.
+          if ! anaconda -t "$TOKEN" whoami > whoami.txt 2>&1; then
+            echo "::error::ANACONDA_TOKEN did not authenticate. Re-create it at anaconda.org (Settings > Access) and paste only the token value."
+            sed -e "s/$TOKEN/***/g" whoami.txt || true
+            exit 1
+          fi
+          sed -e "s/$TOKEN/***/g" whoami.txt
+
   test:
+    needs: preflight
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,13 +89,15 @@ jobs:
         run: |
           TAG="${RELEASE_REF#v}"
           CODE=$(python -c "import pyvis._version as v; print(v.__version__)")
-          test "$TAG" = "$CODE" || { echo "tag v$TAG != code $CODE"; exit 1; }
+          test "$TAG" = "$CODE" || { echo "::error::tag v$TAG != code $CODE"; exit 1; }
       - run: python validate_version.py
       - run: python -m pytest pyvis/tests/ --ignore=pyvis/tests/test_html.py --ignore=pyvis/tests/test_bindings_js.py -v
 
   publish-pypi:
     needs: test
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,40 +105,36 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - id: meta
+        run: echo "version=${RELEASE_REF#v}" >> "$GITHUB_OUTPUT"
       - run: pip install build twine && python -m build
+      # twine check catches a malformed README or bad metadata, which PyPI
+      # would otherwise reject only after the upload starts.
+      - run: twine check dist/*
       - name: Publish to PyPI
+        if: env.DRY_RUN != 'true'
         env:
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          # Trim whitespace: a token pasted with a stray leading space or
-          # newline authenticates as garbage and PyPI answers 403.
-          PYPI_API_TOKEN="$(printf '%s' "$PYPI_API_TOKEN" | tr -d '[:space:]')"
-          test -n "$PYPI_API_TOKEN" || { echo "PYPI_API_TOKEN secret is not set"; exit 1; }
-          # --skip-existing so a re-run after a partial failure is not fatal.
-          twine upload --skip-existing dist/* -u __token__ -p "$PYPI_API_TOKEN"
-
-  github-release:
-    needs: test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tag || github.ref }}
-      - id: version
-        run: echo "version=${RELEASE_REF#v}" >> "$GITHUB_OUTPUT"
-      - id: changelog
+          TOKEN="$(printf '%s' "$PYPI_API_TOKEN" | tr -d '[:space:]')"
+          # --skip-existing so re-running a partially failed release is safe.
+          twine upload --skip-existing dist/* -u __token__ -p "$TOKEN"
+      - name: Verify it is live on PyPI
+        if: env.DRY_RUN != 'true'
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          sed -n "/## \[$VERSION\]/,/^## \[/{ /^## \[$VERSION\]/p; /^## \[/!p; }" CHANGELOG.md > release_notes.md
-          test -s release_notes.md || { echo "CHANGELOG.md has no [$VERSION] section"; exit 1; }
-          { echo "body<<EOF"; cat release_notes.md; echo "EOF"; } >> "$GITHUB_OUTPUT"
-      - uses: softprops/action-gh-release@v2
+          NAME="$(python -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['name'])")"
+          VERSION="${{ steps.meta.outputs.version }}"
+          for i in 1 2 3 4 5 6; do
+            CODE="$(curl -s -o /dev/null -w '%{http_code}' "https://pypi.org/pypi/$NAME/$VERSION/json")"
+            [ "$CODE" = "200" ] && { echo "$NAME $VERSION is live on PyPI."; exit 0; }
+            echo "not visible yet (HTTP $CODE), retrying in 10s"; sleep 10
+          done
+          echo "::error::$NAME $VERSION did not become visible on PyPI"
+          exit 1
+      - uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ env.RELEASE_REF }}
-          body: ${{ steps.changelog.outputs.body }}
-          generate_release_notes: false
+          name: pypi-dist
+          path: dist/*
 
   conda:
     needs: test
@@ -94,8 +148,7 @@ jobs:
           ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
       # conda-forge is pinned explicitly: the runner's implicit `defaults`
-      # channel does not carry every host dependency the recipe needs (the
-      # build failed resolving `pip` without this).
+      # channel does not carry every host dependency the recipe needs.
       - uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
@@ -104,20 +157,68 @@ jobs:
           conda-remove-defaults: "true"
       - run: python validate_version.py
       # conda 26 dispatches `conda build` through a plugin that is not always
-      # registered in the same session it is installed in, so invoke the
-      # `conda-build` entry point directly: it ships with the conda-build
-      # package and does not depend on that plugin lookup.
+      # registered in the session that installs it, so call the `conda-build`
+      # entry point directly: it ships with the package and needs no plugin.
       - run: conda install -y -c conda-forge conda-build anaconda-client
-      - run: conda-build --no-anaconda-upload -c conda-forge conda.recipe/
+      # Resolve the output path first (cheap), then build once. Previously the
+      # recipe was effectively processed twice: once to build and again to ask
+      # for the path.
+      - id: build
+        run: |
+          PKG="$(conda-build conda.recipe/ -c conda-forge --output | tail -1)"
+          echo "pkg=$PKG" >> "$GITHUB_OUTPUT"
+          conda-build --no-anaconda-upload -c conda-forge conda.recipe/
+          test -f "$PKG" || { echo "::error::built package not found at: $PKG"; exit 1; }
+          echo "Built $PKG"
       - name: Upload to Anaconda
+        if: env.DRY_RUN != 'true'
         env:
           ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
         run: |
-          # Trim whitespace: anaconda-client rejects a token with a stray
-          # leading space as an "invalid file_or_token value".
-          ANACONDA_TOKEN="$(printf '%s' "$ANACONDA_TOKEN" | tr -d '[:space:]')"
-          test -n "$ANACONDA_TOKEN" || { echo "ANACONDA_TOKEN secret is not set"; exit 1; }
-          PKG="$(conda-build conda.recipe/ -c conda-forge --output | tail -1)"
-          test -f "$PKG" || { echo "built package not found at: $PKG"; exit 1; }
+          TOKEN="$(printf '%s' "$ANACONDA_TOKEN" | tr -d '[:space:]')"
           # --force so re-running a failed release can overwrite a partial upload.
-          anaconda -t "$ANACONDA_TOKEN" upload --force --user razinka "$PKG"
+          anaconda -t "$TOKEN" upload --force --user razinka "${{ steps.build.outputs.pkg }}"
+      - name: Verify it is live on anaconda.org
+        if: env.DRY_RUN != 'true'
+        run: |
+          VERSION="${RELEASE_REF#v}"
+          for i in 1 2 3 4 5 6; do
+            if curl -s "https://api.anaconda.org/package/razinka/pyvis" | grep -q "\"$VERSION\""; then
+              echo "razinka/pyvis $VERSION is live on anaconda.org."; exit 0
+            fi
+            echo "not visible yet, retrying in 10s"; sleep 10
+          done
+          echo "::error::razinka/pyvis $VERSION did not become visible on anaconda.org"
+          exit 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: conda-pkg
+          path: ${{ steps.build.outputs.pkg }}
+
+  github-release:
+    needs: [publish-pypi, conda]
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - id: version
+        run: echo "version=${RELEASE_REF#v}" >> "$GITHUB_OUTPUT"
+      - id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          sed -n "/## \[$VERSION\]/,/^## \[/{ /^## \[$VERSION\]/p; /^## \[/!p; }" CHANGELOG.md > release_notes.md
+          test -s release_notes.md || { echo "::error::CHANGELOG.md has no [$VERSION] section"; exit 1; }
+          { echo "body<<EOF"; cat release_notes.md; echo "EOF"; } >> "$GITHUB_OUTPUT"
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_REF }}
+          body: ${{ steps.changelog.outputs.body }}
+          generate_release_notes: false
+          files: artifacts/**/*

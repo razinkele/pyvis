@@ -175,6 +175,7 @@ See the [Shiny Integration Guide](docs/SHINY_INTEGRATION_GUIDE.md) for complete 
 
 - **[API Reference](docs/API_REFERENCE.md)** — Complete reference for Network class, typed options (44 dataclasses), Shiny integration, and all public methods
 - **[Shiny Integration Guide](docs/SHINY_INTEGRATION_GUIDE.md)** — Detailed guide for using PyVis with Shiny for Python
+- **[Releasing](docs/RELEASING.md)** — How a release is cut and published to PyPI and anaconda.org, and how to retry a failed one
 
 ## Testing
 
