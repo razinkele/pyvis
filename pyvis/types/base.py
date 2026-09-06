@@ -1,9 +1,15 @@
 """Base mixin for all vis-network typed option dataclasses."""
+import types
 from dataclasses import dataclass, fields
 from typing import (
     Any, ClassVar, Dict, Literal, Optional, Tuple, Union,
     get_args, get_origin, get_type_hints,
 )
+
+# `int | None` (PEP 604) has origin types.UnionType, which is a distinct object
+# from typing.Union. Both spellings must be recognised or a field written with
+# the newer syntax would silently skip validation.
+_UNION_ORIGINS = (Union, types.UnionType)
 
 
 def _literal_choices(annotation: Any) -> Optional[Tuple[Any, ...]]:
@@ -12,12 +18,13 @@ def _literal_choices(annotation: Any) -> Optional[Tuple[Any, ...]]:
     Returns ``None`` when the annotation admits any non-Literal type (so
     validation must be skipped), e.g. ``Union[Literal['from'], bool]``.
     ``Optional[X]`` is ``Union[X, None]``; the ``None`` arm is ignored because
-    ``None`` (an unset option) is always allowed.
+    ``None`` (an unset option) is always allowed. Both ``Union[X, Y]`` and the
+    PEP 604 ``X | Y`` spelling are handled.
     """
     origin = get_origin(annotation)
     if origin is Literal:
         return get_args(annotation)
-    if origin is Union:
+    if origin in _UNION_ORIGINS:
         choices: Tuple[Any, ...] = ()
         for arg in get_args(annotation):
             if arg is type(None):

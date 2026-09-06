@@ -103,3 +103,36 @@ class TestNewFields:
         d = opts.to_dict()
         assert d["locale"] == "de"
         assert d["manipulation"]["controlNodeStyle"] == {"shape": "dot"}
+
+
+class TestPep604Unions:
+    """`X | None` has a different origin from `Optional[X]`; both must validate.
+
+    The floor moved to Python 3.10, so a future field may legitimately be
+    written with the newer spelling. Before this was handled, such a field
+    silently skipped validation instead of rejecting a bad value.
+    """
+
+    def test_pep604_optional_literal_is_validated(self):
+        from dataclasses import dataclass
+        from typing import Literal
+
+        @dataclass
+        class Modern(OptionsBase):
+            align: Literal["left", "right"] | None = None
+
+        assert Modern(align="left").to_dict() == {"align": "left"}
+        with pytest.raises(ValueError, match="Modern.align"):
+            Modern(align="sideways")
+
+    def test_pep604_mixed_union_is_skipped(self):
+        from dataclasses import dataclass
+        from typing import Literal
+
+        @dataclass
+        class Mixed(OptionsBase):
+            inherit: Literal["from", "to"] | bool | None = None
+
+        # A non-Literal arm means the field cannot be validated; both pass.
+        assert Mixed(inherit=True).to_dict() == {"inherit": True}
+        assert Mixed(inherit="from").to_dict() == {"inherit": "from"}

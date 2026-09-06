@@ -14,12 +14,12 @@ build:
 
 requirements:
   host:
-    - python >=3.9
+    - python >=3.10
     - pip
     - setuptools >=45
     - wheel
   run:
-    - python >=3.9
+    - python >=3.10
     - jinja2 >=2.9.6
     - networkx >=1.11
     # optional on PyPI (pyvis[notebook]); kept as a hard dep here because conda has no extras
