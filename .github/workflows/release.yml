@@ -119,18 +119,26 @@ jobs:
           TOKEN="$(printf '%s' "$PYPI_API_TOKEN" | tr -d '[:space:]')"
           # --skip-existing so re-running a partially failed release is safe.
           twine upload --skip-existing dist/* -u __token__ -p "$TOKEN"
+      # Polls with a flag rather than `exit 0` from inside the loop: the conda
+      # job runs its steps under a login shell (`bash -el`), where that exit
+      # did not carry through and a successful check still failed the step.
+      # Same shape in both jobs so they cannot drift.
       - name: Verify it is live on PyPI
         if: env.DRY_RUN != 'true'
         run: |
           NAME="$(python -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['name'])")"
           VERSION="${{ steps.meta.outputs.version }}"
+          FOUND=""
           for i in 1 2 3 4 5 6; do
             CODE="$(curl -s -o /dev/null -w '%{http_code}' "https://pypi.org/pypi/$NAME/$VERSION/json")"
-            [ "$CODE" = "200" ] && { echo "$NAME $VERSION is live on PyPI."; exit 0; }
+            if [ "$CODE" = "200" ]; then FOUND=yes; break; fi
             echo "not visible yet (HTTP $CODE), retrying in 10s"; sleep 10
           done
-          echo "::error::$NAME $VERSION did not become visible on PyPI"
-          exit 1
+          if [ -z "$FOUND" ]; then
+            echo "::error::$NAME $VERSION did not become visible on PyPI"
+            exit 1
+          fi
+          echo "$NAME $VERSION is live on PyPI."
       - uses: actions/upload-artifact@v4
         with:
           name: pypi-dist
@@ -182,14 +190,18 @@ jobs:
         if: env.DRY_RUN != 'true'
         run: |
           VERSION="${RELEASE_REF#v}"
+          FOUND=""
           for i in 1 2 3 4 5 6; do
             if curl -s "https://api.anaconda.org/package/razinka/pyvis" | grep -q "\"$VERSION\""; then
-              echo "razinka/pyvis $VERSION is live on anaconda.org."; exit 0
+              FOUND=yes; break
             fi
             echo "not visible yet, retrying in 10s"; sleep 10
           done
-          echo "::error::razinka/pyvis $VERSION did not become visible on anaconda.org"
-          exit 1
+          if [ -z "$FOUND" ]; then
+            echo "::error::razinka/pyvis $VERSION did not become visible on anaconda.org"
+            exit 1
+          fi
+          echo "razinka/pyvis $VERSION is live on anaconda.org."
       - uses: actions/upload-artifact@v4
         with:
           name: conda-pkg
