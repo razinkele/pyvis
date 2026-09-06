@@ -2,7 +2,89 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased]
+
+## [4.3.0] - 2026-09-06
+
+### Security
+- pass font_color to template and validate against CSS injection
+
+### Fixed
+- preserve per-node font_color through from_nx
+- validate every Literal field, correct font align and arrow type sets
+- release listeners and registry entries when a network output is cleared or removed
+- null args, command queueing, container sizing, config fallback and configChange
+- keep numeric node ids intact in updateData, search restore and edge editing
+- drop unsupported cluster() and omit absent arguments instead of sending null
+- correct update_data and package docstrings, pin the output config attribute
+- resolve module namespaces for controller and standalone network commands
+- apply module physics toggle on a copy and only when the control is rendered
+- build module networks from the documented dict spec
+- drop dead configure plumbing and repair the edge editing example
+- isolate get_network_json, harden edge keys and from_nx, correct docstrings
+- copy local lib resources beside the HTML file and refresh stale copies
+- detect cycles and validate dict keys in from_nx numpy coercion
+- recurse into lists/dicts when coercing numpy scalars in from_nx
+- accept plain dict options in add_node/add_edge and apply font_color on the typed path
+- coerce numpy scalars in from_nx instead of dropping attributes
+- load the notebook template lazily in generate_html
+- render when physics is a bool or a node title is not a string
+- parameterize collection types, constrain Literal fields, add type guard tests, fix layout doctype
+- CI subshell bug, duplicate tests, float string conversion, addEventListener, legend validation, renames cache, recipe guards
+- add error context to write_html file operations
+- use package version for HTMLDependency, remove self.html state, improve layout param
+- warn on non-serializable NX attributes, fix animation_template CDN URLs
+- use 3-component semver, add parse_version error handling and subprocess timeouts
+- add missing params to get_network_json, merge font_color, warn on stripped keys
+- use options= path for typed add_nodes, warn on duplicate nodes
+- validate highlight_degree type and escape template CSS injections
+- handle legacy font_color=False as None in validation
+- improve auto_version.py error handling and encoding
+
+### Added
+- add edge background, locale, controlNodeStyle and string colour variants to typed options
+- add filter_exclude parameter for configurable filter exclusions
+- add select_node_options parameter for TomSelect customization
+- add tooltip_link_override parameter for tooltip control
+- add highlight_degree parameter for neighborhood highlight depth
+- add validate_version.py and fix recipe.yaml version sync
+- add auto_version.py with conventional commits support
+
+### Changed
+- make PyVisNetworkController delegate to the standalone network_* functions
+
+### Documentation
+- clear residual doc drift from the review-fixes branch
+- correct notebook-extra examples, removed commands, and stale counts
+- changelog entry for the 2026-09-05 review fixes
+- align API reference signatures with the code and pin them with a test
+- fix remaining stale dataclass count in README API Reference bullet
+- remove stale session summaries and the unused animation template, fix README references
+- add 2026-09-05 audit report and 30-task fix plan
+- fix docstrings, remove dead comments, correct field counts
+
+### Build
+- align Python floor on 3.9, add notebook and test extras, widen CI matrix
+- make explicit version bumps update the changelog and use a conventional commit type
+- validate tag against version, fail on missing secrets, publish conda from the tag workflow
+- expand CI matrix to 3.9-3.13, add _field_renames validation
+- update release-notes skill to use auto_version.py, deprecate bump_version.py
+- add release and conda publish workflows
+- add GitHub Actions CI workflow with test, version validation, and commit lint
+- add conventional commits git hook with mixed enforcement
+
+### Other
+- parse every documented parameter, not just the first on a line
+- remove stray blank line left in .gitignore
+- untrack committed artifacts and align .gitignore with tracked paths
+- add fake-session harness pinning every Shiny command payload
+- replace vacuous assertions and remove duplicated tests
+- scope optional-dependency skips to the tests that need them
+- run every test in a temp cwd with the browser stubbed
+- make TestLogTaskException independent of the running event loop
+- ignore .superpowers scratch workspace
+- update bgcolor test to verify validation instead of escaping
+- add directed graph, legend validation, deepcopy isolation, and comprehensive tests
+- add tests for auto_version.py
 
 Follow-up review pass over the 4.2 codebase: 30 tasks fixing rendering, the Shiny
 integration, typed options, packaging, and docs, backed by a hardened test suite
