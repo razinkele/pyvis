@@ -72,9 +72,7 @@ echo.
 echo Quick test:
 echo   python -m pytest pyvis/tests -q
 echo.
-echo Run benchmarks:
-echo   python benchmark_improvements.py
-echo.
-echo Run examples:
-echo   shiny run shiny_modern_example.py
+echo Run examples (see the examples/ directory):
+echo   shiny run examples/shiny_demo.py
+echo   python examples/edge_attribute_editing_example.py
 echo ============================================================

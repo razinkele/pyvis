@@ -351,8 +351,9 @@ def output_pyvis_network(
         "events": events,
     }
 
-    # data-pyvis-config is also available for debugging/inspection;
-    # the primary config path is via the JSON payload in transform().
+    # data-pyvis-config carries the base configuration read by the JS binding.
+    # The render payload from transform() only carries the options explicitly
+    # set on the renderer (it is {} by default), and those override this base.
     return ui.div(
         *_get_pyvis_dependency(),
         id=resolved_id,

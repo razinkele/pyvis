@@ -143,7 +143,7 @@ net.add_node(1, "A")
 net.add_node(2, "B")
 net.add_edge(1, 2, label="Connection")
 net.set_options({"manipulation": {"enabled": True}})
-net.show("example.html")
+net.show("example.html", notebook=False)
 ```
 
 ### Example 2: Styled Network
@@ -169,7 +169,7 @@ net.add_edge(2, 3, color="blue", width=3, dashes=True)
 net.add_edge(3, 4, arrows="to", label="Arrow edge")
 
 net.set_options({"manipulation": {"enabled": True}})
-net.show("styled_network.html")
+net.show("styled_network.html", notebook=False)
 ```
 
 ### Example 3: Dynamic Network
@@ -188,7 +188,7 @@ net.from_nx(G)
 # Enable manipulation
 net.set_options({"manipulation": {"enabled": True}})
 
-net.show("dynamic_network.html")
+net.show("dynamic_network.html", notebook=False)
 ```
 
 ## Customization

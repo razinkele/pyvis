@@ -60,7 +60,7 @@ net = Network()
 net.add_node(1, label="Node 1", color="#97c2fc")
 net.add_node(2, label="Node 2", color="#ffcc00")
 net.add_edge(1, 2, width=2)
-net.show("basic.html")
+net.show("basic.html", notebook=False)
 ```
 
 ### From NetworkX
@@ -72,7 +72,7 @@ from pyvis.network import Network
 G = nx.karate_club_graph()
 net = Network()
 net.from_nx(G)
-net.show("karate.html")
+net.show("karate.html", notebook=False)
 ```
 
 ## Type-Safe Options
@@ -110,7 +110,7 @@ net.set_options(options)
 net.add_node(1, label="A")
 net.add_node(2, label="B")
 net.add_edge(1, 2)
-net.show("typed.html")
+net.show("typed.html", notebook=False)
 ```
 
 The `pyvis.types` module provides 44 dataclasses covering nodes, edges, physics, layout, interaction, configuration, and manipulation — the full vis-network API surface.
@@ -165,8 +165,8 @@ app = App(app_ui, server)
 | **Selection** | select_nodes, select_edges, unselect_all |
 | **Viewport** | fit, focus, move_to |
 | **Physics** | start_physics, stop_physics, stabilize |
-| **Data** | add/update/remove nodes and edges, get_positions, get_data |
-| **Clustering** | cluster, open_cluster |
+| **Data** | add/update/remove nodes and edges, get_positions, get_all_data |
+| **Clustering** | cluster_by_connection, cluster_by_hubsize, open_cluster |
 | **Theming** | set_options, set_theme |
 
 See the [Shiny Integration Guide](docs/SHINY_INTEGRATION_GUIDE.md) for complete documentation.
@@ -182,7 +182,7 @@ See the [Shiny Integration Guide](docs/SHINY_INTEGRATION_GUIDE.md) for complete 
 pytest pyvis/tests/ --ignore=pyvis/tests/test_html.py -v
 ```
 
-The suite has 473 tests (run `pytest --co` for the current count) covering core network operations, typed options, Shiny integration, security, error handling, and regression tests for edge cases.
+The suite has 484 tests (run `pytest --co` for the current count) covering core network operations, typed options, Shiny integration, security, error handling, and regression tests for edge cases.
 
 ## Versioning
 
@@ -207,7 +207,7 @@ pyvis/
     shiny/              # Shiny for Python integration
         wrapper.py      # Controller, standalone functions, rendering
         bindings.js     # JavaScript binding for vis-network
-    tests/              # 473 tests across 27 modules (see `pytest --co` for current count)
+    tests/              # 484 tests across 27 modules (see `pytest --co` for current count)
 auto_version.py         # Version bump + changelog + tag script
 ```
 

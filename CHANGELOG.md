@@ -6,13 +6,18 @@ All notable changes to this project are documented in this file.
 
 Follow-up review pass over the 4.2 codebase: 30 tasks fixing rendering, the Shiny
 integration, typed options, packaging, and docs, backed by a hardened test suite
-(482 tests).
+(484 tests).
 
 ### Fixed
 - **Core rendering:** `from_nx()` now detects cycles and coerces numpy scalars
   recursively inside nested lists/dicts instead of silently dropping attributes;
   edge keys and dict-based `add_node()`/`add_edge()` options are validated and
   applied correctly (including `font_color` on the typed path).
+- **Core rendering:** a per-node `font_color` attribute on a networkx graph now
+  survives `from_nx()` instead of being silently discarded, and
+  `add_node(..., font_color=...)` is accepted as a per-node override of the
+  network-wide `Network(font_color=...)` (it previously raised
+  `TypeError: got multiple values for keyword argument 'font_color'`).
 - **Core rendering:** `get_network_json()` is isolated from caller mutation;
   `generate_html()` loads the notebook template lazily; nodes render correctly
   when `physics` is a bare `bool` or a title is not a `str`.
@@ -41,14 +46,26 @@ integration, typed options, packaging, and docs, backed by a hardened test suite
 
 ### Changed
 - **Behavior:** `Network(height=...)` no longer sizes the Shiny output
-  container — only `output_pyvis_network(height=...)` /
-  `@render_pyvis_network(height=...)` do. This also fixes `fill=True`, which
-  could never work reliably before.
+  container — `output_pyvis_network(height=...)` does. This also fixes
+  `fill=True`, which could never work reliably before. Note that
+  `@render_pyvis_network(height=...)` only sizes the container in Shiny
+  Express mode, where Shiny calls the renderer's `auto_output_ui()`; in a
+  classic app the container is whatever `output_pyvis_network()` declares, so
+  set the height there.
 - **Behavior:** unset renderer options now inherit from the output's
   `data-pyvis-config` instead of the renderer's old hard-coded defaults.
+- **Behavior:** `add_node()`/`add_edge()` now raise `TypeError` when `options=`
+  is neither a dict nor an object with `to_dict()`, instead of silently
+  ignoring it; a plain `dict` passed as `options=` is now applied, where it
+  used to be dropped.
+- **Shiny module:** `pyvis_network_ui()` no longer renders a `node_spacing`
+  slider — its value was never read by anything.
 - **Packaging:** `ipython` moved from a hard dependency to the `pyvis[notebook]`
-  extra on PyPI (still bundled by conda); `show(notebook=True)` raises a clear
-  `ImportError` naming the extra when it is missing.
+  extra on PyPI (still bundled by conda). `Network.show()` still defaults to
+  `notebook=True`, so after a plain `pip install pyvis` a bare
+  `net.show("x.html")` now requires `pyvis[notebook]` and otherwise raises a
+  clear `ImportError` naming the extra. Pass `notebook=False` (as the docs
+  examples now do) to render without IPython.
 - **Packaging:** Python floor is now consistently 3.9 across `pyproject.toml`,
   CI, and docs; the CI matrix was widened and a `pyvis[test]` extra was added.
 - **Release tooling:** explicit version bumps now update `CHANGELOG.md` and use
@@ -64,6 +81,10 @@ integration, typed options, packaging, and docs, backed by a hardened test suite
   boundary between Python and JavaScript, so it never actually worked.
   `cluster_by_connection()`, `cluster_by_hubsize()`, and `open_cluster()`
   remain and are unaffected.
+- **Core rendering:** the `Network.conf` attribute and the `{% if conf %}`
+  blocks in the HTML templates were deleted. Setting `net.conf = True` no
+  longer renders the vis.js configure panel; use `set_options()` with an
+  explicit `configure` section instead.
 - **Repo hygiene:** untracked build artifacts (`lib/`, generated HTML,
   `__pycache__`) were removed from version control and `.gitignore` was
   aligned with the tracked paths; stale session-summary docs and an unused
@@ -74,7 +95,7 @@ integration, typed options, packaging, and docs, backed by a hardened test suite
   optional-dependency skips to only the tests that need them, replaced
   vacuous assertions and duplicated tests, and made the whole suite run from
   a temp `cwd` with the browser stubbed so it no longer depends on ambient
-  state. The suite now runs 482 tests, all passing.
+  state. The suite now runs 484 tests, all passing.
 
 ## [4.2] - 2026-03-28
 
