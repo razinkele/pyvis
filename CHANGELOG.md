@@ -5,6 +5,7 @@ All notable changes to this project are documented in this file.
 
 ## [4.3.0] - 2026-09-06
 
+
 ### Security
 - pass font_color to template and validate against CSS injection
 
@@ -39,58 +40,6 @@ All notable changes to this project are documented in this file.
 - validate highlight_degree type and escape template CSS injections
 - handle legacy font_color=False as None in validation
 - improve auto_version.py error handling and encoding
-
-### Added
-- add edge background, locale, controlNodeStyle and string colour variants to typed options
-- add filter_exclude parameter for configurable filter exclusions
-- add select_node_options parameter for TomSelect customization
-- add tooltip_link_override parameter for tooltip control
-- add highlight_degree parameter for neighborhood highlight depth
-- add validate_version.py and fix recipe.yaml version sync
-- add auto_version.py with conventional commits support
-
-### Changed
-- make PyVisNetworkController delegate to the standalone network_* functions
-
-### Documentation
-- clear residual doc drift from the review-fixes branch
-- correct notebook-extra examples, removed commands, and stale counts
-- changelog entry for the 2026-09-05 review fixes
-- align API reference signatures with the code and pin them with a test
-- fix remaining stale dataclass count in README API Reference bullet
-- remove stale session summaries and the unused animation template, fix README references
-- add 2026-09-05 audit report and 30-task fix plan
-- fix docstrings, remove dead comments, correct field counts
-
-### Build
-- align Python floor on 3.9, add notebook and test extras, widen CI matrix
-- make explicit version bumps update the changelog and use a conventional commit type
-- validate tag against version, fail on missing secrets, publish conda from the tag workflow
-- expand CI matrix to 3.9-3.13, add _field_renames validation
-- update release-notes skill to use auto_version.py, deprecate bump_version.py
-- add release and conda publish workflows
-- add GitHub Actions CI workflow with test, version validation, and commit lint
-- add conventional commits git hook with mixed enforcement
-
-### Other
-- parse every documented parameter, not just the first on a line
-- remove stray blank line left in .gitignore
-- untrack committed artifacts and align .gitignore with tracked paths
-- add fake-session harness pinning every Shiny command payload
-- replace vacuous assertions and remove duplicated tests
-- scope optional-dependency skips to the tests that need them
-- run every test in a temp cwd with the browser stubbed
-- make TestLogTaskException independent of the running event loop
-- ignore .superpowers scratch workspace
-- update bgcolor test to verify validation instead of escaping
-- add directed graph, legend validation, deepcopy isolation, and comprehensive tests
-- add tests for auto_version.py
-
-Follow-up review pass over the 4.2 codebase: 30 tasks fixing rendering, the Shiny
-integration, typed options, packaging, and docs, backed by a hardened test suite
-(484 tests).
-
-### Fixed
 - **Core rendering:** `from_nx()` now detects cycles and coerces numpy scalars
   recursively inside nested lists/dicts instead of silently dropping attributes;
   edge keys and dict-based `add_node()`/`add_edge()` options are validated and
@@ -126,7 +75,17 @@ integration, typed options, packaging, and docs, backed by a hardened test suite
   by a test that parses every documented parameter, not just the first on a
   line).
 
+### Added
+- add edge background, locale, controlNodeStyle and string colour variants to typed options
+- add filter_exclude parameter for configurable filter exclusions
+- add select_node_options parameter for TomSelect customization
+- add tooltip_link_override parameter for tooltip control
+- add highlight_degree parameter for neighborhood highlight depth
+- add validate_version.py and fix recipe.yaml version sync
+- add auto_version.py with conventional commits support
+
 ### Changed
+- make PyVisNetworkController delegate to the standalone network_* functions
 - **Behavior:** `Network(height=...)` no longer sizes the Shiny output
   container — `output_pyvis_network(height=...)` does. This also fixes
   `fill=True`, which could never work reliably before. Note that
@@ -155,6 +114,43 @@ integration, typed options, packaging, and docs, backed by a hardened test suite
   new release heading automatically. The release CI validates the tag against
   the package version and fails on missing secrets; conda publishing now runs
   from the tag workflow.
+
+### Documentation
+- clear residual doc drift from the review-fixes branch
+- correct notebook-extra examples, removed commands, and stale counts
+- changelog entry for the 2026-09-05 review fixes
+- align API reference signatures with the code and pin them with a test
+- fix remaining stale dataclass count in README API Reference bullet
+- remove stale session summaries and the unused animation template, fix README references
+- add 2026-09-05 audit report and 30-task fix plan
+- fix docstrings, remove dead comments, correct field counts
+
+### Build
+- align Python floor on 3.9, add notebook and test extras, widen CI matrix
+- make explicit version bumps update the changelog and use a conventional commit type
+- validate tag against version, fail on missing secrets, publish conda from the tag workflow
+- expand CI matrix to 3.9-3.13, add _field_renames validation
+- update release-notes skill to use auto_version.py, deprecate bump_version.py
+- add release and conda publish workflows
+- add GitHub Actions CI workflow with test, version validation, and commit lint
+- add conventional commits git hook with mixed enforcement
+
+### Other
+- parse every documented parameter, not just the first on a line
+- remove stray blank line left in .gitignore
+- untrack committed artifacts and align .gitignore with tracked paths
+- add fake-session harness pinning every Shiny command payload
+- replace vacuous assertions and remove duplicated tests
+- scope optional-dependency skips to the tests that need them
+- run every test in a temp cwd with the browser stubbed
+- make TestLogTaskException independent of the running event loop
+- ignore .superpowers scratch workspace
+- update bgcolor test to verify validation instead of escaping
+- add directed graph, legend validation, deepcopy isolation, and comprehensive tests
+- add tests for auto_version.py
+Follow-up review pass over the 4.2 codebase: 30 tasks fixing rendering, the Shiny
+integration, typed options, packaging, and docs, backed by a hardened test suite
+(484 tests).
 
 ### Removed
 - **Shiny module / JS bindings:** the `cluster()` command was removed from the
