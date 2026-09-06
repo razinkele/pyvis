@@ -139,10 +139,45 @@ jobs:
             exit 1
           fi
           echo "$NAME $VERSION is live on PyPI."
+      # The GitHub Release must carry the same bytes PyPI serves. twine runs with
+      # --skip-existing, so re-running a release leaves the original files on
+      # PyPI while this job rebuilds locally; sdists are not reproducible, so
+      # attaching the rebuild would ship a file that differs from the released
+      # one. Mirror what PyPI actually has, and verify each digest.
+      - name: Collect the published files for the GitHub Release
+        if: env.DRY_RUN != 'true'
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          mkdir -p release-files
+          python - <<'PY'
+          import hashlib, json, os, tomllib, urllib.request
+
+          name = tomllib.load(open("pyproject.toml", "rb"))["project"]["name"]
+          version = os.environ["VERSION"]
+          with urllib.request.urlopen(f"https://pypi.org/pypi/{name}/{version}/json") as r:
+              files = json.load(r)["urls"]
+          if not files:
+              raise SystemExit(f"::error::PyPI lists no files for {name} {version}")
+          for f in files:
+              blob = urllib.request.urlopen(f["url"]).read()
+              got, want = hashlib.sha256(blob).hexdigest(), f["digests"]["sha256"]
+              if got != want:
+                  raise SystemExit(f"::error::sha256 mismatch for {f['filename']}")
+              with open(os.path.join("release-files", f["filename"]), "wb") as out:
+                  out.write(blob)
+              print(f"fetched {f['filename']} ({len(blob)} bytes, sha256 verified)")
+          PY
+      # A dry run publishes nothing, so there is no released file to mirror.
+      - name: Use the local build instead (dry run)
+        if: env.DRY_RUN == 'true'
+        run: |
+          mkdir -p release-files
+          cp dist/* release-files/
       - uses: actions/upload-artifact@v7
         with:
           name: pypi-dist
-          path: dist/*
+          path: release-files/*
 
   conda:
     needs: test
