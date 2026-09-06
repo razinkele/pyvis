@@ -3,10 +3,13 @@ from pathlib import Path
 
 import pytest
 
+from pyvis import vis_config
+
 pytest.importorskip("playwright.sync_api")
 
 ROOT = Path(__file__).resolve().parents[1]
-VIS_JS = ROOT / "templates" / "lib" / "vis-10.0.2" / "vis-network.min.js"
+# Derived from vis_config so a vis-network upgrade does not break this file.
+VIS_JS = ROOT / "templates" / "lib" / vis_config.LOCAL_LIB_DIR / "vis-network.min.js"
 BINDINGS = ROOT / "shiny" / "bindings.js"
 
 STUB = """

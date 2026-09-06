@@ -235,7 +235,7 @@ The edge attribute editing feature is compatible with all modern browsers:
 2. Enable manipulation mode: `net.set_options({"manipulation": {"enabled": True}})`
 3. Check that the manipulation toolbar is visible
 4. Verify JavaScript console for errors
-5. Ensure vis.js version is 10.0.2+
+5. Ensure vis.js version is 10.1.2+
 
 ### Changes Not Saving
 
