@@ -52,6 +52,9 @@ jobs:
         env:
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
+          # Trim whitespace: a token pasted with a stray leading space or
+          # newline authenticates as garbage and PyPI answers 403.
+          PYPI_API_TOKEN="$(printf '%s' "$PYPI_API_TOKEN" | tr -d '[:space:]')"
           test -n "$PYPI_API_TOKEN" || { echo "PYPI_API_TOKEN secret is not set"; exit 1; }
           # --skip-existing so a re-run after a partial failure is not fatal.
           twine upload --skip-existing dist/* -u __token__ -p "$PYPI_API_TOKEN"
@@ -110,8 +113,11 @@ jobs:
         env:
           ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
         run: |
+          # Trim whitespace: anaconda-client rejects a token with a stray
+          # leading space as an "invalid file_or_token value".
+          ANACONDA_TOKEN="$(printf '%s' "$ANACONDA_TOKEN" | tr -d '[:space:]')"
           test -n "$ANACONDA_TOKEN" || { echo "ANACONDA_TOKEN secret is not set"; exit 1; }
-          PKG="$(conda-build conda.recipe/ -c conda-forge --output)"
+          PKG="$(conda-build conda.recipe/ -c conda-forge --output | tail -1)"
           test -f "$PKG" || { echo "built package not found at: $PKG"; exit 1; }
           # --force so re-running a failed release can overwrite a partial upload.
           anaconda -t "$ANACONDA_TOKEN" upload --force --user razinka "$PKG"
