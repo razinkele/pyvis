@@ -1314,6 +1314,10 @@ if SHINY_AVAILABLE:
                         "Network Controls",
                         ui.input_checkbox("physics", "Enable Physics", value=True),
                     ),
+                    # Named so the panel is addressable: without an id Shiny
+                    # generates one, and neither a test nor a caller's own JS
+                    # can reach the accordion.
+                    id="controls",
                     open=False
                 )
             ]
