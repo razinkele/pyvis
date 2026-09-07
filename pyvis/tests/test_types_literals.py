@@ -19,8 +19,13 @@ class TestGenericLiteralCheck:
             NodeOptions(shape="blob")
 
     def test_node_shape_accepts_custom(self):
-        """vis-network 10.0.2 lists 'custom' among the valid shapes (CustomShape
-        + ctxRenderer), so it must stay in NodeShape."""
+        """vis-network's own shape validator lists 'custom' (drawn by the
+        caller's ctxRenderer), so it must stay in NodeShape.
+
+        Deliberately does not name a vis version: the claim was written against
+        10.0.2, and by 10.1.2 the CustomShape class it originally cited no
+        longer exists while 'custom' itself is still in the validator list.
+        """
         assert NodeOptions(shape="custom").to_dict() == {"shape": "custom"}
 
     def test_none_is_always_allowed(self):
