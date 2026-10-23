@@ -22,7 +22,18 @@ class FontStyle(OptionsBase):
     vadjust: Optional[int] = None
 
 
-VALID_FONT_ALIGNS = ('left', 'center', 'right', 'horizontal', 'top', 'middle', 'bottom')
+# vis-network accepts different align values for node and edge labels.
+VALID_NODE_FONT_ALIGNS = ('center', 'left')
+VALID_EDGE_FONT_ALIGNS = ('horizontal', 'top', 'middle', 'bottom')
+VALID_FONT_ALIGNS = VALID_NODE_FONT_ALIGNS + VALID_EDGE_FONT_ALIGNS
+
+
+def check_font_align(font, allowed, owner):
+    """Raise ValueError if a Font's align is not valid for ``owner``."""
+    if isinstance(font, Font) and font.align is not None and font.align not in allowed:
+        raise ValueError(
+            f"{owner} font.align must be one of {allowed}, got {font.align!r}"
+        )
 
 
 @dataclass
@@ -34,7 +45,7 @@ class Font(OptionsBase):
     background: Optional[str] = None
     strokeWidth: Optional[int] = None
     strokeColor: Optional[str] = None
-    align: Optional[Literal['left', 'center', 'right', 'horizontal', 'top', 'middle', 'bottom']] = None
+    align: Optional[Literal['left', 'center', 'horizontal', 'top', 'middle', 'bottom']] = None
     vadjust: Optional[int] = None
     multi: Optional[Union[bool, str]] = None
     bold: Optional[FontStyle] = None

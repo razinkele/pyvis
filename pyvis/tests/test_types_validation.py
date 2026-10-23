@@ -85,3 +85,21 @@ class TestFontValidation:
     def test_align_none_is_allowed(self):
         f = Font(align=None)
         assert f.align is None
+
+
+class TestFontAlignPerElement:
+    def test_font_align_right_rejected(self):
+        with pytest.raises(ValueError):
+            Font(align="right")
+
+    def test_node_font_align_must_be_node_value(self):
+        from pyvis.types import NodeOptions
+        with pytest.raises(ValueError, match="align"):
+            NodeOptions(font=Font(align="top"))
+        NodeOptions(font=Font(align="left"))
+
+    def test_edge_font_align_must_be_edge_value(self):
+        from pyvis.types import EdgeOptions
+        with pytest.raises(ValueError, match="align"):
+            EdgeOptions(font=Font(align="left"))
+        EdgeOptions(font=Font(align="middle"))

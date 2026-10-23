@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Optional, Union, Literal, ClassVar, Dict, List
 
 from .base import OptionsBase
-from .common import Font, Shadow, Scaling
+from .common import Font, Shadow, Scaling, check_font_align, VALID_EDGE_FONT_ALIGNS
 
 
 @dataclass
@@ -137,3 +137,7 @@ class EdgeOptions(OptionsBase):
     endPointOffset: Optional[EdgeEndPointOffset] = None
     widthConstraint: Optional[Union[bool, int, EdgeWidthConstraint]] = None
     background: Optional[Union[bool, EdgeBackground, Dict[str, Any]]] = None
+
+    def __post_init__(self):
+        super().__post_init__()
+        check_font_align(self.font, VALID_EDGE_FONT_ALIGNS, "EdgeOptions")

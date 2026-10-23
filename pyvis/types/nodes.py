@@ -6,9 +6,11 @@ from dataclasses import dataclass
 from typing import Optional, Union, Literal, List
 
 from .base import OptionsBase
-from .common import Font, Shadow, Scaling
+from .common import Font, Shadow, Scaling, check_font_align, VALID_NODE_FONT_ALIGNS
 
 
+# 'custom' needs a JavaScript ctxRenderer function, which cannot be expressed
+# from Python (options cross to the browser as JSON); set it in JavaScript.
 NodeShape = Literal[
     'ellipse', 'circle', 'database', 'box', 'text',
     'image', 'circularImage', 'diamond', 'dot', 'star',
@@ -152,6 +154,7 @@ class NodeOptions(OptionsBase):
 
     def __post_init__(self):
         super().__post_init__()
+        check_font_align(self.font, VALID_NODE_FONT_ALIGNS, "NodeOptions")
         if self.opacity is not None and not (0.0 <= self.opacity <= 1.0):
             raise ValueError(
                 f"opacity must be between 0.0 and 1.0, got {self.opacity}"

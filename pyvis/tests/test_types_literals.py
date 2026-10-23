@@ -43,14 +43,16 @@ class TestGenericLiteralCheck:
 class TestFontAlign:
     @pytest.mark.parametrize(
         "value",
-        ["center", "left", "right", "horizontal", "top", "middle", "bottom"],
+        ["center", "left", "horizontal", "top", "middle", "bottom"],
     )
     def test_accepts_node_and_edge_values(self, value):
         assert Font(align=value).to_dict() == {"align": value}
 
-    def test_rejects_unknown(self):
+    @pytest.mark.parametrize("value", ["vertical", "right"])
+    def test_rejects_unknown(self, value):
+        # 'right' is honoured by neither vis-network nodes nor edges
         with pytest.raises(ValueError, match="align"):
-            Font(align="vertical")
+            Font(align=value)
 
 
 class TestArrowTypes:
