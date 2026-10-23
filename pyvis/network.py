@@ -194,24 +194,10 @@ class Network:
         # Adjacency list cache
         self._adj_list_cache: Optional[Dict[Union[str, int], set]] = None
 
-        # Validate CSS values to prevent CSS injection
-        # Accept bare int/float/numeric-string as pixel values (legacy API)
-        if isinstance(height, (int, float)):
-            height = f"{height}px"
-        elif isinstance(height, str):
-            try:
-                float(height)
-                height = f"{height}px"
-            except ValueError:
-                pass
-        if isinstance(width, (int, float)):
-            width = f"{width}px"
-        elif isinstance(width, str):
-            try:
-                float(width)
-                width = f"{width}px"
-            except ValueError:
-                pass
+        # Normalize and validate CSS dimensions
+        height = self._normalize_css_dimension(height)
+        width = self._normalize_css_dimension(width)
+
         if not isinstance(height, str) or not self._validate_css_value(height, 'dimension', 'height'):
             raise ValueError(f"Invalid CSS dimension for height: {height!r}")
         if not isinstance(width, str) or not self._validate_css_value(width, 'dimension', 'width'):
@@ -1663,6 +1649,46 @@ class Network:
             return bool(_CSS_COLOR_RE.match(value))
         else:
             raise ValueError(f"Unknown CSS value type: {value_type!r}")
+
+    def _normalize_css_dimension(self, value: Any, default_unit: str = 'px') -> str:
+        """Normalize a CSS dimension value to a standard format.
+        
+        Converts numeric values to strings with units and validates/normalizes
+        string dimensions. This extracts common dimension normalization logic used
+        in __init__ to reduce code duplication.
+        
+        Args:
+            value: Dimension value (int, float, or str like "100px", "50%")
+            default_unit: Unit to append if value is int/float (default: 'px')
+            
+        Returns:
+            str: Normalized CSS dimension (e.g., "500px", "50%")
+            
+        Raises:
+            ValueError: If value is invalid
+            
+        Examples:
+            >>> net = Network()
+            >>> net._normalize_css_dimension(600)
+            '600px'
+            >>> net._normalize_css_dimension("600")
+            '600px'
+            >>> net._normalize_css_dimension("600px")
+            '600px'
+            >>> net._normalize_css_dimension("50%")
+            '50%'
+        """
+        if isinstance(value, (int, float)):
+            return f"{value}{default_unit}"
+        
+        if isinstance(value, str):
+            try:
+                float(value)
+                return f"{value}{default_unit}"
+            except ValueError:
+                return value
+        
+        raise ValueError(f"Dimension must be int, float, or str, got {type(value).__name__}")
 
     def _validate_legend_parameters(self, width: float, position: str, ncol: int) -> None:
         """Validate legend parameter values.

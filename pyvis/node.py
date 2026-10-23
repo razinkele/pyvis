@@ -3,6 +3,7 @@
 This module provides the Node class for representing nodes in a network graph.
 """
 
+import warnings
 from typing import Union, Dict, Any, Optional
 
 __all__ = ['Node']
@@ -26,7 +27,6 @@ class Node:
                 existing_font["color"] = font_color
                 self.options["font"] = existing_font
             else:
-                import warnings
                 warnings.warn(
                     f"font_color cannot be merged into string font value {existing_font!r}. "
                     "The string font will be replaced with a dict containing the color.",

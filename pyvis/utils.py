@@ -20,7 +20,7 @@ def check_html(name):
         raise TypeError(
             f"Expected a string filename, got {type(name).__name__}: {name!r}"
         )
-    if not name or len(name.split(".")) < 2:
+    if not name or '.' not in name:
         raise ValueError(f"invalid file type for {name!r}")
-    if name.split(".")[-1] != "html":
+    if not name.endswith('.html'):
         raise ValueError(f"{name!r} is not a valid html file")
