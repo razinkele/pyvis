@@ -180,10 +180,10 @@ See the [Shiny Integration Guide](docs/SHINY_INTEGRATION_GUIDE.md) for complete 
 ## Testing
 
 ```bash
-pytest pyvis/tests/ --ignore=pyvis/tests/test_html.py -v
+pytest pyvis/tests/ --ignore=pyvis/tests/test_html.py --ignore=pyvis/tests/test_bindings_js.py --ignore=pyvis/tests/test_shiny_e2e.py -v
 ```
 
-That command runs 474 tests covering core network operations, typed options, Shiny integration, security, error handling, and regression tests for edge cases. The full suite is 495 (run `pytest --co` for the current count); the extra 21 are the Playwright browser tests in `test_html.py`, `test_bindings_js.py`, and `test_shiny_e2e.py`, which need `pip install pyvis-optimized[test]` followed by `python -m playwright install chromium`.
+That command runs the non-browser tests (the same set CI's `test` job runs), covering core network operations, typed options, Shiny integration, security, error handling, and regression tests for edge cases. The three ignored files are the Playwright browser tests, which need `pip install pyvis-optimized[test]` followed by `python -m playwright install chromium`. Run `pytest --co -q` for the current counts.
 
 ## Versioning
 
@@ -208,7 +208,7 @@ pyvis/
     shiny/              # Shiny for Python integration
         wrapper.py      # Controller, standalone functions, rendering
         bindings.js     # JavaScript binding for vis-network
-    tests/              # 495 tests across 29 modules (see `pytest --co` for current count)
+    tests/              # Test suite (see `pytest --co` for the current count)
 auto_version.py         # Version bump + changelog + tag script
 ```
 

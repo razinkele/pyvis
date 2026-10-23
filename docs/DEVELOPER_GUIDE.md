@@ -8,7 +8,7 @@ Welcome to the PyVis development guide! This document provides everything you ne
 
 #### 1. Clone the Repository
 ```bash
-git clone https://github.com/pyvis/pyvis.git
+git clone https://github.com/razinkele/pyvis.git
 cd pyvis
 ```
 
@@ -16,7 +16,7 @@ cd pyvis
 ```bash
 # Using conda
 conda env create -f environment.yml
-conda activate pyvis-dev
+conda activate pyvis-optimized
 
 # Or using venv
 python -m venv venv
@@ -45,7 +45,7 @@ python -m pytest pyvis/tests/ -v
 ```
 pyvis/
 ├── pyvis/
-│   ├── network.py              # Main Network class (2000+ lines)
+│   ├── network.py              # Main Network class (~2000 lines)
 │   ├── node.py                 # Node class for property management
 │   ├── edge.py                 # Edge class for property management
 │   ├── utils.py                # Utility functions
@@ -55,7 +55,7 @@ pyvis/
 │   │   ├── nodes.py            # NodeOptions class
 │   │   ├── edges.py            # EdgeOptions class
 │   │   ├── physics.py          # Physics simulation options
-│   │   ├── config.py           # Network-wide options
+│   │   ├── network.py          # Network-wide options (NetworkOptions)
 │   │   └── ...
 │   ├── tests/                  # Comprehensive test suite (470+ tests)
 │   │   ├── test_network_basic.py      # Core functionality
@@ -66,8 +66,7 @@ pyvis/
 │       └── template.html       # Default visualization template
 ├── docs/
 │   ├── ARCHITECTURE.md         # System architecture
-│   ├── DEVELOPER_GUIDE.md      # This file
-│   └── README.md               # Project README
+│   └── DEVELOPER_GUIDE.md      # This file
 ├── examples/                   # Example scripts
 ├── pyproject.toml              # Project configuration
 └── README.md                   # Main project README

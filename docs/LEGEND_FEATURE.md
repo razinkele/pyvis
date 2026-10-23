@@ -69,7 +69,7 @@ Define styling options for a node group.
 net.set_group('important', color='#FF0000', shape='star', size=30)
 ```
 
-### `add_legend(enabled, use_groups, add_nodes, add_edges, width, position, main, ncol, step_x, step_y, zoom)`
+### `add_legend(enabled, use_groups, add_nodes, add_edges, show_nodes, show_edges, width, position, main, ncol, step_x, step_y, zoom)`
 
 Add a legend to the network visualization.
 
@@ -81,12 +81,14 @@ Add a legend to the network visualization.
 | `use_groups` | bool | True | Automatically include groups defined with `set_group()` |
 | `add_nodes` | list | None | List of custom node entries to add to legend |
 | `add_edges` | list | None | List of custom edge entries to add to legend |
+| `show_nodes` | bool | True | Show node entries |
+| `show_edges` | bool | True | Show edge entries |
 | `width` | float | 0.2 | Legend width as proportion (0-1) |
 | `position` | str | 'left' | Legend position ('left' or 'right') |
 | `main` | str | None | Legend title |
 | `ncol` | int | 1 | Number of columns for legend layout |
-| `step_x` | int | 100 | Horizontal spacing between legend items |
-| `step_y` | int | 100 | Vertical spacing between legend items |
+| `step_x` | int | 100 | Deprecated, no effect (removed in 5.0) |
+| `step_y` | int | 100 | Deprecated, no effect (removed in 5.0) |
 | `zoom` | bool | True | Enable zoom capability for legend |
 
 ## Advanced Examples
@@ -270,9 +272,20 @@ You can customize the legend appearance by modifying the CSS in your generated H
 
 ## Examples
 
-Complete working examples are available in:
-- `legend_example.py` - Basic group-based legend
-- `legend_custom_example.py` - Custom legend entries
+A minimal group-based legend with a custom edge entry:
+
+```python
+from pyvis.network import Network
+
+net = Network()
+net.set_group('servers', color='red', shape='box')
+net.set_group('clients', color='#97c2fc')
+net.add_node(1, label='Server', group='servers')
+net.add_node(2, label='Client', group='clients')
+net.add_edge(2, 1)
+net.add_legend(main='Legend', add_edges=[{'label': 'request', 'arrows': 'to'}])
+net.write_html('legend.html')
+```
 
 ## References
 

@@ -51,7 +51,7 @@ Input validation:
 - `from_DOT()` validates file existence and rejects empty files
 - `check_html()` validates string type and `.html` extension
 - `NodeOptions.opacity` and `EdgeColor.opacity` validated in `[0.0, 1.0]`
-- `Font.align` restricted to `Literal['horizontal', 'left', 'center', 'right']`
+- `Font.align` restricted to `center`/`left` for nodes and `horizontal`/`top`/`middle`/`bottom` for edges
 
 ---
 
@@ -122,7 +122,7 @@ net = Network(height="400px", directed=True, bgcolor="#222222")
 add_node(
     n_id: Union[str, int],
     label: Optional[Union[str, int]] = None,
-    shape: str = "dot",
+    shape: Optional[str] = None,
     color: str = "#97c2fc",
     options=None,
     **kw_options,
@@ -135,10 +135,12 @@ Add a single node to the network.
 |-----------|------|---------|-------------|
 | `n_id` | `str\|int` | *required* | Unique node identifier |
 | `label` | `str\|int\|None` | `None` | Display label (defaults to `n_id` if omitted) |
-| `shape` | `str` | `"dot"` | Node shape (see [NodeShape](#nodeoptions) for all values) |
+| `shape` | `str\|None` | `None` | Node shape (see [NodeShape](#nodeoptions) for all values). `None` means `"dot"`, except for a node with a `group`, which takes the group's shape |
 | `color` | `str` | `"#97c2fc"` | Node color |
 | `options` | `NodeOptions\|dict\|None` | `None` | A typed [`NodeOptions`](#nodeoptions) object or a plain dict of vis.js options. When given, `**kw_options` is ignored |
-| `**kw_options` | | | Additional properties: `size`, `title`, `value`, `x`, `y`, `group`, `hidden`, `physics`, etc. |
+| `**kw_options` | | | Additional properties: `size`, `title`, `value`, `x`, `y`, `group`, `hidden`, `physics`, `font_color`, etc. |
+
+**Label colour precedence** (highest first): a per-node `font_color` (kwarg, or key in an `options` dict) → a colour inside `font` → `Network(font_color=...)`. `font_color=False` applies no colour. A string `font` such as `"14px arial"` is kept as given; a `font_color` passed with it is ignored with a warning.
 
 **Example:**
 ```python
@@ -436,7 +438,7 @@ net.set_options('{"physics": {"enabled": false}}')
 set_group(group_name: str, **options)
 ```
 
-Define styling for a named node group. Nodes with a matching `group` property inherit these styles.
+Define styling for a named node group. Nodes with a matching `group` property inherit these styles: the definitions are merged into `options.groups` when the network is rendered (explicit `options["groups"]` keys win), and a group without a `shape` renders as `"dot"`.
 
 **Example:**
 ```python
@@ -478,8 +480,8 @@ Add a legend showing node groups and custom entries.
 | `position` | `str` | `"left"` | Legend position: `"left"` or `"right"` |
 | `main` | `str\|None` | `None` | Legend title text |
 | `ncol` | `int` | `1` | Number of columns |
-| `step_x` | `int` | `100` | Horizontal spacing between entries |
-| `step_y` | `int` | `100` | Vertical spacing between entries |
+| `step_x` | `int` | `100` | Deprecated, no effect (removed in 5.0) |
+| `step_y` | `int` | `100` | Deprecated, no effect (removed in 5.0) |
 | `zoom` | `bool` | `True` | Allow zooming the legend area |
 
 ---
@@ -489,10 +491,10 @@ Add a legend showing node groups and custom entries.
 #### `show`
 
 ```python
-show(name: str, local: bool = True, notebook: bool = True)
+show(name: str, local: bool = True, notebook: Optional[bool] = None)
 ```
 
-Write HTML and display. In notebook mode, returns an IPython `IFrame`. Otherwise opens in browser.
+Write HTML and display. `notebook=None` uses the `notebook` flag given to `Network()`. In notebook mode, returns an IPython `IFrame` (requires IPython). Otherwise opens in browser.
 
 #### `save_graph`
 
@@ -668,6 +670,7 @@ class NetworkOptions(OptionsBase):
     width: Optional[str] = None
     height: Optional[str] = None
     locale: Optional[str] = None
+    locales: Optional[Dict[str, Any]] = None
     clickToUse: Optional[bool] = None
     configure: Optional[ConfigureOptions] = None
     nodes: Optional[NodeOptions] = None
@@ -706,7 +709,7 @@ class NodeOptions(OptionsBase):
     title: Optional[str] = None
     group: Optional[str] = None
     shape: Optional[NodeShape] = None
-    size: Optional[int] = None
+    size: Optional[Union[int, float]] = None
     value: Optional[int] = None
     level: Optional[int] = None
     mass: Optional[float] = None
@@ -749,8 +752,8 @@ class NodeOptions(OptionsBase):
 class NodeColor(OptionsBase):
     border: Optional[str] = None
     background: Optional[str] = None
-    highlight: Optional[ColorHighlight] = None
-    hover: Optional[ColorHover] = None
+    highlight: Optional[Union[str, ColorHighlight]] = None
+    hover: Optional[Union[str, ColorHover]] = None
 ```
 </details>
 
@@ -922,9 +925,22 @@ class EdgeOptions(OptionsBase):
     selfReference: Optional[EdgeSelfReference] = None
     endPointOffset: Optional[EdgeEndPointOffset] = None
     widthConstraint: Optional[Union[bool, int, EdgeWidthConstraint]] = None
+    background: Optional[Union[bool, EdgeBackground, Dict[str, Any]]] = None
 ```
 
+`font.align` must be one of `horizontal`, `top`, `middle`, `bottom` (`ValueError` otherwise).
+
 #### Edge Helper Classes
+
+```python
+@dataclass
+class EdgeBackground(OptionsBase):
+    """Edge background (halo behind the line/label)."""
+    enabled: Optional[bool] = None
+    color: Optional[str] = None
+    size: Optional[int] = None
+    dashes: Optional[Union[bool, List[int]]] = None
+```
 
 <details>
 <summary><b>EdgeColor</b> — Edge color configuration</summary>
@@ -1289,6 +1305,7 @@ class ManipulationOptions(OptionsBase):
     editEdge: Optional[bool] = None
     deleteNode: Optional[bool] = None
     deleteEdge: Optional[bool] = None
+    controlNodeStyle: Optional[Dict[str, Any]] = None
 ```
 
 **Example (Shiny):**
@@ -1317,7 +1334,7 @@ class Font(OptionsBase):
     background: Optional[str] = None
     strokeWidth: Optional[int] = None
     strokeColor: Optional[str] = None
-    align: Optional[Literal['horizontal', 'left', 'center', 'right']] = None  # Validated
+    align: Optional[Literal['left', 'center', 'horizontal', 'top', 'middle', 'bottom']] = None  # Validated; NodeOptions accepts center/left, EdgeOptions horizontal/top/middle/bottom
     vadjust: Optional[int] = None
     multi: Optional[Union[bool, str]] = None
     bold: Optional[FontStyle] = None

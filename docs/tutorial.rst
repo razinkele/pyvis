@@ -32,9 +32,11 @@ You can also add a list of nodes
 
 >>> nodes = ["a", "b", "c", "d"]
 >>> net.add_nodes(nodes) # node ids and labels = ["a", "b", "c", "d"]
->>> net.add_nodes("hello") # node ids and labels = ["h", "e", "l", "o"]
+>>> net.add_nodes([5, 6, 7]) # numeric ids work too
 
-.. note:: :meth:`network.Network.add_nodes` accepts any iterable as long as the contents are strings or numerics 
+.. note:: :meth:`network.Network.add_nodes` accepts any iterable as long as the contents are strings or
+   numerics. Node ids must be unique: adding an id that already exists raises ``ValueError``
+   (use :meth:`network.Network.update_node` to change an existing node).
 
 Node properties
 ---------------
@@ -54,9 +56,10 @@ Indexing a Node
 ---------------
 Use the :meth:`get_node` method to index a node by its ID:
 
+>>> net = Network()
 >>> net.add_nodes(["a", "b", "c"])
 >>> net.get_node("c")
->>> {'id': 'c', 'label': 'c', 'shape': 'dot'}
+{'color': '#97c2fc', 'id': 'c', 'label': 'c', 'shape': 'dot'}
 
 
 Adding list of nodes with properties
@@ -64,7 +67,7 @@ Adding list of nodes with properties
 When using the :meth:`network.Network.add_nodes` method optional keyword arguments can be
 passed in to add properties to these nodes as well. The valid properties in this case are
 
-   >>> ['size', 'value', 'title', 'x', 'y', 'label', 'color']
+   >>> ['size', 'value', 'title', 'x', 'y', 'label', 'color', 'shape', 'group']
 
 Each of these keyword args must be the same length as the nodes parameter to the method.
 
@@ -83,8 +86,8 @@ Example:
 	:file: mulnodes.html
 
 .. note:: If you mouse over each node you will see that the ``title`` of a node
-   attribute is responsible for rendering data on mouse hover. You can add ``HTML`` 
-   in your ``title`` string and it will be rendered as such.
+   attribute is responsible for rendering data on mouse hover. The ``title`` is rendered
+   as plain text; HTML is not interpreted (use ``\n`` for line breaks).
 
 .. note:: The ``color`` attribute can also be a plain HTML ``color`` like red or blue. You can also 
    specify the full ``rgba`` specification if needed. The VisJS_ documentation has more 
@@ -98,13 +101,17 @@ Edges
 
 Assuming the network's nodes exist, the edges can then be added according to node id's
 
+   >>> net = Network()
    >>> net.add_node(0, label='a')
    >>> net.add_node(1, label='b')
+   >>> net.add_node(2, label='c')
    >>> net.add_edge(0, 1)
 
-Edges can contain a ``weight`` attribute as well
+Edges can contain extra attributes such as ``weight`` or ``width`` as well
 
-   >>> net.add_edge(0, 1, weight=.87)
+   >>> net.add_edge(1, 2, width=3, title="weight .87")
+
+.. note:: Adding the same edge twice is a no-op; use :meth:`network.Network.update_edge` to change one.
 
 Edges can be customized and documentation on options can be found at
 :meth:`network.Network.add_edge` method documentation, or by referencing the
@@ -145,12 +152,14 @@ Visualization
 
 The displaying of a graph is achieved by a single method call on
 :meth:`network.Network.show()` after the underlying network is constructed.
-The interactive visualization is presented as a static HTML file.
+The interactive visualization is written to an HTML file and opened in the
+browser. With ``Network(notebook=True)`` it is shown inline in Jupyter instead.
 
->>> net.toggle_physics(True)
 >>> net.show('mygraph.html')
 
-.. note:: Triggering the :meth:`toggle_physics` method allows for more fluid graph interactions 
+.. note:: Physics is enabled by default. To turn it off, call
+   ``net.set_options({"physics": {"enabled": False}})``. Note that
+   :meth:`network.Network.set_options` replaces all options.
 
 Example: Visualizing a Game of Thrones character network
 --------------------------------------------------------
@@ -164,8 +173,7 @@ The following code block is a minimal example of the capabilities of pyvis.
 
 		got_net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white")
 
-		# set the physics layout of the network
-		got_net.barnes_hut()
+		# Barnes-Hut is vis-network's default physics solver
 		got_data = pd.read_csv("../../notebooks/NetworkOfThrones.csv")
 
 		sources = got_data['Source']
@@ -179,15 +187,16 @@ The following code block is a minimal example of the capabilities of pyvis.
 				dst = e[1]
 				w = e[2]
 
-				got_net.add_node(src, src, title=src)
-				got_net.add_node(dst, dst, title=dst)
+				for name in (src, dst):
+						if name not in got_net.node_map:
+								got_net.add_node(name, name, title=name)
 				got_net.add_edge(src, dst, value=w)
 
 		neighbor_map = got_net.get_adj_list()
 
 		# add neighbor data to node hover data
 		for node in got_net.nodes:
-				node["title"] += " Neighbors:<br>" + "<br>".join(neighbor_map[node["id"]])
+				node["title"] += " Neighbors:\n" + "\n".join(neighbor_map[node["id"]])
 				node["value"] = len(neighbor_map[node["id"]])
 
 		got_net.show("gameofthrones.html")
@@ -207,7 +216,8 @@ dynamically alter some of the settings pertaining to your network. This could
 be useful for finding the most optimal parameters to your graph's physics and
 layout function.
 
->>> net.show_buttons(filter_=['physics'])
+>>> net.options["configure"] = {"enabled": True, "filter": ["physics"]}
+>>> net.show('mygraph.html')
 
 .. image:: buttons.gif
 

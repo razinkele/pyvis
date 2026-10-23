@@ -284,9 +284,7 @@ User calls:  net.write_html("output.html")
              │   ├─→ JavaScript initialization code
              │   └─→ vis.js library (inline/CDN/local)
              │
-             ├─→ Save to file
-             │
-             └─→ Return HTML string
+             └─→ Save to file (returns None)
 ```
 
 ## Key Design Patterns
@@ -391,7 +389,6 @@ The test suite covers:
 - **Regression Tests**: Known issues remain fixed
 - **Type Tests**: Type system validation
 - **Security Tests**: XSS/injection prevention
-- **Performance Tests**: Benchmark key operations
 
 ## Dependencies
 
@@ -420,7 +417,7 @@ pyvis/
 │   ├── nodes.py             # Node options
 │   ├── edges.py             # Edge options
 │   ├── physics.py           # Physics options
-│   ├── config.py            # Network options
+│   ├── network.py           # Network options (NetworkOptions)
 │   └── ...more types...
 ├── tests/
 │   ├── test_network_basic.py

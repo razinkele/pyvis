@@ -32,9 +32,6 @@ net.add_node(1, label="Node 1")
 net.add_node(2, label="Node 2")
 net.add_edge(1, 2, label="My Edge", color="red")
 
-# Enable manipulation toolbar (required)
-net.set_options({"manipulation": {"enabled": True}})
-
 # Save and display
 net.show("my_network.html", notebook=False)
 ```
@@ -100,7 +97,7 @@ options.manipulation.editEdge = {
 - Opens modal for attribute editing instead of drag-editing
 - No DOM manipulation or event listeners required
 - Documented in official vis-network documentation
-- As of vis-network 6.0.0+, callback receives node IDs (not full objects)
+- The callback receives node IDs (not full node objects)
 
 ### Modal Form Fields
 
@@ -127,9 +124,10 @@ Both features can coexist and work independently:
 ### Requirements
 
 The edge attribute editing feature requires:
-1. `edge_attribute_edit=True` parameter set
-2. Manipulation mode enabled (via `set_options({"manipulation": {"enabled": True}})` or similar)
-3. At least one edge selected in the network
+1. `edge_attribute_edit=True` parameter set. This turns vis-network manipulation on
+   automatically; if your options set `manipulation.enabled` to `False`, it is overridden
+   and `generate_html()` emits a warning.
+2. At least one edge selected in the network
 
 ## Examples
 
