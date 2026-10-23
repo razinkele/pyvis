@@ -84,6 +84,48 @@ def test_add_numpy_nodes():
     assert g.get_nodes() == [1, 2, 3, 4]
 
 
+def test_add_nodes_with_plain_dict_options():
+    """A plain dict passed via options= should behave like the typed options path."""
+    net = Network()
+    net.add_nodes([1, 2], options={"color": "red", "size": 10})
+
+    assert net.node_map[1]["color"] == "red"
+    assert net.node_map[1]["size"] == 10
+    assert net.node_map[2]["color"] == "red"
+    assert net.node_map[2]["size"] == 10
+
+
+def test_add_nodes_dict_options_matches_typed_path():
+    from ..types import NodeOptions
+    a, b, c = Network(), Network(), Network()
+    a.add_nodes([1], options={"size": 5})
+    b.add_nodes([1], options=NodeOptions(size=5))
+    c.add_nodes([1], options=[NodeOptions(size=5)])
+    assert a.node_map[1] == b.node_map[1] == c.node_map[1] == {"size": 5, "id": 1, "label": 1}
+
+
+def test_add_nodes_dict_options_not_shared_between_batches():
+    opts = {"font": {"size": 12}}
+    net = Network(font_color="blue")
+    net.add_nodes([1, 2], options=opts)
+    assert opts == {"font": {"size": 12}}
+    net.node_map[1]["font"]["size"] = 99
+    assert net.node_map[2]["font"]["size"] == 12
+
+
+def test_add_nodes_numpy_ids_with_options():
+    np = pytest.importorskip("numpy")
+    net = Network()
+    net.add_nodes(np.array([1, 2]), options={"size": 3})
+    assert net.get_nodes() == [1, 2]
+
+
+def test_add_nodes_options_ignores_invalid_kwargs_with_warning():
+    net = Network()
+    with pytest.warns(UserWarning, match="kwargs are ignored"):
+        net.add_nodes([1], options={"size": 1}, borderWidth=[1])
+
+
 def test_get_network_json():
     """Test that get_network_json returns structured data for Shiny."""
     net = Network()

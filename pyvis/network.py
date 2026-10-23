@@ -75,6 +75,16 @@ def _edge_key(source, to, directed):
     return frozenset(((type(source).__name__, source), (type(to).__name__, to)))
 
 
+def _coerce_node_id(node):
+    """Return a str/int node id, converting number-like values (e.g. numpy ints)."""
+    if isinstance(node, (int, str)):
+        return node
+    try:
+        return int(node)
+    except (ValueError, TypeError):
+        raise TypeError(f"Node must be string or int, got {type(node)}")
+
+
 def _to_json_native(value, _seen=None):
     """Coerce numpy scalars and other numeric types to plain Python numbers.
 
@@ -646,13 +656,16 @@ class Network:
 
 
         :param nodes: A list of nodes.
+        :param options: Options applied through the same path as
+                        ``add_node(n, options=...)``. One of: a dict or
+                        NodeOptions applied to every node, or a list (same
+                        length as ``nodes``) of dicts/NodeOptions, one per
+                        node. When given, the per-attribute list kwargs are
+                        ignored with a warning.
 
         :type nodes: list
+        :type options: dict, NodeOptions or list, optional
         """
-        for k in kwargs:
-            if k not in VALID_BATCH_NODE_ARGS:
-                raise ValueError(f"invalid arg '{k}'")
-
         # Typed options path
         if options is not None:
             if kwargs:
@@ -662,24 +675,22 @@ class Network:
                     UserWarning,
                     stacklevel=2,
                 )
-            if hasattr(options, 'to_dict'):
-                # Single options applied to all nodes
-                opts_dict = options.to_dict()
-                for node in nodes:
-                    self.add_node(node, **copy.deepcopy(opts_dict))
-                return
-            elif isinstance(options, list):
+            if isinstance(options, list):
                 if len(options) != len(nodes):
                     raise ValueError(
                         f"options list length ({len(options)}) does not match "
                         f"nodes list length ({len(nodes)})"
                     )
-                for node, opt in zip(nodes, options):
-                    if hasattr(opt, 'to_dict'):
-                        self.add_node(node, options=opt)
-                    else:
-                        self.add_node(node, **opt)
-                return
+                per_node = options
+            else:
+                per_node = [options] * len(nodes)
+            for node, opt in zip(nodes, per_node):
+                self.add_node(_coerce_node_id(node), options=copy.deepcopy(opt))
+            return
+
+        for k in kwargs:
+            if k not in VALID_BATCH_NODE_ARGS:
+                raise ValueError(f"invalid arg '{k}'")
 
         # Validate lengths before the loop to avoid O(n²)
         for k, v in kwargs.items():
@@ -692,16 +703,8 @@ class Network:
                 nd[nodes[i]].update({k: v[i]})
 
         for node in nodes:
-            # Check type first (LBYL over EAFP for better performance)
-            if isinstance(node, (int, str)):
-                self.add_node(node, **nd[node])
-            else:
-                # Try to convert number-like objects to int
-                try:
-                    node = int(node)
-                    self.add_node(node, **nd[node])
-                except (ValueError, TypeError):
-                    raise TypeError(f"Node must be string or int, got {type(node)}")
+            node = _coerce_node_id(node)
+            self.add_node(node, **nd[node])
 
     def num_nodes(self) -> int:
         """
