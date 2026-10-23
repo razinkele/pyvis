@@ -55,7 +55,7 @@ app = App(app_ui, server)
 Controlling Network from Python:
 -------------------------------
 ```python
-from pyvis.shiny import PyVisNetworkController, network_fit, network_select_nodes
+from pyvis.shiny import PyVisNetworkController, network_focus
 
 def server(input, output, session):
     # Option 1: Use controller class
@@ -90,8 +90,11 @@ Available Events (as Shiny inputs):
 - input.{id}_dragStart - Dragging started
 - input.{id}_dragEnd - Dragging ended (includes new positions)
 - input.{id}_zoom - Zoom changed
-- input.{id}_stabilized - Physics stabilization complete
-- input.{id}_ready - Network fully initialized
+- input.{id}_stabilizationProgress - Physics stabilization progress
+- input.{id}_stabilized - Stabilization iterations finished (vis.js stabilizationIterationsDone)
+- input.{id}_animationFinished - Camera animation finished
+- input.{id}_configChange - Configurator changed options (raw vis.js params)
+- input.{id}_ready - Network fully initialized (always sent, not filtered by events=)
 
 Response Inputs (from query commands):
 ------------------------------------

@@ -100,6 +100,10 @@ def server(input, output, session):
         ctrl.fit()
 ```
 
+## Not supported in the Shiny output
+
+The Shiny binding renders nodes, edges, options (including `set_group()` groups) and the heading. These `Network` features only apply to `generate_html()`/`write_html()` and have no effect in a Shiny app: the legend (`add_legend`), `bgcolor`, `select_menu`/`filter_menu`, `neighborhood_highlight`, and DOT input (`from_DOT`; `get_network_json()` warns).
+
 ## Available Events (Network → Python)
 
 All events are available as Shiny inputs with the format `input.{output_id}_{event_type}()`.
@@ -108,7 +112,7 @@ All events are available as Shiny inputs with the format `input.{output_id}_{eve
 
 | Input Name | Description | Data Fields |
 |------------|-------------|-------------|
-| `{id}_click` | Network clicked | `nodes`, `edges`, `pointer`, `items` |
+| `{id}_click` | Network clicked | `nodes`, `edges`, `pointer` |
 | `{id}_doubleClick` | Double-clicked | `nodes`, `edges`, `pointer` |
 | `{id}_contextMenu` | Right-clicked | `nodes`, `edges`, `pointer` |
 
@@ -141,12 +145,12 @@ All events are available as Shiny inputs with the format `input.{output_id}_{eve
 
 | Input Name | Description | Data Fields |
 |------------|-------------|-------------|
-| `{id}_zoom` | Zoom changed | `direction`, `scale`, `pointer` |
+| `{id}_zoom` | Zoom changed | `direction`, `scale` |
 | `{id}_stabilizationProgress` | Physics progress | `iterations`, `total` |
-| `{id}_stabilized` | Physics complete | - |
-| `{id}_ready` | Network initialized | `nodeCount`, `edgeCount` |
-| `{id}_animationFinished` | Animation done | - |
-| `{id}_configChange` | Config changed | `options` |
+| `{id}_stabilized` | Stabilization iterations finished (vis.js `stabilizationIterationsDone`) | `timestamp` |
+| `{id}_ready` | Network initialized (always sent, even when `events=` omits it) | `nodeCount`, `edgeCount`, `timestamp` |
+| `{id}_animationFinished` | Animation done | `timestamp` |
+| `{id}_configChange` | Config changed | the raw vis.js `configChange` params object |
 
 ### Example: Handling Events
 
@@ -191,7 +195,7 @@ ctrl = PyVisNetworkController("my_network", session)
 | Method | Description | Parameters |
 |--------|-------------|------------|
 | `fit(node_ids=None, animation=True)` | Zoom to fit | Optional node IDs |
-| `focus(node_id, scale=1.0, animation=True)` | Focus on node | Node ID, zoom scale |
+| `focus(node_id, scale=1.0, animation=True, locked=True)` | Focus on node | Node ID, zoom scale, keep camera locked on the node |
 | `move_to(position=None, scale=None, animation=True)` | Move camera | `{x, y}` position |
 
 ### Physics Commands

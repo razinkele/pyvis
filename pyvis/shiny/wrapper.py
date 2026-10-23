@@ -51,8 +51,8 @@ The network automatically sends events to Shiny inputs:
 - `input.{output_id}_dragEnd` - When dragging ends (includes positions)
 - `input.{output_id}_zoom` - When zooming
 - `input.{output_id}_stabilizationProgress` - Physics stabilization progress
-- `input.{output_id}_stabilized` - When physics stabilization finishes
-- `input.{output_id}_ready` - When network is fully initialized
+- `input.{output_id}_stabilized` - When stabilization iterations finish (vis.js `stabilizationIterationsDone`)
+- `input.{output_id}_ready` - When network is fully initialized (always sent, not filtered by ``events``)
 - `input.{output_id}_animationFinished` - When animation completes
 - `input.{output_id}_configChange` - When configurator changes options (requires configure widget enabled)
 
@@ -318,6 +318,7 @@ def output_pyvis_network(
         show_status: Show status bar (default: True).
         fill: Whether the container should fill its parent (default: False).
         events: List of event names to bind, or None for all (default: None).
+            ``_ready`` is always sent.
         **kwargs: Additional attributes to pass to the container div.
 
     Returns:
@@ -389,6 +390,7 @@ if SHINY_AVAILABLE:
             fill: Whether the container should fill its parent (default: None,
                 inherits).
             events: List of event names to bind, or None for all (default: None).
+                ``_ready`` is always sent.
 
         Unset (``None``) options are omitted from the payload so the values
         already encoded in the output container's ``data-pyvis-config``
@@ -860,6 +862,8 @@ if SHINY_AVAILABLE:
                 mode: "attributes" to edit edge properties (color, width, dashes,
                       arrows) via a modal, or "links" to reconnect edge endpoints
                       (from/to nodes) via a dropdown modal.
+
+            No effect unless manipulation is enabled (see toggle_manipulation).
             """
             network_set_edge_edit_mode(self.session, self.output_id, mode)
 
@@ -872,6 +876,8 @@ if SHINY_AVAILABLE:
 
             Args:
                 enabled: True to show template chips, False for default behavior.
+
+            No effect unless manipulation is enabled (see toggle_manipulation).
             """
             network_set_node_template_mode(self.session, self.output_id, enabled)
 
@@ -1171,6 +1177,8 @@ def network_set_edge_edit_mode(session: 'Session', output_id: str, mode: str):
         session: The Shiny session object.
         output_id: The ID of the network output.
         mode: "attributes" or "links"
+
+    No effect unless manipulation is enabled (see network_toggle_manipulation).
     """
     _send_network_command(session, output_id, "setEdgeEditMode", {"mode": mode})
 
@@ -1182,6 +1190,8 @@ def network_set_node_template_mode(session: 'Session', output_id: str, enabled: 
         session: The Shiny session object.
         output_id: The ID of the network output.
         enabled: True to show template chips, False for default behavior.
+
+    No effect unless manipulation is enabled (see toggle_manipulation).
     """
     _send_network_command(session, output_id, "setNodeTemplateMode", {"enabled": enabled})
 
@@ -1320,7 +1330,7 @@ if SHINY_AVAILABLE:
         Args:
             height: Height of the network.
             width: Width of the network.
-            show_controls: Whether to show physics and layout controls.
+            show_controls: Whether to show the physics toggle.
             
         Returns:
             Shiny UI element.

@@ -1445,20 +1445,23 @@ Create a network output placeholder in the UI. Populated by the `@render_pyvis_n
 
 ```python
 @render_pyvis_network(
+    *,
     height: str = "600px",
     width: str = "100%",
-    theme: str = "light",
-    show_toolbar: bool = True,
-    show_search: bool = True,
-    show_layout_switcher: bool = True,
-    show_export: bool = True,
-    show_status: bool = True,
-    fill: bool = False,
+    theme: Optional[str] = None,
+    show_toolbar: Optional[bool] = None,
+    show_search: Optional[bool] = None,
+    show_layout_switcher: Optional[bool] = None,
+    show_export: Optional[bool] = None,
+    show_status: Optional[bool] = None,
+    fill: Optional[bool] = None,
     events: Optional[List[str]] = None,
 )
 ```
 
-Decorator for rendering PyVis Network objects reactively. The decorated function should return a `Network` instance.
+Decorator for rendering PyVis Network objects reactively. The decorated function should return a `Network` instance. All parameters are keyword-only. Options left as `None` are omitted from the payload, so the values set on the matching `output_pyvis_network(...)` apply.
+
+**Not supported in the Shiny output:** the legend, `bgcolor`, the select/filter menus, neighbourhood highlighting and DOT input. Those `Network` settings only affect `generate_html()`/`write_html()`.
 
 **Example:**
 ```python
@@ -1598,7 +1601,7 @@ ctrl.set_node_template_mode(True)
 
 #### App-Level CSS Class Operations
 
-For app-level DOM class toggling (e.g., theme switching), use the `pyvis-run-js` custom message handler with a structured message:
+For app-level DOM class toggling (e.g., theme switching), use the `pyvis-run-js` custom message handler with a structured message. It has no Python wrapper; send it with `session.send_custom_message` directly. The keys are `selector`, `action` and `className`:
 
 ```python
 await session.send_custom_message("pyvis-run-js", {
@@ -1662,6 +1665,8 @@ network_update_edge(session, output_id, edge)
 network_remove_node(session, output_id, node_id)
 network_remove_edge(session, output_id, edge_id)
 network_update_data(session, output_id, nodes: List[dict], edges: List[dict])
+network_add_nodes(session, output_id, nodes: List)
+network_add_edges(session, output_id, edges: List)
 ```
 
 For `network_update_data`, each edge must carry a stable `id`; edges without an id are treated as new on every call.
@@ -1670,7 +1675,11 @@ For `network_update_data`, each edge must carry a stable `id`; edges without an 
 
 ```python
 network_open_cluster(session, output_id, cluster_node_id)
+network_cluster_by_connection(session, output_id, node_id, cluster_node_properties: dict = None)
+network_cluster_by_hubsize(session, output_id, hubsize: int = None, cluster_node_properties: dict = None)
 ```
+
+`cluster_node_properties` styles the cluster node (e.g. `{"label": "C", "color": "red"}`) and is sent as vis.js `clusterNodeProperties`. A dict that already contains `clusterNodeProperties` is sent unchanged.
 
 #### Lifecycle
 
@@ -1699,6 +1708,8 @@ network_set_node_template_mode(session, output_id, enabled: bool)
 network_get_positions(session, output_id, node_ids: List = None)
 network_get_selection(session, output_id)
 network_get_all_data(session, output_id)
+network_get_scale(session, output_id)
+network_get_view_position(session, output_id)
 ```
 
 `network_get_data` is a backwards-compatible alias of `network_get_all_data`.
@@ -1720,7 +1731,7 @@ def pyvis_network_ui(
 ) -> Tag
 ```
 
-Module UI function. Creates a network output with optional control panel (physics toggle, node spacing).
+Module UI function. Creates a network output with an optional control panel containing a physics toggle.
 
 #### `pyvis_network_server`
 
@@ -1731,6 +1742,7 @@ def pyvis_network_server(
     network_data: reactive.Value,
     on_node_select: Optional[callable] = None,
     on_edge_select: Optional[callable] = None,
+    show_controls: bool = True,
 )
 ```
 
@@ -1797,7 +1809,7 @@ Network events are automatically sent as Shiny inputs using the pattern `input.{
 | `input.{id}_response_selection` | Current selection `{nodes: [...], edges: [...]}` |
 | `input.{id}_response_scale` | Zoom scale (number) |
 | `input.{id}_response_viewPosition` | Camera position `{x, y}` |
-| `input.{id}_response_allData` | Full data `{nodes: [...], edges: [...], positions: {...}, view: {...}}` |
+| `input.{id}_response_allData` | Full data `{nodes: [...], edges: [...], positions: {...}, scale: number, viewPosition: {x, y}}` |
 
 ---
 
