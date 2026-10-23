@@ -967,17 +967,32 @@ class Network:
 
         :raises ValueError: If the edge does not exist.
         """
-        for i, edge in enumerate(self.edges):
-            if self._edge_matches(edge, source, to):
-                self.edges.pop(i)
-                edge_key = _edge_key(source, to, self.directed)
-                self._edge_set.discard(edge_key)
-                # Unregister from index
-                self._unregister_edge(edge['from'], edge['to'])
-                # Rebuild indices for remaining edges after this position
-                self._update_edge_indices(i)
-                self._adj_list_cache = None
-                return
+        # Use edge index for O(1) lookup (PERF-002 optimization)
+        edge_index = -1
+        actual_source = source
+        actual_dest = to
+        
+        if self.directed:
+            edge_index = self._get_edge_index(source, to)
+        else:
+            # For undirected graphs, try both directions
+            edge_index = self._get_edge_index(source, to)
+            if edge_index < 0:
+                edge_index = self._get_edge_index(to, source)
+                if edge_index >= 0:
+                    actual_source = to
+                    actual_dest = source
+        
+        if edge_index >= 0:
+            self.edges.pop(edge_index)
+            edge_key = _edge_key(source, to, self.directed)
+            self._edge_set.discard(edge_key)
+            # Unregister from index
+            self._unregister_edge(actual_source, actual_dest)
+            # Rebuild indices for remaining edges after this position
+            self._update_edge_indices(edge_index)
+            self._adj_list_cache = None
+            return
 
         raise ValueError(
             f"Edge ({source}, {to}) not found in network"
