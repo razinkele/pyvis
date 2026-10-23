@@ -1,0 +1,1971 @@
+"""Network module for pyvis graph visualization.
+
+This module provides the Network class, which is the main interface for creating
+interactive network visualizations using the vis.js library. It supports both
+directed and undirected graphs, various physics simulations, and integration
+with NetworkX and Jupyter notebooks.
+"""
+
+import copy
+import json
+import logging
+import numbers
+import os
+import re
+import shutil
+import warnings
+import webbrowser
+from collections import defaultdict
+from typing import List, Dict, Optional, Union, Any, Tuple
+
+import networkx as nx
+from jinja2 import Environment, FileSystemLoader
+
+from .edge import Edge
+from .node import Node
+from .utils import check_html
+from . import vis_config
+from .vis_config import CDNResource
+
+__all__ = ['Network', 'CDNResource']
+
+# Set up logging
+logger = logging.getLogger(__name__)
+
+# Constants for node attributes
+VALID_BATCH_NODE_ARGS = ["size", "value", "title", "x", "y", "label", "color", "shape", "group"]
+
+
+def _edge_key(source, to, directed):
+    """Build a hashable key for edge deduplication.
+
+    For undirected graphs, uses a frozenset of (type name, id) pairs so
+    that ids of different types (e.g. 1 and '1') are never conflated,
+    regardless of call order.
+    """
+    if directed:
+        return (source, to)
+    return frozenset(((type(source).__name__, source), (type(to).__name__, to)))
+
+
+# Constants for CDN resources - kept for backward compatibility
+# Use vis_config.CDNResource enum for new code
+CDN_LOCAL = CDNResource.LOCAL.value
+CDN_INLINE = CDNResource.INLINE.value
+CDN_REMOTE = CDNResource.REMOTE.value
+CDN_REMOTE_ESM = CDNResource.REMOTE_ESM.value
+VALID_CDN_RESOURCES = [CDN_LOCAL, CDN_INLINE, CDN_REMOTE, CDN_REMOTE_ESM]
+
+# CSS validation patterns to prevent CSS injection
+_CSS_DIM_RE = re.compile(r'^\d+(\.\d+)?(px|%|em|rem|vh|vw)$')
+_CSS_COLOR_RE = re.compile(
+    r'^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+|rgba?\(\s*[\d.,\s%]+\)|hsla?\(\s*[\d.,\s%]+\))$'
+)
+_SAFE_TOMSELECT_KEYS = frozenset({"sortField", "maxOptions", "placeholder", "create", "closeAfterSelect", "hideSelected"})
+
+
+def _to_json_native(value, _seen=None):
+    """Coerce numpy scalars and other numeric types to plain Python numbers.
+
+    Recurses into lists, tuples and dicts so that numpy scalars nested
+    inside a container (e.g. ``[np.int64(1)]`` or ``{"x": np.int64(1)}``)
+    are coerced element-by-element instead of causing the whole container
+    to be treated as unserialisable. Dict keys are validated against the
+    JSON key rules (``str``, ``int``, ``float``, ``bool`` or ``None`` only)
+    rather than recursed into.
+
+    Container identity (``id()``) is tracked along the current recursion
+    path (``_seen``, popped again once a container's children have been
+    processed) so a genuine cycle (a container that contains itself,
+    directly or indirectly) raises ``ValueError`` instead of overflowing
+    the recursion stack. The same container appearing twice in a DAG
+    (not on the same path) is legal and is coerced normally each time.
+
+    A depth cap was deliberately not added: cycle detection already
+    prevents unbounded recursion for the failure mode that was reported,
+    and an arbitrary depth limit would risk truncating legitimate deep
+    (but finite and non-cyclic) attribute structures that have not been
+    shown to occur in practice.
+
+    Returns the value unchanged when it is already JSON-serialisable and
+    raises TypeError when it is not. Raises ValueError for a circular
+    reference.
+    """
+    if isinstance(value, bool) or value is None or isinstance(value, str):
+        return value
+    if isinstance(value, (list, tuple, dict)):
+        if _seen is None:
+            _seen = set()
+        container_id = id(value)
+        if container_id in _seen:
+            raise ValueError("Circular reference detected")
+        _seen = _seen | {container_id}
+        if isinstance(value, dict):
+            coerced = {}
+            for k, v in value.items():
+                if not (isinstance(k, (str, int, float)) or k is None):
+                    raise TypeError(f"dict key {k!r} is not a valid JSON key")
+                coerced[k] = _to_json_native(v, _seen)
+            return coerced
+        return [_to_json_native(v, _seen) for v in value]
+    if isinstance(value, numbers.Integral):
+        return int(value)
+    if isinstance(value, numbers.Real):
+        return float(value)
+    if hasattr(value, "item"):          # numpy generic
+        return _to_json_native(value.item(), _seen)
+    json.dumps(value)                   # raises TypeError for anything else
+    return value
+
+
+class Network:
+    """
+    The Network class is the focus of this library. All viz functionality
+    should be implemented off of a Network instance.
+
+    To instantiate:
+
+    >>> nt = Network()
+    """
+
+    def __init__(self,
+                 height: str = "600px",
+                 width: str = "100%",
+                 directed: bool = False,
+                 notebook: bool = False,
+                 neighborhood_highlight: bool = False,
+                 select_menu: bool = False,
+                 filter_menu: bool = False,
+                 bgcolor: str = "#ffffff",
+                 font_color: Optional[str] = None,
+                 layout: Optional[bool] = None,
+                 heading: str = "",
+                 cdn_resources: str = "local",
+                 edge_attribute_edit: bool = False,
+                 highlight_degree: int = 2,
+                 tooltip_link_override: Optional[bool] = None,
+                 select_node_options: Optional[dict] = None,
+                 filter_exclude: Optional[List[str]] = None):
+        """
+        :param height: The height of the canvas (auto-converted to px if bare number).
+        :param width: The width of the canvas (auto-converted to px if bare number).
+        :param directed: Whether or not to use a directed graph. This is false
+                         by default.
+        :param notebook: True if using jupyter notebook.
+        :param select_menu: Adds a dropdown menu to select and navigate to specific nodes.
+        :param filter_menu: sets the option to filter nodes and edges based on attributes
+        :param bgcolor: The background color of the canvas.
+        :param cdn_resources: Where to pull resources for css and js files. Defaults to local.
+            Options ['local','in_line','remote','remote_esm'].
+            local: pull resources from local lib folder.
+            in_line: insert lib resources as inline script tags.
+            remote: pull resources from hash checked cdns.
+            remote_esm: pull resources from CDN as ES modules.
+        :param edge_attribute_edit: Enables edge property editing modal on double-click. Default False.
+        :param font_color: The color of the node labels text
+        :param layout: Use hierarchical layout if True. Pass a LayoutOptions object for custom layout.
+        :param neighborhood_highlight: When True, clicking a node highlights its neighbors. Default False.
+        :param heading: Heading text displayed above the visualization. Default "".
+        :param highlight_degree: Degree of neighbors to highlight (default 2). Must be a non-negative integer.
+        :param tooltip_link_override: Override auto-detection of link tooltips (titles containing "href"). True forces on, False forces off, None auto-detects.
+        :param select_node_options: Dict of TomSelect options for node selector. Only safe keys accepted.
+        :param filter_exclude: List of node property names to exclude from filter menu.
+
+        :type height: str, int, or float
+        :type width: str, int, or float
+        :type directed: bool
+        :type notebook: bool
+        :type select_menu: bool
+        :type filter_menu: bool
+        :type bgcolor: str
+        :type font_color: str
+        :type layout: bool or LayoutOptions
+        :type cdn_resources: str
+        :type edge_attribute_edit: bool
+        """
+        # Node storage - single source of truth
+        self.node_map: Dict[Union[str, int], Dict[str, Any]] = {}
+        self.edges: List[Dict[str, Any]] = []
+        # Edge set for O(1) duplicate detection in undirected graphs
+        self._edge_set: set = set()
+        # Edge index for O(1) lookups: maps (source, dest) tuple to index in self.edges
+        # Maintained for efficient edge lookups instead of O(n) linear search
+        self._edge_index: Dict[Tuple[Union[str, int], Union[str, int]], int] = {}
+        # Adjacency list cache
+        self._adj_list_cache: Optional[Dict[Union[str, int], set]] = None
+
+        # Normalize and validate CSS dimensions
+        height = self._normalize_css_dimension(height)
+        width = self._normalize_css_dimension(width)
+
+        if not isinstance(height, str) or not self._validate_css_value(height, 'dimension', 'height'):
+            raise ValueError(f"Invalid CSS dimension for height: {height!r}")
+        if not isinstance(width, str) or not self._validate_css_value(width, 'dimension', 'width'):
+            raise ValueError(f"Invalid CSS dimension for width: {width!r}")
+        if not self._validate_css_value(bgcolor, 'color', 'bgcolor'):
+            raise ValueError(f"Invalid CSS color for bgcolor: {bgcolor!r}")
+        # Legacy: font_color=False was used to mean "no color"
+        if font_color is False:
+            font_color = None
+        if font_color is not None:
+            if not self._validate_css_value(font_color, 'color', 'font_color'):
+                raise ValueError(f"Invalid CSS color for font_color: {font_color!r}")
+
+        if not isinstance(highlight_degree, int) or isinstance(highlight_degree, bool) or highlight_degree < 0:
+            raise ValueError(f"highlight_degree must be a non-negative integer, got {highlight_degree!r}")
+
+        self.height = height
+        self.width = width
+        self.heading = heading
+        self.shape = "dot"
+        self.font_color = font_color
+        self.directed = directed
+        self.bgcolor = bgcolor
+        self.use_DOT = False
+        self.dot_lang = ""
+        self.options = {}
+        if layout is True:
+            self.options["layout"] = {
+                "hierarchical": {"enabled": True},
+                "randomSeed": 0,
+                "improvedLayout": True,
+            }
+        elif layout is not None and layout is not False:
+            if hasattr(layout, 'to_dict'):
+                self.options["layout"] = layout.to_dict()
+            else:
+                warnings.warn(
+                    f"layout= expected bool or LayoutOptions, got {type(layout).__name__}. Ignoring.",
+                    UserWarning, stacklevel=2
+                )
+        self.widget = False
+        self.template = None
+        self.neighborhood_highlight = neighborhood_highlight
+        self.select_menu = select_menu
+        self.filter_menu = filter_menu
+        self.edge_attribute_edit = edge_attribute_edit
+        self.highlight_degree = highlight_degree
+        self.tooltip_link_override = tooltip_link_override
+        if select_node_options is not None:
+            unknown = set(select_node_options) - _SAFE_TOMSELECT_KEYS
+            if unknown:
+                warnings.warn(
+                    f"select_node_options: keys {unknown} are not in the allowed set and were removed.",
+                    UserWarning, stacklevel=2
+                )
+            self.select_node_options = {k: v for k, v in select_node_options.items() if k in _SAFE_TOMSELECT_KEYS}
+        else:
+            self.select_node_options = None
+        self.filter_exclude = filter_exclude if filter_exclude is not None else ["hidden", "savedLabel", "hiddenLabel"]
+        self.legend = None
+        self.groups = {}
+
+        if cdn_resources not in VALID_CDN_RESOURCES:
+            raise ValueError(f"cdn_resources must be one of {VALID_CDN_RESOURCES}")
+            
+        # path is the root template located in the template_dir
+        self.path = "template.html"
+        self.template_dir = os.path.dirname(__file__) + "/templates/"
+        self.templateEnv = Environment(
+            loader=FileSystemLoader(self.template_dir),
+            autoescape=True,
+        )
+
+        if cdn_resources == "local" and notebook:
+            logger.warning("When cdn_resources is 'local' jupyter notebook has issues displaying graphics on chrome/safari."
+                  " Use cdn_resources='in_line' or cdn_resources='remote' if you have issues "
+                  "viewing graphics in a notebook.")
+        self.cdn_resources = cdn_resources
+
+        if notebook:
+            self.prep_notebook()
+
+    def __str__(self):
+        """
+        override print to show readable graph data
+        """
+        return str(
+            json.dumps(
+                {
+                    "Nodes": list(self.node_map.keys()),
+                    "Edges": self.edges,
+                    "Height": self.height,
+                    "Width": self.width,
+                    "Heading": self.heading
+                },
+                indent=4
+            )
+        )
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}(nodes={self.num_nodes()}, '
+                f'edges={self.num_edges()}, directed={self.directed})')
+
+    def __len__(self):
+        """Return the number of nodes in the network."""
+        return len(self.node_map)
+
+    def __iter__(self):
+        """Iterate over node dictionaries."""
+        return iter(self.node_map.values())
+
+    def __contains__(self, node_id):
+        """Check if a node ID exists in the network."""
+        return node_id in self.node_map
+
+    def __getitem__(self, node_id):
+        """Get a node by its ID."""
+        if node_id not in self.node_map:
+            raise KeyError(f"Node '{node_id}' not found in network")
+        return self.node_map[node_id]
+
+    def __enter__(self):
+        """Enter context manager - returns self for use in 'with' statement."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Exit context manager - cleanup resources.
+
+        Clears the adjacency-list cache. Does not delete files and does
+        not suppress exceptions.
+        """
+        # Clear caches to free memory
+        self._adj_list_cache = None
+
+        return False  # Don't suppress exceptions
+
+    def _get_edge_index(self, source: Union[str, int], dest: Union[str, int]) -> int:
+        """Get the list index for an edge, or -1 if not found.
+        
+        Args:
+            source: Source node ID
+            dest: Destination node ID
+            
+        Returns:
+            Index in self.edges list, or -1 if not found
+        """
+        key = (source, dest)
+        return self._edge_index.get(key, -1)
+
+    def _register_edge(self, source: Union[str, int], dest: Union[str, int], index: int) -> None:
+        """Register an edge in the index.
+        
+        Args:
+            source: Source node ID
+            dest: Destination node ID
+            index: Index in self.edges list
+        """
+        self._edge_index[(source, dest)] = index
+
+    def _unregister_edge(self, source: Union[str, int], dest: Union[str, int]) -> None:
+        """Remove an edge from the index.
+        
+        Args:
+            source: Source node ID
+            dest: Destination node ID
+        """
+        self._edge_index.pop((source, dest), None)
+
+    def _update_edge_indices(self, start_index: int) -> None:
+        """Rebuild edge index from start_index onwards (used after removals).
+        
+        Args:
+            start_index: Starting position to rebuild indices from
+        """
+        for i in range(start_index, len(self.edges)):
+            edge = self.edges[i]
+            self._register_edge(edge['from'], edge['to'], i)
+
+    def _validate_node_id(self, node_id: Union[str, int]) -> Union[str, int]:
+        """Validate and normalize node ID.
+        
+        Args:
+            node_id: The node identifier
+            
+        Returns:
+            Validated node ID (preserved as-is if valid)
+            
+        Raises:
+            ValueError: If node_id already exists
+            TypeError: If node_id is invalid type
+        """
+        if node_id in self.node_map:
+            raise ValueError(f"Node {node_id} already in network")
+        
+        if not isinstance(node_id, (int, str)):
+            raise TypeError(f"Node ID must be int or str, got {type(node_id)}")
+        
+        return node_id
+
+    def _edge_matches(self, edge: Dict[str, Any], source: Union[str, int], 
+                      dest: Union[str, int]) -> bool:
+        """Check if an edge matches the source and destination.
+        
+        Args:
+            edge: Edge dict with 'from' and 'to' keys
+            source: Source node ID
+            dest: Destination node ID
+            
+        Returns:
+            True if edge matches (for directed graphs, exact match; 
+            for undirected, bidirectional match)
+        """
+        if self.directed:
+            return edge['from'] == source and edge['to'] == dest
+        else:
+            return ((edge['from'] == source and edge['to'] == dest) or
+                    (edge['from'] == dest and edge['to'] == source))
+
+    @property
+    def nodes(self) -> List[Dict[str, Any]]:
+        """Property to maintain backward compatibility - returns list of node dicts."""
+        return list(self.node_map.values())
+
+    @property
+    def node_ids(self) -> List[Union[str, int]]:
+        """Property to maintain backward compatibility - returns list of node IDs."""
+        return list(self.node_map.keys())
+
+    def add_node(
+        self,
+        n_id: Union[str, int],
+        label: Optional[Union[str, int]] = None,
+        shape: str = "dot",
+        color: str = '#97c2fc',
+        options: Optional[Union[Dict[str, Any], Any]] = None,
+        **kw_options: Any
+    ) -> None:
+        """
+        This method adds a node to the network, given a mandatory node ID.
+        Node labels default to node ids if no label is specified during the
+        call.
+
+        >>> nt = Network("500px", "500px")
+        >>> nt.add_node(0, label="Node 0")
+        >>> nt.add_node(1, label="Node 1", color = "blue")
+
+        :param n_id: The id of the node. The id is mandatory for nodes and
+                     they have to be unique. This should obviously be set per
+                     node, not globally.
+
+        :param label: The label is the piece of text shown in or under the
+                      node, depending on the shape.
+
+        :param borderWidth:	The width of the border of the node.
+
+        :param borderWidthSelected:	The width of the border of the node when
+                                    it is selected. When undefined, the
+                                    borderWidth * 2 is used.
+
+        :param brokenImage:	When the shape is set to image or circularImage,
+                            this option can be an URL to a backup image in
+                            case the URL supplied in the image option cannot
+                            be resolved.
+
+        :param group: When not undefined, the node will belong to the defined
+                      group. Styling information of that group will apply to
+                      this node. Node specific styling overrides group styling.
+
+        :param hidden: When true, the node will not be shown. It will still be
+                       part of the physics simulation though!
+
+        :param image: When the shape is set to image or circularImage, this
+                      option should be the URL to an image. If the image
+                      cannot be found, the brokenImage option can be used.
+
+        :param labelHighlightBold: Determines whether or not the label becomes
+                                   bold when the node is selected.
+
+        :param level: When using the hierarchical layout, the level determines
+                      where the node is going to be positioned.
+
+        :param mass: The barnesHut physics model (which is enabled by default)
+                     is based on an inverted gravity model. By increasing
+                     the mass of a node, you increase it's repulsion. Values
+                     lower than 1 are not recommended.
+
+        :param physics:	When false, the node is not part of the physics
+                        simulation. It will not move except for from
+                        manual dragging.
+
+        :param shape: The shape defines what the node looks like. There are
+                      two types of nodes. One type has the label inside of
+                      it and the other type has the label underneath it. The
+                      types with the label inside of it are: ellipse, circle,
+                      database, box, text. The ones with the label outside of
+                      it are: image, circularImage, diamond, dot, star,
+                      triangle, triangleDown, square and icon.
+
+        :param font_color: Colour of this node's label, overriding the
+                           network-wide font_color given to Network(). Omit it
+                           (or pass None) to inherit the network default; pass
+                           False to render the label with no explicit colour.
+                           Accepted as a keyword argument alongside the other
+                           vis-network node attributes.
+
+        :param size: The size is used to determine the size of node shapes that
+                     do not have the label inside of them. These shapes are:
+                     image, circularImage, diamond, dot, star, triangle,
+                     triangleDown, square and icon.
+
+        :param title: Title to be displayed when the user hovers over the node.
+                      The title is rendered as plain text; HTML is not
+                      interpreted.
+
+        :param value: When a value is set, the nodes will be scaled using the
+                      options in the scaling object defined above.
+
+        :param x: This gives a node an initial x position. When using the
+                  hierarchical layout, either the x or y position is set by the
+                  layout engine depending on the type of view. The other value
+                  remains untouched. When using stabilization, the stabilized
+                  position may be different from the initial one. To lock the
+                  node to that position use the physics or fixed options.
+
+        :param y: This gives a node an initial y position. When using the
+                  hierarchical layout,either the x or y position is set by
+                  the layout engine depending on the type of view. The
+                  other value remains untouched. When using stabilization,
+                  the stabilized position may be different from the initial
+                  one. To lock the node to that position use the physics or
+                  fixed options.
+
+        :type n_id: str or int
+        :type label: str or int
+        :type borderWidth: num (optional)
+        :type borderWidthSelected: num (optional)
+        :type brokenImage: str (optional)
+        :type group: str (optional)
+        :type hidden: bool (optional)
+        :type image: str (optional)
+        :type labelHighlightBold: bool (optional)
+        :type level: num (optional)
+        :type mass: num (optional)
+        :type physics: bool (optional)
+        :type shape: str (optional)
+        :type size: num (optional)
+        :type title: str (optional)
+        :type value: num (optional)
+        :type x: num (optional)
+        :type y: num (optional)
+
+        :raises TypeError: If n_id is not a string or integer.
+        :raises ValueError: If a node with the same n_id already exists in the network.
+                            Use update_node() to modify existing nodes.
+        """
+        if not isinstance(n_id, (str, int)):
+            raise TypeError("Node id must be a string or an integer")
+
+        if n_id not in self.node_map:
+            if options is not None:
+                if hasattr(options, 'to_dict'):
+                    opts = options.to_dict()
+                elif isinstance(options, dict):
+                    opts = dict(options)
+                else:
+                    raise TypeError(
+                        f"options must be a NodeOptions or dict, got {type(options).__name__}"
+                    )
+                if kw_options:
+                    warnings.warn(
+                        "Both options= and **kwargs were provided to add_node(). "
+                        "When options= is used, kwargs are ignored.",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+                opts['id'] = n_id
+                if 'label' not in opts:
+                    opts['label'] = label if label is not None else n_id
+                if self.font_color:
+                    font = opts.get('font')
+                    if isinstance(font, dict):
+                        font.setdefault('color', self.font_color)
+                    elif font is None:
+                        opts['font'] = {'color': self.font_color}
+                self.node_map[n_id] = opts
+            else:
+                # Legacy path: Node() builds the option dict from kwargs
+                if label is not None:
+                    node_label = label
+                else:
+                    node_label = n_id
+                # A per-node font_color kwarg (e.g. carried over by from_nx)
+                # overrides the network-wide default. None means "inherit";
+                # False means "no color" (handled by Node).
+                node_font_color = kw_options.pop("font_color", None)
+                if node_font_color is None:
+                    node_font_color = self.font_color
+                if "group" in kw_options:
+                    n = Node(n_id, shape, label=node_label, font_color=node_font_color, **kw_options)
+                else:
+                    n = Node(n_id, shape, label=node_label, color=color, font_color=node_font_color, **kw_options)
+                self.node_map[n_id] = n.options
+            # Invalidate adjacency list cache
+            self._adj_list_cache = None
+        else:
+            raise ValueError(
+                f"Node {n_id!r} already exists in the network. "
+                f"Use update_node() to modify existing nodes, or remove the duplicate add_node() call."
+            )
+
+    def add_nodes(
+        self,
+        nodes: List[Union[str, int]],
+        options: Optional[Union[Dict[str, Any], List[Dict[str, Any]], Any]] = None,
+        **kwargs: Any
+    ) -> None:
+        """
+        This method adds multiple nodes to the network from a list.
+        Default behavior uses values of 'nodes' for node ID and node label
+        properties. You can also specify other lists of properties to go
+        along each node.
+
+        Example:
+
+        >>> g = net.Network()
+        >>> g.add_nodes([1, 2, 3], size=[2, 4, 6], title=["n1", "n2", "n3"])
+        >>> g.nodes
+        >>> [{'id': 1, 'label': 1, 'shape': 'dot', 'size': 2, 'title': 'n1'},
+
+        Output:
+
+        >>> {'id': 2, 'label': 2, 'shape': 'dot', 'size': 4, 'title': 'n2'},
+        >>> {'id': 3, 'label': 3, 'shape': 'dot', 'size': 6, 'title': 'n3'}]
+
+
+        :param nodes: A list of nodes.
+
+        :type nodes: list
+        """
+        for k in kwargs:
+            if k not in VALID_BATCH_NODE_ARGS:
+                raise ValueError(f"invalid arg '{k}'")
+
+        # Typed options path
+        if options is not None:
+            if kwargs:
+                warnings.warn(
+                    "Both options= and **kwargs were provided to add_nodes(). "
+                    "When options= is used, kwargs are ignored.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            if hasattr(options, 'to_dict'):
+                # Single options applied to all nodes
+                opts_dict = options.to_dict()
+                for node in nodes:
+                    self.add_node(node, **copy.deepcopy(opts_dict))
+                return
+            elif isinstance(options, list):
+                if len(options) != len(nodes):
+                    raise ValueError(
+                        f"options list length ({len(options)}) does not match "
+                        f"nodes list length ({len(nodes)})"
+                    )
+                for node, opt in zip(nodes, options):
+                    if hasattr(opt, 'to_dict'):
+                        self.add_node(node, options=opt)
+                    else:
+                        self.add_node(node, **opt)
+                return
+
+        # Validate lengths before the loop to avoid O(n²)
+        for k, v in kwargs.items():
+            if len(v) != len(nodes):
+                raise ValueError(f"keyword arg {k} [length {len(v)}] does not match [length {len(nodes)}] of nodes")
+
+        nd = defaultdict(dict)
+        for i in range(len(nodes)):
+            for k, v in kwargs.items():
+                nd[nodes[i]].update({k: v[i]})
+
+        for node in nodes:
+            # Check type first (LBYL over EAFP for better performance)
+            if isinstance(node, (int, str)):
+                self.add_node(node, **nd[node])
+            else:
+                # Try to convert number-like objects to int
+                try:
+                    node = int(node)
+                    self.add_node(node, **nd[node])
+                except (ValueError, TypeError):
+                    raise TypeError(f"Node must be string or int, got {type(node)}")
+
+    def num_nodes(self) -> int:
+        """
+        Return number of nodes
+
+        :returns: :py:class:`int`
+        """
+        return len(self.node_map)
+
+    def num_edges(self) -> int:
+        """
+        Return number of edges
+
+        :returns: :py:class:`int`
+        """
+        return len(self.edges)
+
+    def add_edge(self, source: Union[str, int], to: Union[str, int], options=None, **kw_options):
+        """
+        Add an edge between two existing nodes.
+
+        Order does not matter unless dealing with a directed graph.
+        Duplicate edges are silently ignored. In undirected graphs,
+        ``add_edge(1, 2)`` and ``add_edge(2, 1)`` are treated as the
+        same edge; the second call is a no-op.
+
+        >>> nt.add_edge(0, 1)
+        >>> nt.add_edge(0, 1, value=4)
+
+        :param source: The ID of the source node.
+        :param to: The ID of the destination node.
+        :param options: Typed EdgeOptions instance (optional). When provided,
+                        kw_options are ignored.
+        :param kw_options: Additional vis-network edge options as keyword
+                           arguments (e.g., value, width, title, hidden,
+                           color, arrows, arrowStrikethrough, physics).
+
+        :type source: str or int
+        :type to: str or int
+        :type options: EdgeOptions, optional
+        """
+        # Verify nodes exist - O(1) lookup with dict
+        if source not in self.node_map:
+            raise ValueError(f"non existent node '{source}'")
+
+        if to not in self.node_map:
+            raise ValueError(f"non existent node '{to}'")
+
+        # O(1) duplicate detection using edge set
+        edge_key = _edge_key(source, to, self.directed)
+
+        if edge_key not in self._edge_set:
+            if options is not None:
+                if hasattr(options, 'to_dict'):
+                    opts = options.to_dict()
+                elif isinstance(options, dict):
+                    opts = dict(options)
+                else:
+                    raise TypeError(
+                        f"options must be an EdgeOptions or dict, got {type(options).__name__}"
+                    )
+                if kw_options:
+                    warnings.warn(
+                        "Both options= and **kwargs were provided to add_edge(). "
+                        "When options= is used, kwargs are ignored.",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+                # Typed path
+                opts['from'] = source
+                opts['to'] = to
+                if self.directed and 'arrows' not in opts:
+                    opts['arrows'] = 'to'
+                self.edges.append(opts)
+            else:
+                # Legacy path
+                e = Edge(source, to, self.directed, **kw_options)
+                self.edges.append(e.options)
+            self._edge_set.add(edge_key)
+            # Register edge in index for O(1) lookups
+            self._register_edge(source, to, len(self.edges) - 1)
+            # Invalidate adjacency list cache
+            self._adj_list_cache = None
+
+    def add_edges(self, edges: List[Union[tuple, list]]):
+        """
+        This method serves to add multiple edges between existing nodes
+        in the network instance. Adding of the edges is done based off
+        of the IDs of the nodes. Order does not matter unless dealing with a
+        directed graph.
+
+        :param edges: A list of tuples, each tuple consists of source of edge,
+                      edge destination and and optional width.
+
+        :type edges: list of tuples
+        """
+        for edge in edges:
+            if len(edge) < 2:
+                raise ValueError(
+                    f"Edge tuple must have at least 2 elements (source, dest), got {edge}"
+                )
+            if len(edge) > 3:
+                warnings.warn(
+                    f"Edge tuple has {len(edge)} elements; only first 3 (source, dest, width) "
+                    f"are used. Extra elements will be ignored: {edge}",
+                    UserWarning,
+                    stacklevel=2
+                )
+            # if incoming tuple contains a weight
+            if len(edge) >= 3:
+                self.add_edge(edge[0], edge[1], width=edge[2])
+            else:
+                self.add_edge(edge[0], edge[1])
+
+    def update_node(self, n_id: Union[str, int], options=None, **kwargs):
+        """
+        Update attributes of an existing node.
+
+        >>> nt = Network()
+        >>> nt.add_node(1, label="Old")
+        >>> nt.update_node(1, label="New", color="red")
+
+        :param n_id: The ID of the node to update.
+        :param options: Typed NodeOptions instance (optional). When provided,
+                        kwargs are ignored.
+        :param kwargs: Node attributes to update (label, color, size, etc.).
+
+        :raises ValueError: If the node does not exist or if 'id' is in kwargs.
+        """
+        if n_id not in self.node_map:
+            raise ValueError(f"Node '{n_id}' not found in network")
+
+        if options is not None and hasattr(options, 'to_dict'):
+            if kwargs:
+                warnings.warn(
+                    "Both options= and **kwargs were provided to update_node(). "
+                    "When options= is used, kwargs are ignored.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            attrs = options.to_dict()
+        else:
+            attrs = kwargs
+
+        if 'id' in attrs:
+            raise ValueError(
+                "Cannot change node 'id' via update_node(). "
+                "Remove the node and add a new one instead."
+            )
+
+        self.node_map[n_id].update(attrs)
+
+    def update_edge(self, source: Union[str, int], to: Union[str, int],
+                    options=None, **kwargs):
+        """
+        Update attributes of an existing edge.
+
+        >>> nt = Network()
+        >>> nt.add_node(1, label="A")
+        >>> nt.add_node(2, label="B")
+        >>> nt.add_edge(1, 2)
+        >>> nt.update_edge(1, 2, color="red", width=3)
+
+        :param source: The source node ID.
+        :param to: The destination node ID.
+        :param options: Typed EdgeOptions instance (optional). When provided,
+                        kwargs are ignored.
+        :param kwargs: Edge attributes to update (color, width, label, etc.).
+
+        :raises ValueError: If the edge does not exist or if 'from'/'to' is
+                            in kwargs.
+        """
+        if options is not None and hasattr(options, 'to_dict'):
+            if kwargs:
+                warnings.warn(
+                    "Both options= and **kwargs were provided to update_edge(). "
+                    "When options= is used, kwargs are ignored.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            attrs = options.to_dict()
+        else:
+            attrs = kwargs
+
+        for field in ('from', 'to'):
+            if field in attrs:
+                raise ValueError(
+                    f"Cannot change edge '{field}' via update_edge(). "
+                    "Remove the edge and add a new one instead."
+                )
+
+        # Try to find edge using index for directed graphs
+        if self.directed:
+            edge_index = self._get_edge_index(source, to)
+            if edge_index >= 0:
+                self.edges[edge_index].update(attrs)
+                self._adj_list_cache = None
+                return
+        else:
+            # For undirected graphs, try both directions
+            edge_index = self._get_edge_index(source, to)
+            if edge_index >= 0:
+                self.edges[edge_index].update(attrs)
+                self._adj_list_cache = None
+                return
+            edge_index = self._get_edge_index(to, source)
+            if edge_index >= 0:
+                self.edges[edge_index].update(attrs)
+                self._adj_list_cache = None
+                return
+
+        raise ValueError(
+            f"Edge ({source}, {to}) not found in network"
+        )
+
+    def remove_node(self, n_id: Union[str, int]):
+        """
+        Remove a node and all edges connected to it.
+
+        >>> nt = Network()
+        >>> nt.add_node(1, label="A")
+        >>> nt.add_node(2, label="B")
+        >>> nt.add_edge(1, 2)
+        >>> nt.remove_node(1)
+
+        :param n_id: The ID of the node to remove.
+
+        :raises ValueError: If the node does not exist.
+        """
+        if n_id not in self.node_map:
+            raise ValueError(f"Node '{n_id}' not found in network")
+
+        del self.node_map[n_id]
+
+        # Remove all edges connected to this node and unregister from index
+        edges_to_keep = []
+        for edge in self.edges:
+            if edge['from'] == n_id or edge['to'] == n_id:
+                # Remove from edge set
+                edge_key = _edge_key(edge['from'], edge['to'], self.directed)
+                self._edge_set.discard(edge_key)
+                # Unregister from index
+                self._unregister_edge(edge['from'], edge['to'])
+            else:
+                edges_to_keep.append(edge)
+        self.edges = edges_to_keep
+        
+        # Rebuild indices for remaining edges
+        self._update_edge_indices(0)
+
+        self._adj_list_cache = None
+
+    def remove_edge(self, source: Union[str, int], to: Union[str, int]):
+        """
+        Remove an edge between two nodes.
+
+        >>> nt = Network()
+        >>> nt.add_node(1, label="A")
+        >>> nt.add_node(2, label="B")
+        >>> nt.add_edge(1, 2)
+        >>> nt.remove_edge(1, 2)
+
+        :param source: The source node ID.
+        :param to: The destination node ID.
+
+        :raises ValueError: If the edge does not exist.
+        """
+        # Use edge index for O(1) lookup (PERF-002 optimization)
+        edge_index = -1
+        actual_source = source
+        actual_dest = to
+        
+        if self.directed:
+            edge_index = self._get_edge_index(source, to)
+        else:
+            # For undirected graphs, try both directions
+            edge_index = self._get_edge_index(source, to)
+            if edge_index < 0:
+                edge_index = self._get_edge_index(to, source)
+                if edge_index >= 0:
+                    actual_source = to
+                    actual_dest = source
+        
+        if edge_index >= 0:
+            self.edges.pop(edge_index)
+            edge_key = _edge_key(source, to, self.directed)
+            self._edge_set.discard(edge_key)
+            # Unregister from index
+            self._unregister_edge(actual_source, actual_dest)
+            # Rebuild indices for remaining edges after this position
+            self._update_edge_indices(edge_index)
+            self._adj_list_cache = None
+            return
+
+        raise ValueError(
+            f"Edge ({source}, {to}) not found in network"
+        )
+
+    def get_network_data(self) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], str, str, str, dict]:
+        """
+        Extract relevant information about this network in order to inject into
+        a Jinja2 template.
+
+        Returns:
+                nodes (list), edges (list), heading (string), height (
+                    string), width (string), options (dict)
+
+        Usage:
+
+        >>> nodes, edges, heading, height, width, options = net.get_network_data()
+        """
+        return (self.nodes, self.edges, self.heading, self.height,
+                self.width, self.options)
+
+    def _copy_list_of_dicts(self, list_of_dicts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Efficiently copy a list of dicts with deep copying of nested values.
+        
+        Uses shallow dict copying at top level but recursively copies nested
+        structures to ensure isolation from the original.
+        
+        Args:
+            list_of_dicts: List of dictionaries to copy
+            
+        Returns:
+            List of copied dictionaries with isolated nested structures
+        """
+        result = []
+        for d in list_of_dicts:
+            new_dict = {}
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    new_dict[k] = dict(v)  # Shallow copy of nested dict
+                elif isinstance(v, list):
+                    new_dict[k] = list(v)  # Shallow copy of list
+                else:
+                    new_dict[k] = v  # Primitives copied by reference (safe)
+            result.append(new_dict)
+        return result
+
+    def _copy_dict_of_dicts(self, dict_of_dicts: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        """Efficiently copy a dict of dicts with proper isolation.
+        
+        Args:
+            dict_of_dicts: Dictionary of dictionaries to copy
+            
+        Returns:
+            Dictionary with properly copied inner dicts
+        """
+        result = {}
+        for k, v in dict_of_dicts.items():
+            if isinstance(v, dict):
+                # Deep copy nested dict to ensure isolation
+                new_inner = {}
+                for ik, iv in v.items():
+                    if isinstance(iv, dict):
+                        new_inner[ik] = dict(iv)
+                    elif isinstance(iv, list):
+                        new_inner[ik] = list(iv)
+                    else:
+                        new_inner[ik] = iv
+                result[k] = new_inner
+            else:
+                result[k] = v
+        return result
+
+    def _copy_options_dict(self, options: Dict[str, Any]) -> Dict[str, Any]:
+        """Efficiently copy network options dict.
+        
+        Handles nested structures like physics configuration while ensuring
+        proper isolation from the original.
+        
+        Args:
+            options: Network options dictionary
+            
+        Returns:
+            Properly copied options dict with nested structures isolated
+        """
+        result = {}
+        for key, value in options.items():
+            if isinstance(value, dict):
+                # Copy nested dict
+                new_dict = {}
+                for k, v in value.items():
+                    if isinstance(v, dict):
+                        new_dict[k] = dict(v)
+                    elif isinstance(v, list):
+                        new_dict[k] = list(v)
+                    else:
+                        new_dict[k] = v
+                result[key] = new_dict
+            elif isinstance(value, list):
+                result[key] = list(value)
+            else:
+                result[key] = value
+        return result
+
+    def get_network_json(self) -> dict:
+        """
+        Return structured network data as a dictionary for Shiny rendering.
+
+        Unlike generate_html(), this returns raw data that JavaScript can
+        use to create a vis.Network directly — no HTML template involved.
+
+        Returns:
+            dict with keys: nodes, edges, options, heading, height, width,
+            groups, legend, neighborhood_highlight, select_menu, filter_menu,
+            edge_attribute_edit, directed, bgcolor, highlight_degree,
+            select_node_options, filter_exclude, font_color,
+            tooltip_link_override
+        """
+        nodes, edges, heading, height, width, options = self.get_network_data()
+
+        return {
+            "nodes": self._copy_list_of_dicts(nodes),
+            "edges": self._copy_list_of_dicts(edges),
+            "options": self._copy_options_dict(options),
+            "heading": heading,
+            "height": height,
+            "width": width,
+            "groups": self._copy_dict_of_dicts(self.groups),
+            "legend": dict(self.legend) if self.legend else None,
+            "neighborhood_highlight": self.neighborhood_highlight,
+            "select_menu": self.select_menu,
+            "filter_menu": self.filter_menu,
+            "edge_attribute_edit": self.edge_attribute_edit,
+            "directed": self.directed,
+            "bgcolor": self.bgcolor,
+            "highlight_degree": self.highlight_degree,
+            "select_node_options": dict(self.select_node_options) if self.select_node_options else {},
+            "filter_exclude": list(self.filter_exclude) if self.filter_exclude else [],
+            "font_color": self.font_color,
+            "tooltip_link_override": self.tooltip_link_override,
+        }
+
+    def save_graph(self, name):
+        """
+        Save the graph as html in the current directory with name.
+
+        :param name: the name of the html file to save as
+        :type name: str
+        """
+        check_html(name)
+        self.write_html(name)
+
+    def generate_html(self, notebook=False):
+        """
+        This method gets the data structures supporting the nodes, edges,
+        and options and updates the template to write the HTML holding
+        the visualization.
+
+        :param notebook: whether to generate notebook-compatible output
+        :type notebook: bool
+        """
+        # Tooltip link detection
+        if self.tooltip_link_override is not None:
+            use_link_template = self.tooltip_link_override
+        else:
+            use_link_template = False
+            for n in self.nodes:
+                title = n.get("title", None)
+                if isinstance(title, str) and "href" in title:
+                    use_link_template = True
+                    break
+        if not notebook:
+            template = self.templateEnv.get_template(self.path)
+        else:
+            if self.template is None:
+                self.prep_notebook()
+            template = self.template
+
+        nodes, edges, heading, height, width, options = self.get_network_data()
+
+        # Use optimized physics extraction
+        physics_enabled, _ = self._extract_physics_config(options)
+
+        html = template.render(height=height,
+                                    width=width,
+                                    nodes=nodes,
+                                    edges=edges,
+                                    heading=heading,
+                                    options=options,
+                                    physics_enabled=physics_enabled,
+                                    use_DOT=self.use_DOT,
+                                    dot_lang=self.dot_lang,
+                                    widget=self.widget,
+                                    bgcolor=self.bgcolor,
+                                    font_color=self.font_color,
+                                    tooltip_link=use_link_template,
+                                    neighborhood_highlight=self.neighborhood_highlight,
+                                    select_menu=self.select_menu,
+                                    filter_menu=self.filter_menu,
+                                    edge_attribute_edit=self.edge_attribute_edit,
+                                    notebook=notebook,
+                                    cdn_resources=self.cdn_resources,
+                                    vis_version=vis_config.VIS_NETWORK_VERSION,
+                                    vis_lib_dir=vis_config.LOCAL_LIB_DIR,
+                                    vis_css_cdn=vis_config.VIS_CSS_UNPKG,
+                                    vis_js_cdn=vis_config.VIS_JS_UNPKG,
+                                    vis_esm_cdn=vis_config.VIS_ESM_UNPKG,
+                                    legend=self.legend,
+                                    groups=self.groups,
+                                    highlight_degree=self.highlight_degree,
+                                    select_node_options=self.select_node_options,
+                                    filter_exclude=self.filter_exclude
+                                    )
+        return html
+
+    def write_html(self, name, local=True, notebook=False, open_browser=False):
+        """
+        This method gets the data structures supporting the nodes, edges,
+        and options and updates the template to write the HTML holding
+        the visualization.
+
+        To work with the old local methods local is being deprecated, but not removed.
+        :type name: str
+        @param name: name of the file to save the graph as.
+        @param local: Deprecated parameter. Used to be used to determine how the graph needs deploy. Has been removed in favor of using the class cdn_resources instead.
+        @param notebook: If true, this object will return the iframe document for use in juptyer notebook.
+        @param open_browser: If true, will open a web browser with the generated graph.
+        """
+        if local is not True:
+            warnings.warn(
+                "The 'local' parameter is deprecated and no longer has any effect. "
+                "Use the 'cdn_resources' class parameter instead.",
+                DeprecationWarning,
+                stacklevel=2
+            )
+        getcwd_name = name
+        check_html(getcwd_name)
+        html = self.generate_html(notebook=notebook)
+
+        if self.cdn_resources == CDN_LOCAL:
+            out_dir = os.path.dirname(os.path.abspath(getcwd_name))
+            lib_root = os.path.join(out_dir, "lib")
+            src_root = os.path.join(os.path.dirname(__file__), "templates", "lib")
+            try:
+                for sub in ("bindings", "tom-select", vis_config.LOCAL_LIB_DIR):
+                    shutil.copytree(
+                        os.path.join(src_root, sub),
+                        os.path.join(lib_root, sub),
+                        dirs_exist_ok=True,
+                    )
+            except OSError as e:
+                raise OSError(
+                    f"Failed to copy pyvis resources: {e}. "
+                    "Check directory permissions and disk space."
+                ) from e
+            with open(getcwd_name, "w+", encoding="utf-8") as out:
+                out.write(html)
+        elif self.cdn_resources in [CDN_INLINE, CDN_REMOTE, CDN_REMOTE_ESM]:
+            with open(getcwd_name, "w+", encoding="utf-8") as out:
+                out.write(html)
+        else:
+            raise ValueError(
+                f"cdn_resources must be one of {VALID_CDN_RESOURCES}, "
+                f"got '{self.cdn_resources}'"
+            )
+        if open_browser: # open the saved file in a new browser window.
+            webbrowser.open(getcwd_name)
+
+
+    def show(self, name, local=True, notebook=True):
+        """
+        Writes a static HTML file and saves it locally before opening.
+
+        :param: name: the name of the html file to save as
+        :type name: str
+        """
+        if local is not True:
+            warnings.warn(
+                "The 'local' parameter is deprecated and no longer has any effect. "
+                "Use the 'cdn_resources' class parameter instead.",
+                DeprecationWarning,
+                stacklevel=2
+            )
+        if notebook:
+            # Ensure template is loaded for notebook mode
+            if self.template is None:
+                self.prep_notebook()
+            self.write_html(name, open_browser=False, notebook=True)
+        else:
+            self.write_html(name, open_browser=True)
+        if notebook:
+            # Lazy import - only load IPython when needed for notebook mode
+            try:
+                from IPython.display import IFrame
+            except ImportError as e:
+                raise ImportError(
+                    "show(notebook=True) needs IPython. "
+                    "Install with: pip install 'pyvis-optimized[notebook]'"
+                ) from e
+            return IFrame(name, width=self.width, height=self.height)
+
+    def prep_notebook(self,
+                      custom_template=False, custom_template_path=None):
+        """
+        Loads the template data into the template attribute of the network.
+        This should be done in a jupyter notebook environment before showing
+        the network.
+
+        Example:
+                >>> net.prep_notebook()
+                >>> net.show("nb.html")
+
+
+        :param custom_template: If True, use a custom template file. Default False.
+        :param custom_template_path: Path to the custom template HTML file.
+        """
+        if custom_template:
+            if not custom_template_path:
+                raise ValueError(
+                    "custom_template=True requires custom_template_path to be set"
+                )
+            self.set_template(custom_template_path)
+        self.template = self.templateEnv.get_template(self.path)
+
+    def set_template(self, path_to_template: str):
+        """
+            Path to full template assumes that it exists inside of a template directory.
+            Use `set_template_dir` to set the relative template path to the template directory along with the directory location itself
+            to change both values otherwise this function will infer the results.
+            :path_to_template path: full os path string value of the template directory
+        """
+        # Use os.path for cross-platform compatibility
+        template_dir = os.path.dirname(path_to_template)
+        template_file = os.path.basename(path_to_template)
+        # Ensure directory ends with separator
+        if template_dir and not template_dir.endswith(os.sep):
+            template_dir += os.sep
+        self.set_template_dir(template_dir, template_file)
+
+    def set_template_dir(self, template_directory, template_file='template.html'):
+        """
+            Path to template directory along with the location of the template file.
+            :template_directory path: template directory
+            :template_file path: name of the template file that is going to be used to generate the html doc.
+
+        """
+        self.path = template_file
+        self.template_dir = template_directory
+        self.templateEnv = Environment(
+            loader=FileSystemLoader(self.template_dir),
+            autoescape=True,
+        )
+
+    def from_DOT(self, dot):
+        """
+        This method takes the contents of .DOT file and converts it
+        to a PyVis visualization.
+
+        Assuming the contents of test.dot contains:
+        digraph sample3 {
+        A -> {B ; C ; D}
+        C -> {B ; A}
+        }
+
+        Usage:
+
+        >>> nt.Network("500px", "500px")
+        >>> nt.from_DOT("test.dot")
+        >>> nt.show("dot.html")
+
+        :param dot: The path of the dotfile being converted.
+        :type dot: .dot file
+
+        """
+        if not os.path.isfile(dot):
+            raise FileNotFoundError(f"DOT file not found: {dot!r}")
+        with open(dot, "r", encoding="utf-8") as file:
+            s = file.read()
+        if not s.strip():
+            raise ValueError(f"DOT file is empty: {dot!r}")
+        self.use_DOT = True
+        self.dot_lang = " ".join(s.splitlines())
+
+    def get_adj_list(self) -> Dict[Union[str, int], set]:
+        """
+        This method returns the user an adjacency list representation
+        of the network. Results are cached for performance.
+
+        :returns: dictionary mapping of Node ID to set of Node IDs it
+        is connected to.
+        """
+        # Return cached result if available
+        if self._adj_list_cache is not None:
+            return self._adj_list_cache
+
+        # Build adjacency list
+        a_list = {node_id: set() for node_id in self.node_map.keys()}
+
+        if self.directed:
+            for e in self.edges:
+                source = e["from"]
+                dest = e["to"]
+                a_list[source].add(dest)
+        else:
+            for e in self.edges:
+                source = e["from"]
+                dest = e["to"]
+                # Simplified logic for undirected graphs
+                a_list[source].add(dest)
+                a_list[dest].add(source)
+
+        # Cache the result
+        self._adj_list_cache = a_list
+        return a_list
+
+    def neighbors(self, node):
+        """
+        Given a node id, return the set of neighbors of this particular node.
+
+        :param node: The node to get the neighbors from
+        :type node: str or int
+
+        :returns: set
+        """
+        if not isinstance(node, (str, int)):
+            raise TypeError(f"error: expected int or str for node but got {type(node)}")
+        if node not in self.node_map:
+            raise ValueError(f"error: {node} node not in network")
+        return self.get_adj_list()[node]
+
+    def from_nx(self, nx_graph, node_size_transf=(lambda x: x), edge_weight_transf=(lambda x: x),
+                default_node_size=10, default_edge_weight=1, edge_scaling=False):
+        """
+        This method takes an exisitng Networkx graph and translates
+        it to a PyVis graph format that can be accepted by the VisJs
+        API in the Jinja2 template. This operation is done in place.
+
+        :param nx_graph: The Networkx graph object that is to be translated.
+        :type nx_graph: networkx.Graph instance
+        :param node_size_transf: function to transform the node size for plotting
+        :type node_size_transf: func
+        :param edge_weight_transf: function to transform the edge weight for plotting
+        :type edge_weight_transf: func
+        :param default_node_size: default node size if not specified
+        :param default_edge_weight: default edge weight if not specified
+        >>> nx_graph = nx.cycle_graph(10)
+        >>> nx_graph.nodes[1]['title'] = 'Number 1'
+        >>> nx_graph.nodes[1]['group'] = 1
+        >>> nx_graph.nodes[3]['title'] = 'I belong to a different group!'
+        >>> nx_graph.nodes[3]['group'] = 10
+        >>> nx_graph.add_node(20, size=20, title='couple', group=2)
+        >>> nx_graph.add_node(21, size=15, title='couple', group=2)
+        >>> nx_graph.add_edge(20, 21, weight=5)
+        >>> nx_graph.add_node(25, size=25, label='lonely', title='lonely node', group=3)
+        >>> nt = Network("500px", "500px")
+        # populates the nodes and edges data structures
+        >>> nt.from_nx(nx_graph)
+        >>> nt.show("nx.html")
+        """
+        if not isinstance(nx_graph, nx.Graph):
+            raise TypeError("nx_graph must be a NetworkX Graph instance")
+        edges = nx_graph.edges(data=True)
+        nodes = nx_graph.nodes(data=True)
+
+        # Deep copy node and edge data to avoid mutating the original graph
+        node_data = {n: dict(data) for n, data in nodes}
+        edge_list = [(u, v, dict(data)) for u, v, data in edges]
+
+        # Coerce numpy scalars/numeric types and warn about attributes that
+        # are still not JSON-serializable, removing those.
+        for n, data in node_data.items():
+            for k, v in list(data.items()):
+                try:
+                    data[k] = _to_json_native(v)
+                except (TypeError, ValueError):
+                    warnings.warn(
+                        f"Node {n!r} attribute '{k}' is not JSON-serializable "
+                        f"(type: {type(v).__name__}) and was removed.",
+                        UserWarning, stacklevel=2
+                    )
+                    del data[k]
+        for e in edge_list:
+            for k, v in list(e[2].items()):
+                try:
+                    e[2][k] = _to_json_native(v)
+                except (TypeError, ValueError):
+                    warnings.warn(
+                        f"Edge ({e[0]}, {e[1]}) attribute '{k}' is not JSON-serializable "
+                        f"(type: {type(v).__name__}) and was removed.",
+                        UserWarning, stacklevel=2
+                    )
+                    del e[2][k]
+
+        if len(edge_list) > 0:
+            processed_nodes = set()
+            for e in edge_list:
+                for node_idx in (0, 1):
+                    n = e[node_idx]
+                    if n not in processed_nodes:
+                        if 'size' not in node_data[n]:
+                            node_data[n]['size'] = default_node_size
+                        node_data[n]['size'] = float(node_size_transf(node_data[n]['size']))
+                        processed_nodes.add(n)
+                        attrs = {k: v for k, v in node_data[n].items() if k not in ("options", "n_id")}
+                        self.add_node(n, **attrs)
+
+                # Only inject weight when user has provided neither value nor width
+                if "value" not in e[2] and "width" not in e[2]:
+                    if edge_scaling:
+                        width_type = 'value'
+                    else:
+                        width_type = 'width'
+                    if "weight" not in e[2].keys():
+                        e[2]["weight"] = default_edge_weight
+                    e[2][width_type] = edge_weight_transf(e[2].pop("weight"))
+                self.add_edge(e[0], e[1], **e[2])
+
+        for node in nx.isolates(nx_graph):
+            data = node_data.get(node, {})
+            if 'size' not in data:
+                data['size'] = default_node_size
+            data['size'] = float(node_size_transf(data['size']))
+            attrs = {k: v for k, v in data.items() if k not in ("options", "n_id")}
+            self.add_node(node, **attrs)
+
+    def get_nodes(self) -> List[Union[str, int]]:
+        """
+        This method returns an iterable list of node ids
+
+        :returns: list
+        """
+        return list(self.node_map.keys())
+
+    def get_node(self, n_id) -> Dict[str, Any]:
+        """
+        Lookup node by ID and return it.
+
+        :param n_id: The ID given to the node.
+        :returns: dict containing node properties
+        :raises KeyError: If the node does not exist.
+        """
+        if n_id not in self.node_map:
+            raise KeyError(f"Node '{n_id}' not found in network")
+        return self.node_map[n_id]
+
+    def get_edges(self) -> List[Dict[str, Any]]:
+        """
+        This method returns an iterable list of edge objects
+
+        :returns: list
+        """
+        return [dict(e) for e in self.edges]
+
+    def get_node_ids(self) -> List[Union[str, int]]:
+        """
+        Get all node IDs in the network.
+
+        Returns a list of all unique node identifiers in the network.
+        This is equivalent to get_nodes() and provided for API consistency
+        with graph theory terminology.
+
+        :returns: List of node IDs
+        :rtype: List[Union[str, int]]
+
+        Example::
+
+            >>> net = Network()
+            >>> net.add_node(1, label="A")
+            >>> net.add_node(2, label="B")
+            >>> net.get_node_ids()
+            [1, 2]
+        """
+        return list(self.node_map.keys())
+
+    def get_edge_ids(self) -> List[Tuple[Union[str, int], Union[str, int]]]:
+        """
+        Get all edges in the network as (source, destination) tuples.
+
+        Returns a list of tuples representing edges, where each tuple contains
+        the source and destination node IDs. For undirected graphs, edge
+        direction may not be semantically meaningful.
+
+        :returns: List of (source, destination) tuples
+        :rtype: List[Tuple[Union[str, int], Union[str, int]]]
+
+        Example::
+
+            >>> net = Network()
+            >>> net.add_node(1, label="A")
+            >>> net.add_node(2, label="B")
+            >>> net.add_edge(1, 2)
+            >>> net.get_edge_ids()
+            [(1, 2)]
+        """
+        return [(e.get('from'), e.get('to')) for e in self.edges]
+
+    def get_neighbors(self, node_id: Union[str, int]) -> List[Union[str, int]]:
+        """
+        Get all neighbors (adjacent nodes) of a given node.
+
+        Returns a list of node IDs that are directly connected to the specified
+        node. In directed graphs, this includes both incoming and outgoing
+        neighbors.
+
+        :param node_id: The ID of the node
+        :type node_id: Union[str, int]
+        :returns: List of adjacent node IDs
+        :rtype: List[Union[str, int]]
+        :raises KeyError: If the node does not exist in the network
+
+        Example::
+
+            >>> net = Network()
+            >>> net.add_node(1, label="A")
+            >>> net.add_node(2, label="B")
+            >>> net.add_node(3, label="C")
+            >>> net.add_edge(1, 2)
+            >>> net.add_edge(2, 3)
+            >>> net.get_neighbors(2)
+            [1, 3]
+        """
+        if node_id not in self.node_map:
+            raise KeyError(f"Node '{node_id}' not found in network")
+        
+        neighbors = set()
+        for edge in self.edges:
+            from_node = edge.get('from')
+            to_node = edge.get('to')
+            
+            if from_node == node_id:
+                neighbors.add(to_node)
+            if to_node == node_id:
+                neighbors.add(from_node)
+        
+        return list(neighbors)
+
+    def get_node_degree(self, node_id: Union[str, int]) -> int:
+        """
+        Get the degree of a node (number of connected edges).
+
+        Returns the total number of edges connected to the specified node.
+        In directed graphs, this counts both incoming and outgoing edges.
+
+        :param node_id: The ID of the node
+        :type node_id: Union[str, int]
+        :returns: The degree (number of connected edges)
+        :rtype: int
+        :raises KeyError: If the node does not exist in the network
+
+        Example::
+
+            >>> net = Network()
+            >>> net.add_node(1, label="A")
+            >>> net.add_node(2, label="B")
+            >>> net.add_node(3, label="C")
+            >>> net.add_edge(1, 2)
+            >>> net.add_edge(2, 3)
+            >>> net.get_node_degree(2)
+            2
+        """
+        if node_id not in self.node_map:
+            raise KeyError(f"Node '{node_id}' not found in network")
+        
+        degree = 0
+        for edge in self.edges:
+            if edge.get('from') == node_id or edge.get('to') == node_id:
+                degree += 1
+        
+        return degree
+
+    def has_edge(self, source: Union[str, int], dest: Union[str, int]) -> bool:
+        """
+        Check if an edge exists between two nodes.
+
+        Returns True if there is a directed edge from source to dest,
+        False otherwise. This performs an O(1) lookup using the internal
+        edge index for efficiency.
+
+        :param source: The source node ID
+        :type source: Union[str, int]
+        :param dest: The destination node ID
+        :type dest: Union[str, int]
+        :returns: True if edge exists, False otherwise
+        :rtype: bool
+
+        Example::
+
+            >>> net = Network()
+            >>> net.add_node(1, label="A")
+            >>> net.add_node(2, label="B")
+            >>> net.add_edge(1, 2)
+            >>> net.has_edge(1, 2)
+            True
+            >>> net.has_edge(2, 1)
+            False
+        """
+        return self._get_edge_index(source, dest) != -1
+
+    def to_json(self, max_depth=1, **args):
+        """
+        Serialize Network to JSON using jsonpickle.
+
+        Uses lazy import to avoid loading jsonpickle unless needed.
+        """
+        import jsonpickle
+        return jsonpickle.encode(self, max_depth=max_depth, **args)
+
+    def _extract_physics_config(self, options: Dict[str, Any]) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """Extract and validate physics configuration from options.
+
+        Uses efficient validation with set operations instead of loops.
+
+        Args:
+            options: Network options dictionary
+
+        Returns:
+            Tuple of (physics_enabled: bool, physics_config: dict or None)
+        """
+        physics_opt = options.get('physics', True)
+        
+        if isinstance(physics_opt, bool):
+            return physics_opt, None
+        elif isinstance(physics_opt, dict):
+            return physics_opt.get('enabled', True), physics_opt
+        else:
+            return True, None
+
+    def set_options(self, options):
+        """Set global network options.
+
+        Args:
+            options: NetworkOptions dataclass, dict, or JSON string.
+        """
+        if hasattr(options, 'to_dict'):
+            self.options = options.to_dict()
+        elif isinstance(options, str):
+            import json as _json
+            try:
+                self.options = _json.loads(options)
+            except _json.JSONDecodeError as e:
+                raise ValueError(
+                    f"set_options() received invalid JSON string: {e}"
+                ) from e
+        elif isinstance(options, dict):
+            self.options = options
+        else:
+            raise TypeError(
+                f"set_options() expects NetworkOptions, dict, or JSON string, "
+                f"got {type(options).__name__}"
+            )
+
+    def set_group(self, group_name: str, **options):
+        """
+        Define styling options for a node group. Nodes with the 'group'
+        property set to this group name will inherit these styling options.
+        These group definitions are used by add_legend() when useGroups=True.
+
+        Example:
+        >>> net = Network()
+        >>> net.set_group('servers', color='red', shape='box', icon={'face': 'FontAwesome', 'code': '\\uf233'})
+        >>> net.add_node(1, label='Server 1', group='servers')
+
+        :param group_name: The name of the group
+        :param options: Styling options (color, shape, size, icon, etc.)
+
+        :type group_name: str
+        :type options: dict
+        """
+        # Validate color if provided
+        if 'color' in options:
+            color = options['color']
+            if not self._validate_css_value(color, 'color', f'group {group_name}'):
+                raise ValueError(f"Invalid CSS color for group '{group_name}': {color!r}")
+        self.groups[group_name] = options
+
+    def _validate_css_value(self, value: Any, value_type: str, field_name: str = "") -> bool:
+        """Validate a CSS value against the appropriate pattern.
+        
+        Provides a centralized helper for validating CSS values (dimensions or colors)
+        throughout the Network class. This reduces code duplication and improves
+        maintainability by consolidating validation logic.
+        
+        Args:
+            value: The value to validate
+            value_type: Type of CSS value ('dimension' or 'color')
+            field_name: Name of the field being validated (for error messages)
+            
+        Returns:
+            True if the value is valid, False otherwise
+            
+        Raises:
+            ValueError: If value_type is not recognized
+            
+        Examples:
+            >>> net = Network()
+            >>> net._validate_css_value('100px', 'dimension', 'height')
+            True
+            >>> net._validate_css_value('red', 'color', 'bgcolor')
+            True
+            >>> net._validate_css_value('invalid', 'dimension', 'width')
+            False
+        """
+        if not isinstance(value, str):
+            return False
+        
+        if value_type == 'dimension':
+            return bool(_CSS_DIM_RE.match(value))
+        elif value_type == 'color':
+            return bool(_CSS_COLOR_RE.match(value))
+        else:
+            raise ValueError(f"Unknown CSS value type: {value_type!r}")
+
+    def _normalize_css_dimension(self, value: Any, default_unit: str = 'px') -> str:
+        """Normalize a CSS dimension value to a standard format.
+        
+        Converts numeric values to strings with units and validates/normalizes
+        string dimensions. This extracts common dimension normalization logic used
+        in __init__ to reduce code duplication.
+        
+        Args:
+            value: Dimension value (int, float, or str like "100px", "50%")
+            default_unit: Unit to append if value is int/float (default: 'px')
+            
+        Returns:
+            str: Normalized CSS dimension (e.g., "500px", "50%")
+            
+        Raises:
+            ValueError: If value is invalid
+            
+        Examples:
+            >>> net = Network()
+            >>> net._normalize_css_dimension(600)
+            '600px'
+            >>> net._normalize_css_dimension("600")
+            '600px'
+            >>> net._normalize_css_dimension("600px")
+            '600px'
+            >>> net._normalize_css_dimension("50%")
+            '50%'
+        """
+        if isinstance(value, (int, float)):
+            return f"{value}{default_unit}"
+        
+        if isinstance(value, str):
+            try:
+                float(value)
+                return f"{value}{default_unit}"
+            except ValueError:
+                return value
+        
+        raise ValueError(f"Dimension must be int, float, or str, got {type(value).__name__}")
+
+    def _validate_legend_parameters(self, width: float, position: str, ncol: int) -> None:
+        """Validate legend parameter values.
+
+        Args:
+            width: Legend width as proportion (0-1)
+            position: Legend position ('left' or 'right')
+            ncol: Number of columns for legend layout
+
+        Raises:
+            ValueError: If any parameter is invalid
+        """
+        if width < 0 or width > 1:
+            raise ValueError("width must be between 0 and 1")
+        if position not in ["left", "right"]:
+            raise ValueError("position must be 'left' or 'right'")
+        if ncol < 1:
+            raise ValueError("ncol must be >= 1")
+
+    def _validate_legend_nodes(self, add_nodes: Optional[List[Dict[str, Any]]]) -> None:
+        """Validate custom legend node entries.
+
+        Args:
+            add_nodes: List of custom node entries to validate
+
+        Raises:
+            ValueError: If any node entry has invalid properties
+        """
+        if add_nodes:
+            for node_entry in add_nodes:
+                if isinstance(node_entry, dict) and 'color' in node_entry:
+                    c = node_entry['color']
+                    if not self._validate_css_value(c, 'color', 'legend node'):
+                        raise ValueError(f"Invalid CSS color in legend node: {c!r}")
+
+    def _validate_legend_edges(self, add_edges: Optional[List[Dict[str, Any]]]) -> None:
+        """Validate custom legend edge entries.
+
+        Args:
+            add_edges: List of custom edge entries to validate
+
+        Raises:
+            ValueError: If any edge entry has invalid properties
+        """
+        if add_edges:
+            for edge_entry in add_edges:
+                if isinstance(edge_entry, dict):
+                    if 'color' in edge_entry:
+                        c = edge_entry['color']
+                        if not self._validate_css_value(c, 'color', 'legend edge'):
+                            raise ValueError(f"Invalid CSS color in legend edge: {c!r}")
+                    if 'width' in edge_entry:
+                        w = edge_entry['width']
+                        if not isinstance(w, (int, float)) or w < 0:
+                            raise ValueError(f"Invalid width in legend edge: {w!r}")
+
+    def add_legend(self,
+                   enabled: bool = True,
+                   use_groups: bool = True,
+                   add_nodes: Optional[List[Dict[str, Any]]] = None,
+                   add_edges: Optional[List[Dict[str, Any]]] = None,
+                   show_nodes: bool = True,
+                   show_edges: bool = True,
+                   width: float = 0.2,
+                   position: str = "left",
+                   main: Optional[str] = None,
+                   ncol: int = 1,
+                   step_x: int = 100,
+                   step_y: int = 100,
+                   zoom: bool = True):
+        """
+        Add a legend to the network visualization. Similar to R visNetwork's visLegend().
+
+        The legend displays node groups with their visual properties (colors, shapes, icons)
+        and/or custom node/edge entries.
+
+        Example:
+        >>> net = Network()
+        >>> net.set_group('servers', color='red', shape='box')
+        >>> net.set_group('clients', color='blue', shape='dot')
+        >>> net.add_node(1, label='Server 1', group='servers')
+        >>> net.add_node(2, label='Client 1', group='clients')
+        >>> net.add_legend(main='Network Legend', position='right')
+
+        :param enabled: Enable/disable the legend
+        :param use_groups: Automatically include groups defined with set_group()
+        :param add_nodes: List of custom node entries to add to legend
+        :param add_edges: List of custom edge entries to add to legend
+        :param show_nodes: Show node groups/entries in legend (default True)
+        :param show_edges: Show edge entries in legend (default True)
+        :param width: Legend width as proportion (0-1)
+        :param position: Legend position ('left' or 'right')
+        :param main: Legend title
+        :param ncol: Number of columns for legend layout
+        :param step_x: Horizontal spacing between legend items
+        :param step_y: Vertical spacing between legend items
+        :param zoom: Enable zoom capability for legend
+
+        :type enabled: bool
+        :type use_groups: bool
+        :type add_nodes: list
+        :type add_edges: list
+        :type show_nodes: bool
+        :type show_edges: bool
+        :type width: float
+        :type position: str
+        :type main: str
+        :type ncol: int
+        :type step_x: int
+        :type step_y: int
+        :type zoom: bool
+        """
+        # Validate parameters
+        self._validate_legend_parameters(width, position, ncol)
+        
+        # Validate custom entries
+        self._validate_legend_nodes(add_nodes)
+        self._validate_legend_edges(add_edges)
+
+        # Build legend configuration
+        self.legend = {
+            'enabled': enabled,
+            'useGroups': use_groups,
+            'addNodes': add_nodes or [],
+            'addEdges': add_edges or [],
+            'showNodes': show_nodes,
+            'showEdges': show_edges,
+            'width': width,
+            'position': position,
+            'main': main,
+            'ncol': ncol,
+            'stepX': step_x,
+            'stepY': step_y,
+            'zoom': zoom
+        }

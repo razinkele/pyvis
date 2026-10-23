@@ -29,11 +29,38 @@ from .vis_config import CDNResource
 
 __all__ = ['Network', 'CDNResource']
 
-# Set up logging
+# ============================================================================
+# Logging Configuration
+# ============================================================================
+
 logger = logging.getLogger(__name__)
 
-# Constants for node attributes
+# ============================================================================
+# Module-Level Constants
+# ============================================================================
+
+# --- Node Attributes Constants ---
 VALID_BATCH_NODE_ARGS = ["size", "value", "title", "x", "y", "label", "color", "shape", "group"]
+
+# --- CDN Resource Constants (backward compatibility) ---
+# Use vis_config.CDNResource enum for new code
+CDN_LOCAL = CDNResource.LOCAL.value
+CDN_INLINE = CDNResource.INLINE.value
+CDN_REMOTE = CDNResource.REMOTE.value
+CDN_REMOTE_ESM = CDNResource.REMOTE_ESM.value
+VALID_CDN_RESOURCES = [CDN_LOCAL, CDN_INLINE, CDN_REMOTE, CDN_REMOTE_ESM]
+
+# --- CSS Validation Patterns (Security) ---
+# Prevent CSS injection attacks
+_CSS_DIM_RE = re.compile(r'^\d+(\.\d+)?(px|%|em|rem|vh|vw)$')
+_CSS_COLOR_RE = re.compile(
+    r'^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+|rgba?\(\s*[\d.,\s%]+\)|hsla?\(\s*[\d.,\s%]+\))$'
+)
+_SAFE_TOMSELECT_KEYS = frozenset({"sortField", "maxOptions", "placeholder", "create", "closeAfterSelect", "hideSelected"})
+
+# ============================================================================
+# Module-Level Helper Functions
+# ============================================================================
 
 
 def _edge_key(source, to, directed):
@@ -46,22 +73,6 @@ def _edge_key(source, to, directed):
     if directed:
         return (source, to)
     return frozenset(((type(source).__name__, source), (type(to).__name__, to)))
-
-
-# Constants for CDN resources - kept for backward compatibility
-# Use vis_config.CDNResource enum for new code
-CDN_LOCAL = CDNResource.LOCAL.value
-CDN_INLINE = CDNResource.INLINE.value
-CDN_REMOTE = CDNResource.REMOTE.value
-CDN_REMOTE_ESM = CDNResource.REMOTE_ESM.value
-VALID_CDN_RESOURCES = [CDN_LOCAL, CDN_INLINE, CDN_REMOTE, CDN_REMOTE_ESM]
-
-# CSS validation patterns to prevent CSS injection
-_CSS_DIM_RE = re.compile(r'^\d+(\.\d+)?(px|%|em|rem|vh|vw)$')
-_CSS_COLOR_RE = re.compile(
-    r'^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+|rgba?\(\s*[\d.,\s%]+\)|hsla?\(\s*[\d.,\s%]+\))$'
-)
-_SAFE_TOMSELECT_KEYS = frozenset({"sortField", "maxOptions", "placeholder", "create", "closeAfterSelect", "hideSelected"})
 
 
 def _to_json_native(value, _seen=None):
