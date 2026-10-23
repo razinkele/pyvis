@@ -13,6 +13,7 @@ import numbers
 import os
 import re
 import shutil
+import sys
 import warnings
 import webbrowser
 from collections import defaultdict
@@ -846,7 +847,7 @@ class Network:
                 )
             attrs = _options_to_dict(options, "a NodeOptions")
         else:
-            attrs = kwargs
+            attrs = copy.deepcopy(kwargs)
 
         if 'id' in attrs:
             raise ValueError(
@@ -854,7 +855,13 @@ class Network:
                 "Remove the node and add a new one instead."
             )
 
-        self.node_map[n_id].update(attrs)
+        node = self.node_map[n_id]
+        node_font_color = attrs.pop('font_color', None)
+        if node_font_color is not None:
+            if 'font' not in attrs and 'font' in node:
+                attrs['font'] = node['font']
+            merge_font_color(attrs, node_font_color, None)
+        node.update(attrs)
 
     def update_edge(self, source: Union[str, int], to: Union[str, int],
                     options=None, **kwargs):
@@ -1312,6 +1319,15 @@ class Network:
         """
         if notebook is None:
             notebook = self.notebook
+            if not notebook and "ipykernel" in sys.modules:
+                warnings.warn(
+                    "show() now follows Network(notebook=...), which is False, so the "
+                    "graph opens in a browser instead of inline. Pass "
+                    "Network(notebook=True) or show(..., notebook=True) to display it "
+                    "in the notebook.",
+                    UserWarning,
+                    stacklevel=2,
+                )
         if local is not True:
             warnings.warn(
                 "The 'local' parameter is deprecated and no longer has any effect. "

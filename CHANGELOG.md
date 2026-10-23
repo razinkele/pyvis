@@ -15,6 +15,14 @@ All notable changes to this project are documented in this file.
   for node labels and `horizontal`/`top`/`middle`/`bottom` for edge labels;
   `NodeOptions`/`EdgeOptions` now raise `ValueError` for an align that does
   nothing on that element.
+- **`show()` follows `Network(notebook=...)`.** It used to default to notebook
+  mode regardless of the constructor. Since `Network()` defaults to
+  `notebook=False`, a bare `net.show("g.html")` in Jupyter now opens a browser
+  tab instead of returning an inline IFrame (a warning is emitted when a
+  Jupyter kernel is detected). Use `Network(notebook=True)` or
+  `show(..., notebook=True)` in notebooks.
+- **`update_node(font_color=...)`** now sets the label colour instead of
+  storing a stray `font_color` key.
 
 ### Added
 - Graph query helpers: `get_node_ids()`, `get_edge_ids()`, `get_neighbors()`,
@@ -37,7 +45,6 @@ All notable changes to this project are documented in this file.
 - `set_group()` styling now reaches vis-network (merged into
   `options.groups`), and a node with a `group` no longer has `shape="dot"`
   forced on it; groups without a shape still render as dots.
-- `show()` follows `Network(notebook=...)` when `notebook` is not passed.
 - `add_legend(step_x=..., step_y=...)` is deprecated; both never had an effect.
 - Edge lookups in `update_edge()`/`remove_edge()` use an index (O(1)).
 

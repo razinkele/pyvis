@@ -499,3 +499,28 @@ def test_legend_edge_arrowheads(arrows, start, end):
     html = net.generate_html()
     assert ('points="5,10 10,7 10,13"' in html) is start
     assert ('points="55,10 50,7 50,13"' in html) is end
+
+
+def test_update_node_font_color_applied_and_copied():
+    net = Network(font_color="white")
+    net.add_node(1)
+    net.update_node(1, font_color="red")
+    assert "font_color" not in net.node_map[1]
+    assert net.node_map[1]["font"]["color"] == "red"
+    net.update_node(1, options={"font_color": "green"})
+    assert "font_color" not in net.node_map[1]
+    assert net.node_map[1]["font"]["color"] == "green"
+    shared = {"color": "blue", "size": 9}
+    net.update_node(1, font=shared)
+    net.node_map[1]["font"]["size"] = 1
+    assert shared == {"color": "blue", "size": 9}
+
+
+def test_show_warns_in_jupyter_kernel_when_notebook_unset(tmp_path, monkeypatch):
+    import sys
+    import types
+    monkeypatch.setitem(sys.modules, "ipykernel", types.ModuleType("ipykernel"))
+    net = Network()
+    monkeypatch.setattr(net, "write_html", lambda name, **kw: None)
+    with pytest.warns(UserWarning, match="notebook=True"):
+        net.show(str(tmp_path / "x.html"))
