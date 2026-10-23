@@ -21,7 +21,7 @@ dependencies:
   # Uncomment if you want Shiny integration
   # - pip
   # - pip:
-  #   - shiny>=0.6.0
+  #   - shiny>=1.0
   #   - htmltools
 
   # Development tools (optional)

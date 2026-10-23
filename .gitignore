@@ -169,3 +169,6 @@ demo_output.html
 !pyvis/source/**/*.png
 # SDD scratch workspace (briefs, reports, review packages)
 .superpowers/
+
+# Editor/merge backups
+*.bak

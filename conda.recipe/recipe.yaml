@@ -37,7 +37,7 @@ tests:
         - pyvis.network
         - pyvis.types
   - script:
-      - python -c "import pathlib, sys; s = pathlib.Path(sys.prefix) / 'share' / 'pyvis'; assert any(s.glob('examples/*.py')), 'no example files'; assert any(s.glob('notebooks/*.ipynb')), 'no notebook files'; print('Examples and notebooks verified')"
+      - python -c "import pathlib, pyvis, sys; p = pathlib.Path(pyvis.__file__).parent; assert (p / 'templates' / 'template.html').exists(), 'template.html missing'; assert (p / 'templates' / 'lib' / 'bindings' / 'utils.js').exists(), 'utils.js missing'; assert (p / 'templates' / 'lib' / 'tom-select' / 'tom-select.css').exists(), 'tom-select.css missing'; s = pathlib.Path(sys.prefix) / 'share' / 'pyvis'; assert any(s.glob('examples/*.py')), 'no example files'; assert any(s.glob('notebooks/*.ipynb')), 'no notebook files'; print('All runtime resources and examples verified')"
 
 about:
   homepage: https://github.com/razinkele/pyvis
