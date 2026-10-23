@@ -4,6 +4,59 @@ All notable changes to this project are documented in this file.
 
 
 
+## [Unreleased]
+
+### Breaking Changes
+- **Duplicate node ids raise.** `add_node()` (and so `add_nodes()`/`from_nx()`)
+  raises `ValueError` when the id already exists, instead of warning and
+  ignoring the call. This reverses 4.3.0's "warn on duplicate nodes"; use
+  `update_node()` to change an existing node.
+- **`Font(align="right")` is rejected.** vis-network honours `center`/`left`
+  for node labels and `horizontal`/`top`/`middle`/`bottom` for edge labels;
+  `NodeOptions`/`EdgeOptions` now raise `ValueError` for an align that does
+  nothing on that element.
+
+### Added
+- Graph query helpers: `get_node_ids()`, `get_edge_ids()`, `get_neighbors()`,
+  `get_node_degree()` and `has_edge()`.
+- `CDNResource` enum in `pyvis.vis_config` (string-compatible) for
+  `cdn_resources`.
+- `update_node()`/`update_edge()` accept a plain dict as `options=`, like
+  `add_node()`/`add_edge()`.
+
+### Changed
+- **Label colour precedence is the same on every path:** a per-node
+  `font_color` beats a colour inside `font`, which beats
+  `Network(font_color=...)`. Previously the plain-kwargs path let the network
+  colour overwrite `font={"color": ...}`.
+- A string `font` such as `"14px arial"` is kept as given instead of being
+  replaced by `{"color": ...}`; a `font_color` passed with it is ignored with a
+  warning.
+- `add_nodes(options=dict)` behaves like `add_nodes(options=NodeOptions(...))`
+  and no longer injects the default `shape`/`color`.
+- `set_group()` styling now reaches vis-network (merged into
+  `options.groups`), and a node with a `group` no longer has `shape="dot"`
+  forced on it; groups without a shape still render as dots.
+- `show()` follows `Network(notebook=...)` when `notebook` is not passed.
+- `add_legend(step_x=..., step_y=...)` is deprecated; both never had an effect.
+- Edge lookups in `update_edge()`/`remove_edge()` use an index (O(1)).
+
+### Fixed
+- `add_nodes()` options paths coerce numpy ids, deep-copy options per node and
+  no longer validate kwargs they then ignore.
+- `font_color` inside an `options` dict is applied instead of stored as a
+  stray key; caller `font` and edge option dicts are no longer mutated.
+- `from_nx()` drops an edge `options` attribute as it already did for nodes.
+- `get_network_json()` warns for DOT networks; `generate_html()` warns when
+  `edge_attribute_edit` overrides `manipulation.enabled=False`.
+- Legend edges draw `from` and `both` arrowheads.
+- Shiny: `cluster_node_properties` is sent as vis.js `clusterNodeProperties`
+  (it was silently ignored) and `stabilize(iterations=0)` is honoured.
+- Docs: tutorial, install guide, API reference, Shiny guide and developer docs
+  match the current API.
+- Packaging: `notebooks/lib` re-synced with the package (tom-select 2.4.3),
+  conda recipes check the same files, `environment.yml` uses `shiny>=1.0`.
+
 ## [4.4.0] - 2026-09-06
 
 ### Breaking Changes
@@ -60,25 +113,6 @@ described under 4.3.0 below ships here instead.
 - pass font_color to template and validate against CSS injection
 
 ### Fixed
-- preserve per-node font_color through from_nx
-- validate every Literal field, correct font align and arrow type sets
-- release listeners and registry entries when a network output is cleared or removed
-- null args, command queueing, container sizing, config fallback and configChange
-- keep numeric node ids intact in updateData, search restore and edge editing
-- drop unsupported cluster() and omit absent arguments instead of sending null
-- correct update_data and package docstrings, pin the output config attribute
-- resolve module namespaces for controller and standalone network commands
-- apply module physics toggle on a copy and only when the control is rendered
-- build module networks from the documented dict spec
-- drop dead configure plumbing and repair the edge editing example
-- isolate get_network_json, harden edge keys and from_nx, correct docstrings
-- copy local lib resources beside the HTML file and refresh stale copies
-- detect cycles and validate dict keys in from_nx numpy coercion
-- recurse into lists/dicts when coercing numpy scalars in from_nx
-- accept plain dict options in add_node/add_edge and apply font_color on the typed path
-- coerce numpy scalars in from_nx instead of dropping attributes
-- load the notebook template lazily in generate_html
-- render when physics is a bool or a node title is not a string
 - parameterize collection types, constrain Literal fields, add type guard tests, fix layout doctype
 - CI subshell bug, duplicate tests, float string conversion, addEventListener, legend validation, renames cache, recipe guards
 - add error context to write_html file operations
