@@ -1064,16 +1064,34 @@ def network_remove_edge(session: 'Session', output_id: str, edge_id: Any):
     _send_network_command(session, output_id, "removeEdge", {"edgeId": edge_id})
 
 
+def _cluster_options(props: Optional[Dict]) -> Dict:
+    """Shape cluster node properties as the vis.js clustering options object.
+
+    vis.js expects ``{"clusterNodeProperties": {...}}``. Props that already
+    contain that key are passed through unchanged, so callers who wrapped
+    them by hand are not double-wrapped.
+    """
+    if not props:
+        return {}
+    if "clusterNodeProperties" in props:
+        return props
+    return {"clusterNodeProperties": props}
+
+
 def network_cluster_by_connection(
     session: 'Session',
     output_id: str,
     node_id: Any,
     cluster_node_properties: Optional[Dict] = None
 ):
-    """Cluster all nodes connected to a specific node."""
+    """Cluster all nodes connected to a specific node.
+
+    ``cluster_node_properties`` (e.g. ``{"label": "C"}``) styles the cluster
+    node; it is sent as vis.js ``clusterNodeProperties``.
+    """
     _send_network_command(session, output_id, "clusterByConnection", {
         "nodeId": node_id,
-        "options": cluster_node_properties or {}
+        "options": _cluster_options(cluster_node_properties)
     })
 
 
@@ -1086,9 +1104,10 @@ def network_cluster_by_hubsize(
     """Cluster all nodes with more than hubsize connections.
 
     ``hubsize`` is omitted from the payload when None so vis.js applies its
-    own automatic threshold.
+    own automatic threshold. ``cluster_node_properties`` is sent as vis.js
+    ``clusterNodeProperties``.
     """
-    args: Dict[str, Any] = {"options": cluster_node_properties or {}}
+    args: Dict[str, Any] = {"options": _cluster_options(cluster_node_properties)}
     if hubsize is not None:
         args["hubsize"] = hubsize
     _send_network_command(session, output_id, "clusterByHubsize", args)

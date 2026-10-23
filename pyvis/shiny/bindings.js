@@ -1136,7 +1136,7 @@ if (typeof Shiny !== 'undefined') {
                 network.stopSimulation();
                 break;
             case 'stabilize':
-                network.stabilize(args.iterations || 100);
+                network.stabilize(args.iterations ?? 100);
                 break;
 
             // Data manipulation

@@ -151,3 +151,23 @@ def test_every_controller_method_has_a_standalone_twin():
         c_params = list(inspect.signature(member).parameters)[1:]          # drop self
         t_params = list(inspect.signature(twin).parameters)[2:]            # drop session, output_id
         assert c_params == t_params, f"{name}: {c_params} != {t_params}"
+
+
+# --- 2026-10-23 consistency review --------------------------------------------
+
+@pytest.mark.parametrize("fn,args,key,val", [
+    (w.network_cluster_by_connection, (3,), "nodeId", 3),
+    (w.network_cluster_by_hubsize, (3,), "hubsize", 3),
+])
+def test_cluster_props_are_wrapped(fake_session, run_async, fn, args, key, val):
+    run_async(fn, fake_session, "net", *args, {"label": "C"})
+    sent = fake_session.last()[1]
+    assert sent[key] == val
+    assert sent["options"] == {"clusterNodeProperties": {"label": "C"}}
+
+
+@pytest.mark.parametrize("fn", [w.network_cluster_by_connection, w.network_cluster_by_hubsize])
+def test_cluster_props_already_wrapped_pass_through(fake_session, run_async, fn):
+    wrapped = {"clusterNodeProperties": {"label": "C"}}
+    run_async(fn, fake_session, "net", 3, wrapped)
+    assert fake_session.last()[1]["options"] == wrapped

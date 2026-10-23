@@ -231,3 +231,15 @@ class TestResizeAndTeardown:
 
         assert pyvis_page.evaluate("() => window.pyvisNetworks['net']") is None
         assert not errors, f"stale resize callback threw after teardown: {errors}"
+
+
+def test_stabilize_zero_iterations_passed_through(pyvis_page):
+    """stabilize(iterations=0) must reach vis.js as 0, not the default 100."""
+    render(pyvis_page, [{"id": 1}], [])
+    pyvis_page.evaluate(
+        "() => { var n = window.pyvisNetworks['net'].network;"
+        " window.__stabilizeArgs = [];"
+        " n.stabilize = function(i) { window.__stabilizeArgs.push(i); }; }"
+    )
+    command(pyvis_page, "stabilize", {"iterations": 0})
+    assert pyvis_page.evaluate("() => window.__stabilizeArgs") == [0]
