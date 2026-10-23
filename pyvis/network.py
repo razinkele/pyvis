@@ -1536,6 +1536,151 @@ class Network:
         """
         return [dict(e) for e in self.edges]
 
+    def get_node_ids(self) -> List[Union[str, int]]:
+        """
+        Get all node IDs in the network.
+
+        Returns a list of all unique node identifiers in the network.
+        This is equivalent to get_nodes() and provided for API consistency
+        with graph theory terminology.
+
+        :returns: List of node IDs
+        :rtype: List[Union[str, int]]
+
+        Example::
+
+            >>> net = Network()
+            >>> net.add_node(1, label="A")
+            >>> net.add_node(2, label="B")
+            >>> net.get_node_ids()
+            [1, 2]
+        """
+        return list(self.node_map.keys())
+
+    def get_edge_ids(self) -> List[Tuple[Union[str, int], Union[str, int]]]:
+        """
+        Get all edges in the network as (source, destination) tuples.
+
+        Returns a list of tuples representing edges, where each tuple contains
+        the source and destination node IDs. For undirected graphs, edge
+        direction may not be semantically meaningful.
+
+        :returns: List of (source, destination) tuples
+        :rtype: List[Tuple[Union[str, int], Union[str, int]]]
+
+        Example::
+
+            >>> net = Network()
+            >>> net.add_node(1, label="A")
+            >>> net.add_node(2, label="B")
+            >>> net.add_edge(1, 2)
+            >>> net.get_edge_ids()
+            [(1, 2)]
+        """
+        return [(e.get('from'), e.get('to')) for e in self.edges]
+
+    def get_neighbors(self, node_id: Union[str, int]) -> List[Union[str, int]]:
+        """
+        Get all neighbors (adjacent nodes) of a given node.
+
+        Returns a list of node IDs that are directly connected to the specified
+        node. In directed graphs, this includes both incoming and outgoing
+        neighbors.
+
+        :param node_id: The ID of the node
+        :type node_id: Union[str, int]
+        :returns: List of adjacent node IDs
+        :rtype: List[Union[str, int]]
+        :raises KeyError: If the node does not exist in the network
+
+        Example::
+
+            >>> net = Network()
+            >>> net.add_node(1, label="A")
+            >>> net.add_node(2, label="B")
+            >>> net.add_node(3, label="C")
+            >>> net.add_edge(1, 2)
+            >>> net.add_edge(2, 3)
+            >>> net.get_neighbors(2)
+            [1, 3]
+        """
+        if node_id not in self.node_map:
+            raise KeyError(f"Node '{node_id}' not found in network")
+        
+        neighbors = set()
+        for edge in self.edges:
+            from_node = edge.get('from')
+            to_node = edge.get('to')
+            
+            if from_node == node_id:
+                neighbors.add(to_node)
+            if to_node == node_id:
+                neighbors.add(from_node)
+        
+        return list(neighbors)
+
+    def get_node_degree(self, node_id: Union[str, int]) -> int:
+        """
+        Get the degree of a node (number of connected edges).
+
+        Returns the total number of edges connected to the specified node.
+        In directed graphs, this counts both incoming and outgoing edges.
+
+        :param node_id: The ID of the node
+        :type node_id: Union[str, int]
+        :returns: The degree (number of connected edges)
+        :rtype: int
+        :raises KeyError: If the node does not exist in the network
+
+        Example::
+
+            >>> net = Network()
+            >>> net.add_node(1, label="A")
+            >>> net.add_node(2, label="B")
+            >>> net.add_node(3, label="C")
+            >>> net.add_edge(1, 2)
+            >>> net.add_edge(2, 3)
+            >>> net.get_node_degree(2)
+            2
+        """
+        if node_id not in self.node_map:
+            raise KeyError(f"Node '{node_id}' not found in network")
+        
+        degree = 0
+        for edge in self.edges:
+            if edge.get('from') == node_id or edge.get('to') == node_id:
+                degree += 1
+        
+        return degree
+
+    def has_edge(self, source: Union[str, int], dest: Union[str, int]) -> bool:
+        """
+        Check if an edge exists between two nodes.
+
+        Returns True if there is a directed edge from source to dest,
+        False otherwise. This performs an O(1) lookup using the internal
+        edge index for efficiency.
+
+        :param source: The source node ID
+        :type source: Union[str, int]
+        :param dest: The destination node ID
+        :type dest: Union[str, int]
+        :returns: True if edge exists, False otherwise
+        :rtype: bool
+
+        Example::
+
+            >>> net = Network()
+            >>> net.add_node(1, label="A")
+            >>> net.add_node(2, label="B")
+            >>> net.add_edge(1, 2)
+            >>> net.has_edge(1, 2)
+            True
+            >>> net.has_edge(2, 1)
+            False
+        """
+        return self._get_edge_index(source, dest) != -1
+
     def to_json(self, max_depth=1, **args):
         """
         Serialize Network to JSON using jsonpickle.
