@@ -22,7 +22,7 @@ import networkx as nx
 from jinja2 import Environment, FileSystemLoader
 
 from .edge import Edge
-from .node import Node
+from .node import Node, merge_font_color
 from .utils import check_html
 from . import vis_config
 from .vis_config import CDNResource
@@ -518,12 +518,14 @@ class Network:
                       it are: image, circularImage, diamond, dot, star,
                       triangle, triangleDown, square and icon.
 
-        :param font_color: Colour of this node's label, overriding the
-                           network-wide font_color given to Network(). Omit it
-                           (or pass None) to inherit the network default; pass
-                           False to render the label with no explicit colour.
-                           Accepted as a keyword argument alongside the other
-                           vis-network node attributes.
+        :param font_color: Colour of this node's label. Precedence, highest
+                           first: this per-node font_color (as a kwarg or a key
+                           in an options dict), then a colour inside ``font``,
+                           then the network-wide font_color given to Network().
+                           Omit it (or pass None) to inherit; pass False to
+                           apply no colour. A string ``font`` such as
+                           "14px arial" is left as given, and a font_color
+                           passed with it is ignored with a warning.
 
         :param size: The size is used to determine the size of node shapes that
                      do not have the label inside of them. These shapes are:
@@ -598,12 +600,7 @@ class Network:
                 opts['id'] = n_id
                 if 'label' not in opts:
                     opts['label'] = label if label is not None else n_id
-                if self.font_color:
-                    font = opts.get('font')
-                    if isinstance(font, dict):
-                        font.setdefault('color', self.font_color)
-                    elif font is None:
-                        opts['font'] = {'color': self.font_color}
+                merge_font_color(opts, opts.pop('font_color', None), self.font_color)
                 self.node_map[n_id] = opts
             else:
                 # Legacy path: Node() builds the option dict from kwargs
@@ -612,15 +609,15 @@ class Network:
                 else:
                     node_label = n_id
                 # A per-node font_color kwarg (e.g. carried over by from_nx)
-                # overrides the network-wide default. None means "inherit";
-                # False means "no color" (handled by Node).
+                # overrides the network-wide default; merge_font_color holds
+                # the precedence rule shared with the typed path.
                 node_font_color = kw_options.pop("font_color", None)
-                if node_font_color is None:
-                    node_font_color = self.font_color
                 if "group" in kw_options:
-                    n = Node(n_id, shape, label=node_label, font_color=node_font_color, **kw_options)
+                    n = Node(n_id, shape, label=node_label, font_color=node_font_color,
+                             network_font_color=self.font_color, **kw_options)
                 else:
-                    n = Node(n_id, shape, label=node_label, color=color, font_color=node_font_color, **kw_options)
+                    n = Node(n_id, shape, label=node_label, color=color, font_color=node_font_color,
+                             network_font_color=self.font_color, **kw_options)
                 self.node_map[n_id] = n.options
             # Invalidate adjacency list cache
             self._adj_list_cache = None

@@ -338,3 +338,53 @@ class TestNotebookExtra:
         net.add_node(1)
         with pytest.raises(ImportError, match=r"pyvis-optimized\[notebook\]"):
             net.show(str(tmp_path / "x.html"), notebook=True)
+
+
+# --- 2026-10-23 consistency review --------------------------------------------
+
+from pyvis.types import NodeOptions, Font  # noqa: E402
+
+
+@pytest.mark.parametrize("adder", [
+    lambda n: n.add_node(1, font={"color": "red"}),
+    lambda n: n.add_node(1, options={"font": {"color": "red"}}),
+    lambda n: n.add_nodes([1], options=NodeOptions(font=Font(color="red"))),
+    lambda n: n.add_nodes([1], options=[NodeOptions(font=Font(color="red"))]),
+])
+def test_node_font_color_beats_network_default_on_every_path(adder):
+    net = Network(font_color="blue")
+    adder(net)
+    assert net.node_map[1]["font"]["color"] == "red"
+
+
+def test_per_node_font_color_beats_font_dict():
+    net = Network(font_color="blue")
+    net.add_node(1, font={"color": "red"}, font_color="green")
+    assert net.node_map[1]["font"]["color"] == "green"
+
+
+def test_font_color_inside_options_dict_is_applied():
+    net = Network()
+    net.add_node(1, options={"font_color": "green"})
+    assert "font_color" not in net.node_map[1]
+    assert net.node_map[1]["font"]["color"] == "green"
+
+
+@pytest.mark.parametrize("kw", [{"font": "14px arial"}, {"options": {"font": "14px arial"}}])
+def test_string_font_kept_on_every_path(kw):
+    net = Network(font_color="blue")
+    net.add_node(1, **kw)
+    assert net.node_map[1]["font"] == "14px arial"
+
+
+def test_string_font_with_per_node_color_warns():
+    net = Network()
+    with pytest.warns(UserWarning, match="font_color.*ignored"):
+        net.add_node(1, font="14px arial", font_color="red")
+    assert net.node_map[1]["font"] == "14px arial"
+
+
+def test_add_node_does_not_mutate_caller_font():
+    f = {"color": "red"}
+    Network(font_color="blue").add_node(1, font=f)
+    assert f == {"color": "red"}
