@@ -1,0 +1,348 @@
+{
+  "issues": [
+    {
+      "id": "STYLE-001",
+      "severity": "medium",
+      "category": "code_style",
+      "file": "pyvis/utils.py",
+      "line_numbers": [
+        19,
+        21
+      ],
+      "title": "Inefficient string splitting for file extension validation",
+      "description": "The check_html() function splits the filename by '.' multiple times to validate the extension. Line 19 splits to count parts, line 21 splits again to get the last part. This is inefficient and error-prone.",
+      "code_snippet": "if not name or len(name.split(\".\")) < 2:\n    raise ValueError(f\"invalid file type for {name!r}\")\nif name.split(\".\")[-1] != \"html\":\n    raise ValueError(f\"{name!r} is not a valid html file\")",
+      "impact": "Multiple string operations performed repeatedly; O(n) complexity where n is string length; harder to maintain",
+      "recommendation": "Use name.rsplit('.', 1) or pathlib.Path(name).suffix for cleaner, more efficient extension checking"
+    },
+    {
+      "id": "STYLE-002",
+      "severity": "medium",
+      "category": "code_style",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        362,
+        380
+      ],
+      "title": "Repeated CSS validation pattern for height/width parameters",
+      "description": "The Network.__init__() method contains repetitive code blocks validating and converting height and width CSS dimensions. The same pattern is applied twice (lines 148-156 for height, then 157-165 for width).",
+      "code_snippet": "if isinstance(height, (int, float)):\n    height = f\"{height}px\"\nelif isinstance(height, str):\n    try:\n        float(height)\n        height = f\"{height}px\"\n    except ValueError:\n        pass\n# ... repeated for width",
+      "impact": "Code duplication makes maintenance harder; increased chance of bugs if one branch is updated but not the other",
+      "recommendation": "Extract to a helper function _normalize_css_dimension(value) that handles both height and width uniformly"
+    },
+    {
+      "id": "STYLE-003",
+      "severity": "low",
+      "category": "code_style",
+      "file": "pyvis/node.py",
+      "line_numbers": [
+        26,
+        31
+      ],
+      "title": "Inline import of warnings module",
+      "description": "The Node class imports 'warnings' module inside __init__() method (line 26) instead of at module level. This is unconventional and less efficient.",
+      "code_snippet": "import warnings\nwarnings.warn(\n    f\"font_color cannot be merged into string font value {existing_font!r}. \"",
+      "impact": "Module import happens at runtime every time font_color merging fails; violates import conventions; harder to track dependencies",
+      "recommendation": "Move 'import warnings' to the top of pyvis/node.py module"
+    },
+    {
+      "id": "STYLE-004",
+      "severity": "high",
+      "category": "code_style",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        553
+      ],
+      "title": "Extremely long function signature",
+      "description": "The add_node() method has a very long function signature (line 553) with multiple parameters. The line exceeds 120 characters and is difficult to read.",
+      "code_snippet": "def add_node(self, n_id: Union[str, int], label: Optional[Union[str, int]] = None, shape: str = \"dot\", color: str = '#97c2fc', options=None, **kw_options):",
+      "impact": "Reduced readability; difficult to understand parameter list; violates PEP 8 line length recommendations",
+      "recommendation": "Split function signature across multiple lines or refactor to accept a configuration object"
+    },
+    {
+      "id": "STYLE-005",
+      "severity": "medium",
+      "category": "code_style",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        1287,
+        1305
+      ],
+      "title": "Inconsistent parameter naming and camelCase usage",
+      "description": "The add_legend() method uses Python snake_case parameters (step_x, step_y) but stores them as camelCase in the legend dict (stepX, stepY). Mixed naming conventions reduce consistency.",
+      "code_snippet": "step_x: int = 100,\nstep_y: int = 100,\n...\n'stepX': step_x,\n'stepY': step_y,",
+      "impact": "Inconsistent API design; potential confusion for developers; harder to maintain",
+      "recommendation": "Keep snake_case in Python API; document the transformation clearly"
+    },
+    {
+      "id": "PERF-001",
+      "severity": "high",
+      "category": "performance",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        959,
+        973
+      ],
+      "title": "Inefficient O(n) edge lookup in update_edge() and remove_edge() methods",
+      "description": "The update_edge() and remove_edge() methods iterate through all edges with a linear search (for edge in self.edges). With many edges, this is O(n) operation. While _edge_set is used for deduplication, it's not used here.",
+      "code_snippet": "for edge in self.edges:\n    if self.directed:\n        if edge['from'] == source and edge['to'] == to:\n            edge.update(attrs)\n            self._adj_list_cache = None\n            return",
+      "impact": "Performance degradation with large graphs; unnecessary iterations; inefficient resource usage",
+      "recommendation": "Use a dictionary-based index (e.g., self._edge_index) to map edge keys to list indices for O(1) lookups"
+    },
+    {
+      "id": "PERF-002",
+      "severity": "high",
+      "category": "performance",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        996,
+        1007
+      ],
+      "title": "Inefficient O(n) edge removal using list iteration and pop",
+      "description": "The remove_node() method rebuilds edges_to_keep list by iterating through all edges. This is O(n) and creates a new list. Additionally, the _edge_set is updated correctly but could be optimized.",
+      "code_snippet": "edges_to_keep = []\nfor edge in self.edges:\n    if edge['from'] == n_id or edge['to'] == n_id:\n        edge_key = _edge_key(edge['from'], edge['to'], self.directed)\n        self._edge_set.discard(edge_key)\n    else:\n        edges_to_keep.append(edge)\nself.edges = edges_to_keep",
+      "impact": "O(n) operation for removing a single node; memory overhead from creating new list; poor scalability with large graphs",
+      "recommendation": "Use list comprehension for clarity: self.edges = [e for e in self.edges if ...]"
+    },
+    {
+      "id": "PERF-003",
+      "severity": "medium",
+      "category": "performance",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        1117,
+        1150
+      ],
+      "title": "Excessive use of copy.deepcopy() in get_network_json()",
+      "description": "The get_network_json() method calls copy.deepcopy() 8 times (lines 1117-1150). This is expensive for large data structures and may not be necessary for all fields.",
+      "code_snippet": "\"nodes\": copy.deepcopy(nodes),\n\"edges\": copy.deepcopy(edges),\n\"options\": copy.deepcopy(options),\n...\n\"groups\": copy.deepcopy(self.groups),",
+      "impact": "Significant performance impact on networks with many nodes/edges; high memory usage; unnecessary CPU cycles",
+      "recommendation": "Use deepcopy selectively only for mutable objects that might be modified; use shallow copy where appropriate"
+    },
+    {
+      "id": "PERF-004",
+      "severity": "high",
+      "category": "performance",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        1275,
+        1290
+      ],
+      "title": "Redundant iterations in add_legend() validation",
+      "description": "The add_legend() method iterates through add_nodes and add_edges lists multiple times to validate colors and widths. Each field is checked in separate loop iterations.",
+      "code_snippet": "if add_nodes:\n    for node_entry in add_nodes:\n        if isinstance(node_entry, dict) and 'color' in node_entry:\n            c = node_entry['color']\n            if isinstance(c, str) and not _CSS_COLOR_RE.match(c):\n                raise ValueError(...)\nif add_edges:\n    for edge_entry in add_edges:\n        if isinstance(edge_entry, dict):\n            if 'color' in edge_entry:\n                ...\n            if 'width' in edge_entry:",
+      "impact": "Multiple iterations over the same data; inefficient for large lists; unnecessary complexity",
+      "recommendation": "Combine validation into single loop: validate all conditions while iterating once"
+    },
+    {
+      "id": "QUALITY-001",
+      "severity": "high",
+      "category": "quality",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        843,
+        860
+      ],
+      "title": "Duplicate edge lookup logic in add_node() and add_nodes()",
+      "description": "Both add_node() and add_nodes() methods contain similar node type checking and conversion logic. The logic for validating node types (str/int) and handling conversions is duplicated.",
+      "code_snippet": "if isinstance(node, (int, str)):\n    self.add_node(node, **nd[node])\nelse:\n    try:\n        node = int(node)\n        self.add_node(node, **nd[node])\n    except (ValueError, TypeError):\n        raise TypeError(f\"Node must be string or int, got {type(node)}\")",
+      "impact": "Maintenance burden; potential bugs if logic differs between implementations; harder to track related functionality",
+      "recommendation": "Extract node validation to a separate method _validate_node_id()"
+    },
+    {
+      "id": "QUALITY-002",
+      "severity": "medium",
+      "category": "quality",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        950,
+        970
+      ],
+      "title": "Duplicate edge matching logic in multiple methods",
+      "description": "The logic for checking edge direction matching appears in update_edge(), remove_edge(), and other methods. Lines show identical patterns for comparing directed vs undirected edge matches.",
+      "code_snippet": "if self.directed:\n    if edge['from'] == source and edge['to'] == to:\n        ...\nelse:\n    if ((edge['from'] == source and edge['to'] == to) or\n            (edge['from'] == to and edge['to'] == source)):\n        ...",
+      "impact": "Code duplication increases maintenance burden; inconsistencies may be introduced; harder to modify edge matching logic",
+      "recommendation": "Extract edge matching to a helper method _edge_matches(edge, source, dest)"
+    },
+    {
+      "id": "QUALITY-003",
+      "severity": "high",
+      "category": "quality",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        1234,
+        1265
+      ],
+      "title": "Complex conditional logic in add_legend() validation",
+      "description": "The add_legend() method contains deeply nested conditionals for validating legend data. The nested if statements (if isinstance(...) and ... in ...) make the code hard to follow.",
+      "code_snippet": "if add_nodes:\n    for node_entry in add_nodes:\n        if isinstance(node_entry, dict) and 'color' in node_entry:\n            c = node_entry['color']\n            if isinstance(c, str) and not _CSS_COLOR_RE.match(c):\n                raise ValueError(...)",
+      "impact": "Reduced code readability; difficult to understand validation logic; higher chance of missing edge cases",
+      "recommendation": "Extract validation to a separate method _validate_legend_entries(add_nodes, add_edges)"
+    },
+    {
+      "id": "QUALITY-004",
+      "severity": "medium",
+      "category": "quality",
+      "file": "pyvis/types/base.py",
+      "line_numbers": [
+        61,
+        85
+      ],
+      "title": "Cache invalidation via class attribute mutation",
+      "description": "The _renames_validated flag is set on the class type itself (type(self)._renames_validated = True), which mutates shared class state. This is a side effect and could cause issues in concurrent code.",
+      "code_snippet": "if self._field_renames and not type(self).__dict__.get('_renames_validated', False):\n    ...\n    type(self)._renames_validated = True",
+      "impact": "Class-level side effects; potential issues with concurrent/parallel code; harder to reason about behavior",
+      "recommendation": "Use a module-level cache dict or class-level _validated_classes set instead"
+    },
+    {
+      "id": "QUALITY-005",
+      "severity": "low",
+      "category": "quality",
+      "file": "pyvis/utils.py",
+      "line_numbers": [
+        6,
+        27
+      ],
+      "title": "Limited function in utils.py",
+      "description": "The utils.py file only contains one function (check_html) and doesn't export any other utilities. The module is underutilized for a general utilities module.",
+      "code_snippet": "__all__ = ['check_html']",
+      "impact": "Module purpose is narrow; other utility functions should be consolidated here",
+      "recommendation": "Consider adding other validation or utility functions to this module"
+    },
+    {
+      "id": "ARCH-001",
+      "severity": "high",
+      "category": "architecture",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        1,
+        60
+      ],
+      "title": "Missing data structure for edge indexing",
+      "description": "The Network class uses _edge_set for deduplication but doesn't maintain an index mapping edges to their position in the edges list. This forces O(n) lookups in update_edge() and remove_edge().",
+      "code_snippet": "# Edge set for O(1) duplicate detection in undirected graphs\nself._edge_set: set = set()\n# Adjacency list cache\nself._adj_list_cache: Optional[Dict[Union[str, int], set]] = None",
+      "impact": "Inefficient edge operations; scalability issues with large graphs; design inconsistency",
+      "recommendation": "Add self._edge_index: Dict[edge_key, index_in_edges_list] to enable O(1) edge lookups"
+    },
+    {
+      "id": "ARCH-002",
+      "severity": "medium",
+      "category": "architecture",
+      "file": "pyvis/node.py",
+      "line_numbers": [
+        1,
+        35
+      ],
+      "title": "Incomplete Node and Edge classes",
+      "description": "The Node and Edge classes are simple wrappers around dictionaries and don't provide much value beyond dict construction. They lack methods for accessing or modifying properties.",
+      "code_snippet": "class Node:\n    def __init__(self, n_id: Union[str, int], shape: str, label: Union[str, int], font_color: Optional[str] = None, **opts):\n        self.options: Dict[str, Any] = opts\n        self.options[\"id\"] = n_id",
+      "impact": "Limited object-oriented design; poor encapsulation; functions operate on node.options rather than the node itself",
+      "recommendation": "Add property accessors and methods like get_id(), get_label(), set_color(), etc."
+    },
+    {
+      "id": "ARCH-003",
+      "severity": "medium",
+      "category": "architecture",
+      "file": "pyvis/shiny/wrapper.py",
+      "line_numbers": [
+        73,
+        125
+      ],
+      "title": "Tightly coupled validation logic to CSS utilities",
+      "description": "The shiny/wrapper.py module duplicates CSS dimension validation regex from network.py (_CSS_DIM_RE is redefined). This violates DRY principle and couples modules.",
+      "code_snippet": "_CSS_DIM_RE = _re.compile(r'^\\d+(\\.\\d+)?(px|%|em|rem|vh|vw)$')",
+      "impact": "Code duplication; inconsistencies if one regex is updated but not the other; higher maintenance burden",
+      "recommendation": "Import _CSS_DIM_RE from network.py or move to a shared constants module"
+    },
+    {
+      "id": "ARCH-004",
+      "severity": "medium",
+      "category": "architecture",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        56,
+        58
+      ],
+      "title": "Magic constants for CDN resources",
+      "description": "CDN resource identifiers are defined as module-level constants but their relationship to the JSON configuration could be clearer.",
+      "code_snippet": "CDN_LOCAL = \"local\"\nCDN_INLINE = \"in_line\"\nCDN_REMOTE = \"remote\"\nCDN_REMOTE_ESM = \"remote_esm\"\nVALID_CDN_RESOURCES = [CDN_LOCAL, CDN_INLINE, CDN_REMOTE, CDN_REMOTE_ESM]",
+      "impact": "Magic string values scattered in code; better to use enum for type safety",
+      "recommendation": "Use Python Enum class for CDN resources for better type checking"
+    },
+    {
+      "id": "ARCH-005",
+      "severity": "low",
+      "category": "architecture",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        1328,
+        1400
+      ],
+      "title": "Complex from_DOT() and from_nx() methods mixing concerns",
+      "description": "The from_DOT() and from_nx() methods are large methods that handle I/O, parsing, validation, and node/edge addition. They violate single responsibility principle.",
+      "code_snippet": "def from_nx(self, nx_graph, node_size_transf=(lambda x: x), edge_weight_transf=(lambda x: x),\n            default_node_size=10, default_edge_weight=1, edge_scaling=False):",
+      "impact": "Methods are hard to test in isolation; difficult to maintain; hard to reuse parsing logic",
+      "recommendation": "Extract data transformation logic to separate classes/modules"
+    },
+    {
+      "id": "TYPE-001",
+      "severity": "high",
+      "category": "quality",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        815,
+        825
+      ],
+      "title": "Missing type hint for options parameter in add_node()",
+      "description": "The options parameter in add_node() is not type-hinted. It should accept Union[NodeOptions, dict, None].",
+      "code_snippet": "def add_node(self, n_id: Union[str, int], label: Optional[Union[str, int]] = None, shape: str = \"dot\", color: str = '#97c2fc', options=None, **kw_options):",
+      "impact": "Reduced type safety; IDE autocompletion doesn't work; harder to understand expected types",
+      "recommendation": "Add type hint: options: Optional[Union[Dict, 'NodeOptions']] = None"
+    },
+    {
+      "id": "TYPE-002",
+      "severity": "medium",
+      "category": "quality",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        882,
+        900
+      ],
+      "title": "Missing type hints in add_nodes() method",
+      "description": "The add_nodes() method has parameters without type hints (options parameter and kwargs dict values).",
+      "code_snippet": "def add_nodes(self, nodes: List[Union[str, int]], options=None, **kwargs):",
+      "impact": "Type safety not enforced; documentation unclear; IDE support reduced",
+      "recommendation": "Add type hints: options: Optional[Union[List[Dict], Dict, 'NodeOptions']] = None"
+    },
+    {
+      "id": "DOC-001",
+      "severity": "low",
+      "category": "quality",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        170,
+        200
+      ],
+      "title": "Verbose docstring with extensive parameter documentation",
+      "description": "The add_node() docstring is extremely verbose (lines 170-200+), documenting parameters that are well-known vis-network options. This makes the file large and harder to read.",
+      "code_snippet": ":param borderWidth:\tThe width of the border of the node.\n:param borderWidthSelected:\tThe width of the border of the node when\n                            it is selected.",
+      "impact": "Large docstrings reduce code readability; maintenance burden; many parameters documented may not be used",
+      "recommendation": "Create reference documentation separately; keep docstrings focused on method behavior"
+    },
+    {
+      "id": "ERROR-001",
+      "severity": "medium",
+      "category": "quality",
+      "file": "pyvis/network.py",
+      "line_numbers": [
+        876,
+        880
+      ],
+      "title": "Inconsistent error handling for duplicate node warnings",
+      "description": "When adding an existing node, a warning is raised but no exception is thrown. This inconsistency with duplicate edge handling could confuse users.",
+      "code_snippet": "else:\n    warnings.warn(\n        f\"Node {n_id!r} already exists and was not updated. \"",
+      "impact": "Unexpected behavior; silent failure for node duplicate adds while edges are prevented; API inconsistency",
+      "recommendation": "Raise ValueError for duplicate nodes for consistency with edge behavior"
+    }
+  ]
+}

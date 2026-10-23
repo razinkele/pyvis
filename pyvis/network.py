@@ -186,6 +186,9 @@ class Network:
         self.edges: List[Dict[str, Any]] = []
         # Edge set for O(1) duplicate detection in undirected graphs
         self._edge_set: set = set()
+        # Edge index for O(1) lookups: maps (source, dest) tuple to index in self.edges
+        # Maintained for efficient edge lookups instead of O(n) linear search
+        self._edge_index: Dict[Tuple[Union[str, int], Union[str, int]], int] = {}
         # Adjacency list cache
         self._adj_list_cache: Optional[Dict[Union[str, int], set]] = None
 
@@ -343,6 +346,88 @@ class Network:
         self._adj_list_cache = None
 
         return False  # Don't suppress exceptions
+
+    def _get_edge_index(self, source: Union[str, int], dest: Union[str, int]) -> int:
+        """Get the list index for an edge, or -1 if not found.
+        
+        Args:
+            source: Source node ID
+            dest: Destination node ID
+            
+        Returns:
+            Index in self.edges list, or -1 if not found
+        """
+        key = (source, dest)
+        return self._edge_index.get(key, -1)
+
+    def _register_edge(self, source: Union[str, int], dest: Union[str, int], index: int) -> None:
+        """Register an edge in the index.
+        
+        Args:
+            source: Source node ID
+            dest: Destination node ID
+            index: Index in self.edges list
+        """
+        self._edge_index[(source, dest)] = index
+
+    def _unregister_edge(self, source: Union[str, int], dest: Union[str, int]) -> None:
+        """Remove an edge from the index.
+        
+        Args:
+            source: Source node ID
+            dest: Destination node ID
+        """
+        self._edge_index.pop((source, dest), None)
+
+    def _update_edge_indices(self, start_index: int) -> None:
+        """Rebuild edge index from start_index onwards (used after removals).
+        
+        Args:
+            start_index: Starting position to rebuild indices from
+        """
+        for i in range(start_index, len(self.edges)):
+            edge = self.edges[i]
+            self._register_edge(edge['from'], edge['to'], i)
+
+    def _validate_node_id(self, node_id: Union[str, int]) -> Union[str, int]:
+        """Validate and normalize node ID.
+        
+        Args:
+            node_id: The node identifier
+            
+        Returns:
+            Validated node ID (preserved as-is if valid)
+            
+        Raises:
+            ValueError: If node_id already exists
+            TypeError: If node_id is invalid type
+        """
+        if node_id in self.node_map:
+            raise ValueError(f"Node {node_id} already in network")
+        
+        if not isinstance(node_id, (int, str)):
+            raise TypeError(f"Node ID must be int or str, got {type(node_id)}")
+        
+        return node_id
+
+    def _edge_matches(self, edge: Dict[str, Any], source: Union[str, int], 
+                      dest: Union[str, int]) -> bool:
+        """Check if an edge matches the source and destination.
+        
+        Args:
+            edge: Edge dict with 'from' and 'to' keys
+            source: Source node ID
+            dest: Destination node ID
+            
+        Returns:
+            True if edge matches (for directed graphs, exact match; 
+            for undirected, bidirectional match)
+        """
+        if self.directed:
+            return edge['from'] == source and edge['to'] == dest
+        else:
+            return ((edge['from'] == source and edge['to'] == dest) or
+                    (edge['from'] == dest and edge['to'] == source))
 
     @property
     def nodes(self) -> List[Dict[str, Any]]:
@@ -681,6 +766,8 @@ class Network:
                 e = Edge(source, to, self.directed, **kw_options)
                 self.edges.append(e.options)
             self._edge_set.add(edge_key)
+            # Register edge in index for O(1) lookups
+            self._register_edge(source, to, len(self.edges) - 1)
             # Invalidate adjacency list cache
             self._adj_list_cache = None
 
@@ -791,18 +878,25 @@ class Network:
                     "Remove the edge and add a new one instead."
                 )
 
-        for edge in self.edges:
-            if self.directed:
-                if edge['from'] == source and edge['to'] == to:
-                    edge.update(attrs)
-                    self._adj_list_cache = None
-                    return
-            else:
-                if ((edge['from'] == source and edge['to'] == to) or
-                        (edge['from'] == to and edge['to'] == source)):
-                    edge.update(attrs)
-                    self._adj_list_cache = None
-                    return
+        # Try to find edge using index for directed graphs
+        if self.directed:
+            edge_index = self._get_edge_index(source, to)
+            if edge_index >= 0:
+                self.edges[edge_index].update(attrs)
+                self._adj_list_cache = None
+                return
+        else:
+            # For undirected graphs, try both directions
+            edge_index = self._get_edge_index(source, to)
+            if edge_index >= 0:
+                self.edges[edge_index].update(attrs)
+                self._adj_list_cache = None
+                return
+            edge_index = self._get_edge_index(to, source)
+            if edge_index >= 0:
+                self.edges[edge_index].update(attrs)
+                self._adj_list_cache = None
+                return
 
         raise ValueError(
             f"Edge ({source}, {to}) not found in network"
@@ -827,16 +921,21 @@ class Network:
 
         del self.node_map[n_id]
 
-        # Remove all edges connected to this node
+        # Remove all edges connected to this node and unregister from index
         edges_to_keep = []
         for edge in self.edges:
             if edge['from'] == n_id or edge['to'] == n_id:
                 # Remove from edge set
                 edge_key = _edge_key(edge['from'], edge['to'], self.directed)
                 self._edge_set.discard(edge_key)
+                # Unregister from index
+                self._unregister_edge(edge['from'], edge['to'])
             else:
                 edges_to_keep.append(edge)
         self.edges = edges_to_keep
+        
+        # Rebuild indices for remaining edges
+        self._update_edge_indices(0)
 
         self._adj_list_cache = None
 
@@ -856,15 +955,14 @@ class Network:
         :raises ValueError: If the edge does not exist.
         """
         for i, edge in enumerate(self.edges):
-            if self.directed:
-                match = edge['from'] == source and edge['to'] == to
-            else:
-                match = ((edge['from'] == source and edge['to'] == to) or
-                         (edge['from'] == to and edge['to'] == source))
-            if match:
+            if self._edge_matches(edge, source, to):
                 self.edges.pop(i)
                 edge_key = _edge_key(source, to, self.directed)
                 self._edge_set.discard(edge_key)
+                # Unregister from index
+                self._unregister_edge(edge['from'], edge['to'])
+                # Rebuild indices for remaining edges after this position
+                self._update_edge_indices(i)
                 self._adj_list_cache = None
                 return
 
