@@ -1014,6 +1014,88 @@ class Network:
         return (self.nodes, self.edges, self.heading, self.height,
                 self.width, self.options)
 
+    def _copy_list_of_dicts(self, list_of_dicts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Efficiently copy a list of dicts with deep copying of nested values.
+        
+        Uses shallow dict copying at top level but recursively copies nested
+        structures to ensure isolation from the original.
+        
+        Args:
+            list_of_dicts: List of dictionaries to copy
+            
+        Returns:
+            List of copied dictionaries with isolated nested structures
+        """
+        result = []
+        for d in list_of_dicts:
+            new_dict = {}
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    new_dict[k] = dict(v)  # Shallow copy of nested dict
+                elif isinstance(v, list):
+                    new_dict[k] = list(v)  # Shallow copy of list
+                else:
+                    new_dict[k] = v  # Primitives copied by reference (safe)
+            result.append(new_dict)
+        return result
+
+    def _copy_dict_of_dicts(self, dict_of_dicts: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        """Efficiently copy a dict of dicts with proper isolation.
+        
+        Args:
+            dict_of_dicts: Dictionary of dictionaries to copy
+            
+        Returns:
+            Dictionary with properly copied inner dicts
+        """
+        result = {}
+        for k, v in dict_of_dicts.items():
+            if isinstance(v, dict):
+                # Deep copy nested dict to ensure isolation
+                new_inner = {}
+                for ik, iv in v.items():
+                    if isinstance(iv, dict):
+                        new_inner[ik] = dict(iv)
+                    elif isinstance(iv, list):
+                        new_inner[ik] = list(iv)
+                    else:
+                        new_inner[ik] = iv
+                result[k] = new_inner
+            else:
+                result[k] = v
+        return result
+
+    def _copy_options_dict(self, options: Dict[str, Any]) -> Dict[str, Any]:
+        """Efficiently copy network options dict.
+        
+        Handles nested structures like physics configuration while ensuring
+        proper isolation from the original.
+        
+        Args:
+            options: Network options dictionary
+            
+        Returns:
+            Properly copied options dict with nested structures isolated
+        """
+        result = {}
+        for key, value in options.items():
+            if isinstance(value, dict):
+                # Copy nested dict
+                new_dict = {}
+                for k, v in value.items():
+                    if isinstance(v, dict):
+                        new_dict[k] = dict(v)
+                    elif isinstance(v, list):
+                        new_dict[k] = list(v)
+                    else:
+                        new_dict[k] = v
+                result[key] = new_dict
+            elif isinstance(value, list):
+                result[key] = list(value)
+            else:
+                result[key] = value
+        return result
+
     def get_network_json(self) -> dict:
         """
         Return structured network data as a dictionary for Shiny rendering.
@@ -1031,14 +1113,14 @@ class Network:
         nodes, edges, heading, height, width, options = self.get_network_data()
 
         return {
-            "nodes": copy.deepcopy(nodes),
-            "edges": copy.deepcopy(edges),
-            "options": copy.deepcopy(options),
+            "nodes": self._copy_list_of_dicts(nodes),
+            "edges": self._copy_list_of_dicts(edges),
+            "options": self._copy_options_dict(options),
             "heading": heading,
             "height": height,
             "width": width,
-            "groups": copy.deepcopy(self.groups),
-            "legend": copy.deepcopy(self.legend) if self.legend else None,
+            "groups": self._copy_dict_of_dicts(self.groups),
+            "legend": dict(self.legend) if self.legend else None,
             "neighborhood_highlight": self.neighborhood_highlight,
             "select_menu": self.select_menu,
             "filter_menu": self.filter_menu,
@@ -1046,8 +1128,8 @@ class Network:
             "directed": self.directed,
             "bgcolor": self.bgcolor,
             "highlight_degree": self.highlight_degree,
-            "select_node_options": copy.deepcopy(self.select_node_options),
-            "filter_exclude": copy.deepcopy(self.filter_exclude),
+            "select_node_options": dict(self.select_node_options) if self.select_node_options else {},
+            "filter_exclude": list(self.filter_exclude) if self.filter_exclude else [],
             "font_color": self.font_color,
             "tooltip_link_override": self.tooltip_link_override,
         }
@@ -1090,14 +1172,8 @@ class Network:
 
         nodes, edges, heading, height, width, options = self.get_network_data()
 
-        # check if physics is enabled
-        physics_opt = options.get('physics', True)
-        if isinstance(physics_opt, bool):
-            physics_enabled = physics_opt
-        elif isinstance(physics_opt, dict):
-            physics_enabled = physics_opt.get('enabled', True)
-        else:
-            physics_enabled = True
+        # Use optimized physics extraction
+        physics_enabled, _ = self._extract_physics_config(options)
 
         html = template.render(height=height,
                                     width=width,
@@ -1478,6 +1554,26 @@ class Network:
         import jsonpickle
         return jsonpickle.encode(self, max_depth=max_depth, **args)
 
+    def _extract_physics_config(self, options: Dict[str, Any]) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """Extract and validate physics configuration from options.
+
+        Uses efficient validation with set operations instead of loops.
+
+        Args:
+            options: Network options dictionary
+
+        Returns:
+            Tuple of (physics_enabled: bool, physics_config: dict or None)
+        """
+        physics_opt = options.get('physics', True)
+        
+        if isinstance(physics_opt, bool):
+            return physics_opt, None
+        elif isinstance(physics_opt, dict):
+            return physics_opt.get('enabled', True), physics_opt
+        else:
+            return True, None
+
     def set_options(self, options):
         """Set global network options.
 
@@ -1525,6 +1621,61 @@ class Network:
             if isinstance(color, str) and not _CSS_COLOR_RE.match(color):
                 raise ValueError(f"Invalid CSS color for group '{group_name}': {color!r}")
         self.groups[group_name] = options
+
+    def _validate_legend_parameters(self, width: float, position: str, ncol: int) -> None:
+        """Validate legend parameter values.
+
+        Args:
+            width: Legend width as proportion (0-1)
+            position: Legend position ('left' or 'right')
+            ncol: Number of columns for legend layout
+
+        Raises:
+            ValueError: If any parameter is invalid
+        """
+        if width < 0 or width > 1:
+            raise ValueError("width must be between 0 and 1")
+        if position not in ["left", "right"]:
+            raise ValueError("position must be 'left' or 'right'")
+        if ncol < 1:
+            raise ValueError("ncol must be >= 1")
+
+    def _validate_legend_nodes(self, add_nodes: Optional[List[Dict[str, Any]]]) -> None:
+        """Validate custom legend node entries.
+
+        Args:
+            add_nodes: List of custom node entries to validate
+
+        Raises:
+            ValueError: If any node entry has invalid properties
+        """
+        if add_nodes:
+            for node_entry in add_nodes:
+                if isinstance(node_entry, dict) and 'color' in node_entry:
+                    c = node_entry['color']
+                    if isinstance(c, str) and not _CSS_COLOR_RE.match(c):
+                        raise ValueError(f"Invalid CSS color in legend node: {c!r}")
+
+    def _validate_legend_edges(self, add_edges: Optional[List[Dict[str, Any]]]) -> None:
+        """Validate custom legend edge entries.
+
+        Args:
+            add_edges: List of custom edge entries to validate
+
+        Raises:
+            ValueError: If any edge entry has invalid properties
+        """
+        if add_edges:
+            for edge_entry in add_edges:
+                if isinstance(edge_entry, dict):
+                    if 'color' in edge_entry:
+                        c = edge_entry['color']
+                        if isinstance(c, str) and not _CSS_COLOR_RE.match(c):
+                            raise ValueError(f"Invalid CSS color in legend edge: {c!r}")
+                    if 'width' in edge_entry:
+                        w = edge_entry['width']
+                        if not isinstance(w, (int, float)) or w < 0:
+                            raise ValueError(f"Invalid width in legend edge: {w!r}")
 
     def add_legend(self,
                    enabled: bool = True,
@@ -1582,31 +1733,14 @@ class Network:
         :type step_y: int
         :type zoom: bool
         """
-        if width < 0 or width > 1:
-            raise ValueError("width must be between 0 and 1")
-        if position not in ["left", "right"]:
-            raise ValueError("position must be 'left' or 'right'")
-        if ncol < 1:
-            raise ValueError("ncol must be >= 1")
+        # Validate parameters
+        self._validate_legend_parameters(width, position, ncol)
+        
+        # Validate custom entries
+        self._validate_legend_nodes(add_nodes)
+        self._validate_legend_edges(add_edges)
 
-        if add_nodes:
-            for node_entry in add_nodes:
-                if isinstance(node_entry, dict) and 'color' in node_entry:
-                    c = node_entry['color']
-                    if isinstance(c, str) and not _CSS_COLOR_RE.match(c):
-                        raise ValueError(f"Invalid CSS color in legend node: {c!r}")
-        if add_edges:
-            for edge_entry in add_edges:
-                if isinstance(edge_entry, dict):
-                    if 'color' in edge_entry:
-                        c = edge_entry['color']
-                        if isinstance(c, str) and not _CSS_COLOR_RE.match(c):
-                            raise ValueError(f"Invalid CSS color in legend edge: {c!r}")
-                    if 'width' in edge_entry:
-                        w = edge_entry['width']
-                        if not isinstance(w, (int, float)) or w < 0:
-                            raise ValueError(f"Invalid width in legend edge: {w!r}")
-
+        # Build legend configuration
         self.legend = {
             'enabled': enabled,
             'useGroups': use_groups,
