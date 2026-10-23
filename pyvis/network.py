@@ -452,7 +452,7 @@ class Network:
         self,
         n_id: Union[str, int],
         label: Optional[Union[str, int]] = None,
-        shape: str = "dot",
+        shape: Optional[str] = None,
         color: str = '#97c2fc',
         options: Optional[Union[Dict[str, Any], Any]] = None,
         **kw_options: Any
@@ -516,7 +516,9 @@ class Network:
                       types with the label inside of it are: ellipse, circle,
                       database, box, text. The ones with the label outside of
                       it are: image, circularImage, diamond, dot, star,
-                      triangle, triangleDown, square and icon.
+                      triangle, triangleDown, square and icon. Defaults to
+                      'dot', except for a node with a ``group``, which takes
+                      its shape from the group (see set_group()).
 
         :param font_color: Colour of this node's label. Precedence, highest
                            first: this per-node font_color (as a kwarg or a key
@@ -612,6 +614,8 @@ class Network:
                 # overrides the network-wide default; merge_font_color holds
                 # the precedence rule shared with the typed path.
                 node_font_color = kw_options.pop("font_color", None)
+                if shape is None and "group" not in kw_options:
+                    shape = "dot"
                 if "group" in kw_options:
                     n = Node(n_id, shape, label=node_label, font_color=node_font_color,
                              network_font_color=self.font_color, **kw_options)
@@ -1013,8 +1017,19 @@ class Network:
 
         >>> nodes, edges, heading, height, width, options = net.get_network_data()
         """
+        options = self.options
+        if self.groups:
+            # set_group() styling reaches vis-network through options.groups.
+            # Explicit options.groups keys win; groups without a shape keep
+            # pyvis's 'dot' default instead of vis-network's ellipse.
+            user_groups = options.get("groups") or {}
+            merged = {name: {"shape": "dot", **props, **user_groups.get(name, {})}
+                      for name, props in self.groups.items()}
+            for name, props in user_groups.items():
+                merged.setdefault(name, props)
+            options = {**options, "groups": merged}
         return (self.nodes, self.edges, self.heading, self.height,
-                self.width, self.options)
+                self.width, options)
 
     def _copy_list_of_dicts(self, list_of_dicts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Efficiently copy a list of dicts with deep copying of nested values.

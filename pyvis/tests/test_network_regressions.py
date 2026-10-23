@@ -388,3 +388,35 @@ def test_add_node_does_not_mutate_caller_font():
     f = {"color": "red"}
     Network(font_color="blue").add_node(1, font=f)
     assert f == {"color": "red"}
+
+
+def test_set_group_reaches_options_without_mutating_self_options():
+    net = Network()
+    net.set_group("g", color="red", shape="box")
+    opts = net.get_network_data()[5]
+    assert opts["groups"]["g"] == {"color": "red", "shape": "box"}
+    assert "groups" not in net.options
+    assert '"shape": "box"' in net.generate_html()
+
+
+def test_explicit_options_groups_win_per_key():
+    net = Network()
+    net.set_group("g", color="red", size=30)
+    net.set_options({"groups": {"g": {"color": "blue"}}})
+    g = net.get_network_data()[5]["groups"]["g"]
+    assert g == {"shape": "dot", "color": "blue", "size": 30}
+
+
+def test_group_node_keeps_group_style_and_network_font():
+    net = Network(font_color="white")
+    net.set_group("g", color="red")
+    net.add_node(1, group="g")
+    assert "shape" not in net.node_map[1] and "color" not in net.node_map[1]
+    assert net.get_network_data()[5]["groups"]["g"]["shape"] == "dot"
+    assert net.node_map[1]["font"]["color"] == "white"
+
+
+def test_plain_node_still_defaults_to_dot():
+    net = Network()
+    net.add_node(1)
+    assert net.node_map[1]["shape"] == "dot"
