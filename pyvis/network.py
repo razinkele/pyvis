@@ -253,6 +253,7 @@ class Network:
         self.font_color = font_color
         self.directed = directed
         self.bgcolor = bgcolor
+        self.notebook = notebook
         self.use_DOT = False
         self.dot_lang = ""
         self.options = {}
@@ -1124,6 +1125,14 @@ class Network:
             select_node_options, filter_exclude, font_color,
             tooltip_link_override
         """
+        if self.use_DOT:
+            warnings.warn(
+                "DOT networks are not supported by get_network_json()/Shiny; "
+                "the returned nodes and edges are empty. Use generate_html() "
+                "or build the network with add_node()/add_edge().",
+                UserWarning,
+                stacklevel=2,
+            )
         nodes, edges, heading, height, width, options = self.get_network_data()
 
         return {
@@ -1185,6 +1194,18 @@ class Network:
             template = self.template
 
         nodes, edges, heading, height, width, options = self.get_network_data()
+
+        manipulation = options.get("manipulation")
+        if self.edge_attribute_edit and (
+            manipulation is False
+            or (isinstance(manipulation, dict) and manipulation.get("enabled") is False)
+        ):
+            warnings.warn(
+                "edge_attribute_edit=True turns vis-network manipulation on, "
+                "overriding manipulation.enabled=False in the options.",
+                UserWarning,
+                stacklevel=2,
+            )
 
         # Use optimized physics extraction
         physics_enabled, _ = self._extract_physics_config(options)
@@ -1275,13 +1296,22 @@ class Network:
             webbrowser.open(getcwd_name)
 
 
-    def show(self, name, local=True, notebook=True):
+    def show(self, name, local=True, notebook: Optional[bool] = None):
         """
-        Writes a static HTML file and saves it locally before opening.
+        Write the network to an HTML file, then display it.
 
-        :param: name: the name of the html file to save as
+        Outside a notebook the file is opened in the browser. In notebook mode
+        nothing is opened and an IPython IFrame is returned instead (requires
+        IPython).
+
+        :param name: the name of the html file to save as
+        :param notebook: notebook mode; defaults to the ``notebook`` flag given
+                         to Network()
         :type name: str
+        :type notebook: bool, optional
         """
+        if notebook is None:
+            notebook = self.notebook
         if local is not True:
             warnings.warn(
                 "The 'local' parameter is deprecated and no longer has any effect. "
@@ -1451,6 +1481,9 @@ class Network:
         :type edge_weight_transf: func
         :param default_node_size: default node size if not specified
         :param default_edge_weight: default edge weight if not specified
+        :param edge_scaling: when True, edge weights are written to the
+                             vis-network ``value`` attribute (scaled by
+                             vis-network) instead of a fixed ``width``
         >>> nx_graph = nx.cycle_graph(10)
         >>> nx_graph.nodes[1]['title'] = 'Number 1'
         >>> nx_graph.nodes[1]['group'] = 1
@@ -1737,6 +1770,9 @@ class Network:
     def set_options(self, options):
         """Set global network options.
 
+        Replaces all options, including the hierarchical layout set by
+        ``Network(layout=True)``; it does not merge into them.
+
         Args:
             options: NetworkOptions dataclass, dict, or JSON string.
         """
@@ -1952,8 +1988,8 @@ class Network:
         :param position: Legend position ('left' or 'right')
         :param main: Legend title
         :param ncol: Number of columns for legend layout
-        :param step_x: Horizontal spacing between legend items
-        :param step_y: Vertical spacing between legend items
+        :param step_x: Deprecated; has no effect and will be removed in 5.0
+        :param step_y: Deprecated; has no effect and will be removed in 5.0
         :param zoom: Enable zoom capability for legend
 
         :type enabled: bool
@@ -1972,6 +2008,13 @@ class Network:
         """
         # Validate parameters
         self._validate_legend_parameters(width, position, ncol)
+        for arg_name, value in (("step_x", step_x), ("step_y", step_y)):
+            if value != 100:
+                warnings.warn(
+                    f"add_legend({arg_name}=...) has no effect and will be removed in 5.0.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
         
         # Validate custom entries
         self._validate_legend_nodes(add_nodes)

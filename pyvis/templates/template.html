@@ -437,6 +437,9 @@
                                   stroke="{{ edge.color if edge.color else '#848484' }}"
                                   stroke-width="{{ edge.width if edge.width else 1 }}"
                                   {% if edge.dashes %}stroke-dasharray="5,5"{% endif %} />
+                            {% if edge.arrows == 'from' or edge.arrows == 'both' %}
+                            <polygon points="5,10 10,7 10,13" fill="{{ edge.color if edge.color else '#848484' }}"></polygon>
+                            {% endif %}
                             {% if edge.arrows == 'to' or edge.arrows == 'both' %}
                             <polygon points="55,10 50,7 50,13" fill="{{ edge.color if edge.color else '#848484' }}"></polygon>
                             {% endif %}

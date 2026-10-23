@@ -460,3 +460,42 @@ def test_from_nx_edge_options_attr_stripped():
     net = Network()
     net.from_nx(g)
     assert net.edges[0]["width"] == 3 and "options" not in net.edges[0]
+
+
+def test_show_defaults_to_constructor_notebook_flag(tmp_path, monkeypatch):
+    calls = {}
+    net = Network(notebook=False)
+    monkeypatch.setattr(net, "write_html", lambda name, **kw: calls.update(kw))
+    net.show(str(tmp_path / "x.html"))
+    assert calls.get("notebook", False) is False and calls.get("open_browser") is True
+
+
+def test_get_network_json_warns_for_dot(tmp_path):
+    dot = tmp_path / "g.dot"
+    dot.write_text("digraph { a -> b }", encoding="utf-8")
+    net = Network()
+    net.from_DOT(str(dot))
+    with pytest.warns(UserWarning, match="DOT"):
+        net.get_network_json()
+
+
+def test_legend_step_args_deprecated():
+    net = Network()
+    with pytest.warns(DeprecationWarning, match="step_x"):
+        net.add_legend(step_x=50)
+
+
+def test_edge_attribute_edit_warns_when_manipulation_disabled():
+    net = Network(edge_attribute_edit=True)
+    net.set_options({"manipulation": {"enabled": False}})
+    with pytest.warns(UserWarning, match="manipulation"):
+        net.generate_html()
+
+
+@pytest.mark.parametrize("arrows,start,end", [("to", False, True), ("from", True, False), ("both", True, True)])
+def test_legend_edge_arrowheads(arrows, start, end):
+    net = Network()
+    net.add_legend(add_edges=[{"label": "x", "arrows": arrows}])
+    html = net.generate_html()
+    assert ('points="5,10 10,7 10,13"' in html) is start
+    assert ('points="55,10 50,7 50,13"' in html) is end
