@@ -25,8 +25,9 @@ from .edge import Edge
 from .node import Node
 from .utils import check_html
 from . import vis_config
+from .vis_config import CDNResource
 
-__all__ = ['Network']
+__all__ = ['Network', 'CDNResource']
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -47,11 +48,12 @@ def _edge_key(source, to, directed):
     return frozenset(((type(source).__name__, source), (type(to).__name__, to)))
 
 
-# Constants for CDN resources
-CDN_LOCAL = "local"
-CDN_INLINE = "in_line"
-CDN_REMOTE = "remote"
-CDN_REMOTE_ESM = "remote_esm"
+# Constants for CDN resources - kept for backward compatibility
+# Use vis_config.CDNResource enum for new code
+CDN_LOCAL = CDNResource.LOCAL.value
+CDN_INLINE = CDNResource.INLINE.value
+CDN_REMOTE = CDNResource.REMOTE.value
+CDN_REMOTE_ESM = CDNResource.REMOTE_ESM.value
 VALID_CDN_RESOURCES = [CDN_LOCAL, CDN_INLINE, CDN_REMOTE, CDN_REMOTE_ESM]
 
 # CSS validation patterns to prevent CSS injection
@@ -210,17 +212,17 @@ class Network:
                 width = f"{width}px"
             except ValueError:
                 pass
-        if not isinstance(height, str) or not _CSS_DIM_RE.match(height):
+        if not isinstance(height, str) or not self._validate_css_value(height, 'dimension', 'height'):
             raise ValueError(f"Invalid CSS dimension for height: {height!r}")
-        if not isinstance(width, str) or not _CSS_DIM_RE.match(width):
+        if not isinstance(width, str) or not self._validate_css_value(width, 'dimension', 'width'):
             raise ValueError(f"Invalid CSS dimension for width: {width!r}")
-        if not isinstance(bgcolor, str) or not _CSS_COLOR_RE.match(bgcolor):
+        if not self._validate_css_value(bgcolor, 'color', 'bgcolor'):
             raise ValueError(f"Invalid CSS color for bgcolor: {bgcolor!r}")
         # Legacy: font_color=False was used to mean "no color"
         if font_color is False:
             font_color = None
         if font_color is not None:
-            if not isinstance(font_color, str) or not _CSS_COLOR_RE.match(font_color):
+            if not self._validate_css_value(font_color, 'color', 'font_color'):
                 raise ValueError(f"Invalid CSS color for font_color: {font_color!r}")
 
         if not isinstance(highlight_degree, int) or isinstance(highlight_degree, bool) or highlight_degree < 0:
@@ -1618,9 +1620,46 @@ class Network:
         # Validate color if provided
         if 'color' in options:
             color = options['color']
-            if isinstance(color, str) and not _CSS_COLOR_RE.match(color):
+            if not self._validate_css_value(color, 'color', f'group {group_name}'):
                 raise ValueError(f"Invalid CSS color for group '{group_name}': {color!r}")
         self.groups[group_name] = options
+
+    def _validate_css_value(self, value: Any, value_type: str, field_name: str = "") -> bool:
+        """Validate a CSS value against the appropriate pattern.
+        
+        Provides a centralized helper for validating CSS values (dimensions or colors)
+        throughout the Network class. This reduces code duplication and improves
+        maintainability by consolidating validation logic.
+        
+        Args:
+            value: The value to validate
+            value_type: Type of CSS value ('dimension' or 'color')
+            field_name: Name of the field being validated (for error messages)
+            
+        Returns:
+            True if the value is valid, False otherwise
+            
+        Raises:
+            ValueError: If value_type is not recognized
+            
+        Examples:
+            >>> net = Network()
+            >>> net._validate_css_value('100px', 'dimension', 'height')
+            True
+            >>> net._validate_css_value('red', 'color', 'bgcolor')
+            True
+            >>> net._validate_css_value('invalid', 'dimension', 'width')
+            False
+        """
+        if not isinstance(value, str):
+            return False
+        
+        if value_type == 'dimension':
+            return bool(_CSS_DIM_RE.match(value))
+        elif value_type == 'color':
+            return bool(_CSS_COLOR_RE.match(value))
+        else:
+            raise ValueError(f"Unknown CSS value type: {value_type!r}")
 
     def _validate_legend_parameters(self, width: float, position: str, ncol: int) -> None:
         """Validate legend parameter values.
@@ -1653,7 +1692,7 @@ class Network:
             for node_entry in add_nodes:
                 if isinstance(node_entry, dict) and 'color' in node_entry:
                     c = node_entry['color']
-                    if isinstance(c, str) and not _CSS_COLOR_RE.match(c):
+                    if not self._validate_css_value(c, 'color', 'legend node'):
                         raise ValueError(f"Invalid CSS color in legend node: {c!r}")
 
     def _validate_legend_edges(self, add_edges: Optional[List[Dict[str, Any]]]) -> None:
@@ -1670,7 +1709,7 @@ class Network:
                 if isinstance(edge_entry, dict):
                     if 'color' in edge_entry:
                         c = edge_entry['color']
-                        if isinstance(c, str) and not _CSS_COLOR_RE.match(c):
+                        if not self._validate_css_value(c, 'color', 'legend edge'):
                             raise ValueError(f"Invalid CSS color in legend edge: {c!r}")
                     if 'width' in edge_entry:
                         w = edge_entry['width']
