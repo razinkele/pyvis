@@ -75,6 +75,17 @@ def _edge_key(source, to, directed):
     return frozenset(((type(source).__name__, source), (type(to).__name__, to)))
 
 
+def _options_to_dict(options, kind):
+    """Return a deep-copied dict from typed options (``to_dict()``) or a dict."""
+    if hasattr(options, 'to_dict'):
+        return options.to_dict()
+    if isinstance(options, dict):
+        return copy.deepcopy(options)
+    raise TypeError(
+        f"options must be {kind} or dict, got {type(options).__name__}"
+    )
+
+
 def _coerce_node_id(node):
     """Return a str/int node id, converting number-like values (e.g. numpy ints)."""
     if isinstance(node, (int, str)):
@@ -584,14 +595,7 @@ class Network:
 
         if n_id not in self.node_map:
             if options is not None:
-                if hasattr(options, 'to_dict'):
-                    opts = options.to_dict()
-                elif isinstance(options, dict):
-                    opts = dict(options)
-                else:
-                    raise TypeError(
-                        f"options must be a NodeOptions or dict, got {type(options).__name__}"
-                    )
+                opts = _options_to_dict(options, "a NodeOptions")
                 if kw_options:
                     warnings.warn(
                         "Both options= and **kwargs were provided to add_node(). "
@@ -759,14 +763,7 @@ class Network:
 
         if edge_key not in self._edge_set:
             if options is not None:
-                if hasattr(options, 'to_dict'):
-                    opts = options.to_dict()
-                elif isinstance(options, dict):
-                    opts = dict(options)
-                else:
-                    raise TypeError(
-                        f"options must be an EdgeOptions or dict, got {type(options).__name__}"
-                    )
+                opts = _options_to_dict(options, "an EdgeOptions")
                 if kw_options:
                     warnings.warn(
                         "Both options= and **kwargs were provided to add_edge(). "
@@ -829,8 +826,8 @@ class Network:
         >>> nt.update_node(1, label="New", color="red")
 
         :param n_id: The ID of the node to update.
-        :param options: Typed NodeOptions instance (optional). When provided,
-                        kwargs are ignored.
+        :param options: NodeOptions instance or dict (optional). When
+                        provided, kwargs are ignored.
         :param kwargs: Node attributes to update (label, color, size, etc.).
 
         :raises ValueError: If the node does not exist or if 'id' is in kwargs.
@@ -838,7 +835,7 @@ class Network:
         if n_id not in self.node_map:
             raise ValueError(f"Node '{n_id}' not found in network")
 
-        if options is not None and hasattr(options, 'to_dict'):
+        if options is not None:
             if kwargs:
                 warnings.warn(
                     "Both options= and **kwargs were provided to update_node(). "
@@ -846,7 +843,7 @@ class Network:
                     UserWarning,
                     stacklevel=2,
                 )
-            attrs = options.to_dict()
+            attrs = _options_to_dict(options, "a NodeOptions")
         else:
             attrs = kwargs
 
@@ -871,14 +868,14 @@ class Network:
 
         :param source: The source node ID.
         :param to: The destination node ID.
-        :param options: Typed EdgeOptions instance (optional). When provided,
-                        kwargs are ignored.
+        :param options: EdgeOptions instance or dict (optional). When
+                        provided, kwargs are ignored.
         :param kwargs: Edge attributes to update (color, width, label, etc.).
 
         :raises ValueError: If the edge does not exist or if 'from'/'to' is
                             in kwargs.
         """
-        if options is not None and hasattr(options, 'to_dict'):
+        if options is not None:
             if kwargs:
                 warnings.warn(
                     "Both options= and **kwargs were provided to update_edge(). "
@@ -886,7 +883,7 @@ class Network:
                     UserWarning,
                     stacklevel=2,
                 )
-            attrs = options.to_dict()
+            attrs = _options_to_dict(options, "an EdgeOptions")
         else:
             attrs = kwargs
 
@@ -1524,7 +1521,8 @@ class Network:
                     if "weight" not in e[2].keys():
                         e[2]["weight"] = default_edge_weight
                     e[2][width_type] = edge_weight_transf(e[2].pop("weight"))
-                self.add_edge(e[0], e[1], **e[2])
+                edge_attrs = {k: v for k, v in e[2].items() if k != "options"}
+                self.add_edge(e[0], e[1], **edge_attrs)
 
         for node in nx.isolates(nx_graph):
             data = node_data.get(node, {})

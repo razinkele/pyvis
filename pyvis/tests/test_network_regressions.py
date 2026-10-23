@@ -420,3 +420,43 @@ def test_plain_node_still_defaults_to_dot():
     net = Network()
     net.add_node(1)
     assert net.node_map[1]["shape"] == "dot"
+
+
+def test_update_node_accepts_dict_options():
+    net = Network()
+    net.add_node(1)
+    net.update_node(1, options={"color": "red"})
+    assert net.node_map[1]["color"] == "red"
+
+
+def test_update_edge_accepts_dict_options():
+    net = Network()
+    net.add_nodes([1, 2])
+    net.add_edge(1, 2)
+    net.update_edge(1, 2, options={"width": 4})
+    assert net.edges[0]["width"] == 4
+
+
+def test_update_node_rejects_bad_options_type():
+    net = Network()
+    net.add_node(1)
+    with pytest.raises(TypeError):
+        net.update_node(1, options=[("color", "red")])
+
+
+def test_add_edge_does_not_mutate_caller_options():
+    o = {"color": {"color": "red"}}
+    net = Network()
+    net.add_nodes([1, 2])
+    net.add_edge(1, 2, options=o)
+    net.edges[0]["color"]["color"] = "x"
+    assert o == {"color": {"color": "red"}}
+
+
+def test_from_nx_edge_options_attr_stripped():
+    import networkx as nx
+    g = nx.Graph()
+    g.add_edge(1, 2, weight=3, options={"color": "red"})
+    net = Network()
+    net.from_nx(g)
+    assert net.edges[0]["width"] == 3 and "options" not in net.edges[0]
