@@ -31,10 +31,14 @@ class NodeTestCase(unittest.TestCase):
 
     def test_no_dup_nodes(self):
         self.g.add_node(100, 100)
-        self.g.add_node(100, 100)
-        self.assertTrue(len(self.g.nodes) == 1)
-        self.g.add_node(100, "n101")
-        self.assertTrue(len(self.g.nodes) == 1)
+        self.assertEqual(len(self.g.nodes), 1)
+        # Duplicate node should raise ValueError
+        with self.assertRaises(ValueError):
+            self.g.add_node(100, 100)
+        self.assertEqual(len(self.g.nodes), 1)
+        with self.assertRaises(ValueError):
+            self.g.add_node(100, "n101")
+        self.assertEqual(len(self.g.nodes), 1)
 
     def test_node_labels(self):
         self.g.add_node(1, "n2")

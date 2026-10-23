@@ -768,16 +768,14 @@ def test_add_nodes_with_typed_options_list():
     assert net.num_nodes() == 2
 
 
-def test_add_node_duplicate_warns():
-    """Adding a duplicate node should issue a warning."""
-    import warnings
+def test_add_node_duplicate_raises():
+    """Adding a duplicate node should raise a ValueError."""
+    import pytest
     net = Network()
     net.add_node(1, label="First")
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
+    with pytest.raises(ValueError, match="already exists"):
         net.add_node(1, label="Second")
-        assert len(w) == 1
-        assert "already exists" in str(w[0].message).lower()
+    # Verify the first node's label is unchanged
     assert net.node_map[1]["label"] == "First"
 
 

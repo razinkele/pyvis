@@ -563,6 +563,10 @@ class Network:
         :type value: num (optional)
         :type x: num (optional)
         :type y: num (optional)
+
+        :raises TypeError: If n_id is not a string or integer.
+        :raises ValueError: If a node with the same n_id already exists in the network.
+                            Use update_node() to modify existing nodes.
         """
         if not isinstance(n_id, (str, int)):
             raise TypeError("Node id must be a string or an integer")
@@ -614,10 +618,9 @@ class Network:
             # Invalidate adjacency list cache
             self._adj_list_cache = None
         else:
-            warnings.warn(
-                f"Node {n_id!r} already exists and was not updated. "
-                f"Use update_node() to modify existing nodes.",
-                UserWarning, stacklevel=2
+            raise ValueError(
+                f"Node {n_id!r} already exists in the network. "
+                f"Use update_node() to modify existing nodes, or remove the duplicate add_node() call."
             )
 
     def add_nodes(
