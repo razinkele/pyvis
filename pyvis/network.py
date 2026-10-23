@@ -439,7 +439,15 @@ class Network:
         """Property to maintain backward compatibility - returns list of node IDs."""
         return list(self.node_map.keys())
 
-    def add_node(self, n_id: Union[str, int], label: Optional[Union[str, int]] = None, shape: str = "dot", color: str = '#97c2fc', options=None, **kw_options):
+    def add_node(
+        self,
+        n_id: Union[str, int],
+        label: Optional[Union[str, int]] = None,
+        shape: str = "dot",
+        color: str = '#97c2fc',
+        options: Optional[Union[Dict[str, Any], Any]] = None,
+        **kw_options: Any
+    ) -> None:
         """
         This method adds a node to the network, given a mandatory node ID.
         Node labels default to node ids if no label is specified during the
@@ -610,7 +618,12 @@ class Network:
                 UserWarning, stacklevel=2
             )
 
-    def add_nodes(self, nodes: List[Union[str, int]], options=None, **kwargs):
+    def add_nodes(
+        self,
+        nodes: List[Union[str, int]],
+        options: Optional[Union[Dict[str, Any], List[Dict[str, Any]], Any]] = None,
+        **kwargs: Any
+    ) -> None:
         """
         This method adds multiple nodes to the network from a list.
         Default behavior uses values of 'nodes' for node ID and node label
