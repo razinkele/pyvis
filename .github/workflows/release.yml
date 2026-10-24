@@ -206,11 +206,16 @@ jobs:
       # Resolve the output path first (cheap), then build once. Previously the
       # recipe was effectively processed twice: once to build and again to ask
       # for the path.
+      # conda-build 26.9 also reads v1 recipes and refuses a folder holding both
+      # meta.yaml and recipe.yaml, so build meta.yaml from a sibling folder that
+      # keeps its `source: path: ..` pointing at the repo root.
       - id: build
         run: |
-          PKG="$(conda-build conda.recipe/ -c conda-forge --output | tail -1)"
+          mkdir -p conda.recipe.v0
+          cp conda.recipe/meta.yaml conda.recipe/build.sh conda.recipe/bld.bat conda.recipe.v0/
+          PKG="$(conda-build conda.recipe.v0/ -c conda-forge --output | tail -1)"
           echo "pkg=$PKG" >> "$GITHUB_OUTPUT"
-          conda-build --no-anaconda-upload -c conda-forge conda.recipe/
+          conda-build --no-anaconda-upload -c conda-forge conda.recipe.v0/
           test -f "$PKG" || { echo "::error::built package not found at: $PKG"; exit 1; }
           echo "Built $PKG"
       - name: Upload to Anaconda
