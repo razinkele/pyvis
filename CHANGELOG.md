@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file.
 
 
 
-## [Unreleased]
+## [4.5.0] - 2026-10-24
 
 ### Breaking Changes
 - **Duplicate node ids raise.** `add_node()` (and so `add_nodes()`/`from_nx()`)
