@@ -105,3 +105,22 @@ def test_module_destroy_tears_down_its_network(monkeypatch, _isolated_running_lo
         assert destroyed == []
         ts.set_inputs(kill=1)
         assert destroyed == ["m-network"]
+
+
+def test_module_selection_output_and_callback(_isolated_running_loop):
+    """Selecting a node in the browser updates the module's selection text and
+    calls on_node_select, all through the real reactive graph (no browser)."""
+    from shiny import reactive
+
+    selected = []
+
+    def server(input, output, session):
+        data = reactive.value({"nodes": [1, 2, 3], "edges": [(1, 2)]})
+        w.pyvis_network_server("m", network_data=data, show_controls=False,
+                               on_node_select=selected.append)
+
+    with _test_server()(server) as ts:
+        assert "Click on a node" in ts.get_output("m-selection_info").value
+        ts.set_inputs(**{"m-network_selectNode": {"nodeId": 3, "nodes": [3]}})
+        assert "Selected Node: 3" in ts.get_output("m-selection_info").value
+        assert [s["nodeId"] for s in selected] == [3]  # test_server freezes lists to tuples
