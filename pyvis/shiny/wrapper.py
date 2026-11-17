@@ -470,6 +470,10 @@ if SHINY_AVAILABLE:
             JavaScript output binding uses this to create a vis.Network
             directly in the DOM (no iframe).
             """
+            # Commands issued once this output is invalidated wait for the
+            # re-rendered network (see _send_network_command).
+            _track_pending_render(self.output_id)
+
             if value is None:
                 return None
 
@@ -907,6 +911,42 @@ else:
 # Standalone command functions (alternative to controller class)
 # =============================================================================
 
+# (session id, resolved output id) of network outputs that have been
+# invalidated and whose new value has not reached the browser yet.
+_PENDING_RENDERS: set = set()
+
+
+def _track_pending_render(output_id: str) -> None:
+    """Record when this network output is about to be re-rendered.
+
+    Called by ``render_pyvis_network`` while it renders, i.e. inside the
+    output's reactive context. Once that context is invalidated, the output
+    re-renders and the browser replaces the network when the cycle's outputs
+    are sent; until then the key stays in ``_PENDING_RENDERS``.
+    """
+    from shiny.reactive import get_current_context
+    from shiny.session import get_current_session
+
+    session = get_current_session()
+    try:
+        context = get_current_context()
+    except RuntimeError:
+        context = None
+    if session is None or context is None:  # e.g. transform() called directly
+        return
+    key = (session.id, session.ns(output_id))
+
+    def _on_invalidate():
+        _PENDING_RENDERS.add(key)
+        try:
+            # Cleared right after the outputs carrying the new network are sent.
+            session.on_flushed(lambda: _PENDING_RENDERS.discard(key), once=True)
+        except Exception:  # session already ended
+            _PENDING_RENDERS.discard(key)
+
+    context.on_invalidate(_on_invalidate)
+
+
 def _send_network_command(
     session: 'Session',
     output_id: str,
@@ -916,16 +956,15 @@ def _send_network_command(
     """Send a command to a network output.
 
     Custom messages reach the browser at once, but outputs are sent at the end
-    of the session's reactive cycle. A command issued from an effect in the
-    same cycle that re-renders the network would therefore hit the old network
-    and be lost when the new one replaces it.
+    of the session's reactive cycle. A command issued while the network output
+    is invalidated (e.g. by the effect that changed its data) would hit the old
+    network and be lost when the re-rendered one replaces it. Such commands
+    are sent from ``session.on_flushed()`` instead: right after the outputs
+    that carry the new network, in the order issued. A pending re-render
+    always ends in an output flush, so they are always delivered.
 
-    On Shiny >= 1.9 the command is sent from ``session.on_flushed()``: right
-    after the current cycle's outputs, in the order commands were issued. In
-    1.9 registering an ``on_flushed`` callback also requests a flush, so a
-    command from an idle session (e.g. a background task) still goes out
-    promptly. Older Shiny does not request one, so there the command is sent
-    immediately, as before.
+    Every other command is sent immediately, so step-by-step updates from an
+    async effect (command, ``await``, command) show as they happen.
     """
     if not SHINY_AVAILABLE:
         raise ImportError("Shiny is required")
@@ -938,9 +977,8 @@ def _send_network_command(
         "args": args or {}
     }
 
-    # run_once_when_idle() arrived in Shiny 1.9 together with on_flushed()
-    # requesting a flush; it marks the sessions where deferring is safe.
-    if hasattr(session, "run_once_when_idle") and hasattr(session, "on_flushed"):
+    pending = (getattr(session, "id", None), message["outputId"]) in _PENDING_RENDERS
+    if pending and hasattr(session, "on_flushed"):
         async def _send_after_outputs():
             try:
                 await session.send_custom_message("pyvis-command", message)

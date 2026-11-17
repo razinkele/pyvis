@@ -5,12 +5,6 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Changed
-- Shiny controller commands (`ctrl.fit()`, `select_nodes()`, `add_node()`,
-  ...) are sent right after the current reactive cycle's outputs on
-  Shiny >= 1.9 (via `session.on_flushed()`), in the order issued. A command
-  from the same effect that re-renders the network used to reach the old
-  network and be lost when the new one replaced it. Older Shiny keeps the
-  immediate send, because its `on_flushed()` does not trigger a flush.
 - Shiny output: node labels follow the theme. With `theme="dark"` labels
   default to `#e0e0e0` (was vis-network's dark grey `#343434`, unreadable on
   the dark canvas), and `set_theme()` switches them. A label colour you set
@@ -29,6 +23,13 @@ All notable changes to this project are documented in this file.
   its JS is loaded by an ES-module `import`, which cannot carry SRI.
 
 ### Fixed
+- Shiny controller commands (`ctrl.fit()`, `select_nodes()`, `add_node()`,
+  ...) issued while their network is being re-rendered (e.g. by the effect
+  that just changed its data) used to reach the old network and be lost
+  when the new one replaced it. They are now sent right after the outputs
+  carrying the new network (via `session.on_flushed()`), in the order
+  issued. All other commands are still sent immediately, so step-by-step
+  async effects show each step.
 - `add_node(color=..., group=...)` warns that the colour is ignored (the
   group's style applies) instead of dropping it silently, and points to
   `set_group()`. `group=None` now means "no group", so the colour is kept.
