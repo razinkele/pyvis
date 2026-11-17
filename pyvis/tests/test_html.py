@@ -134,3 +134,20 @@ class TestFilterAndSelectMenu:
         expect(page.locator("#select-item")).to_be_visible()
         expect(page.locator("#select-value")).to_be_visible()
         expect(page.locator("#select-property")).to_be_visible()
+
+
+class TestDOTEscapedQuotes:
+    """vis-network >= 10.1.5 parses escaped quotes inside DOT strings (visjs#2563)."""
+
+    def test_escaped_quote_in_label(self, page: Page, tmp_path: Path):
+        dot_file = tmp_path / "quotes.dot"
+        dot_file.write_text(
+            'digraph g { A [label="say \\"hi\\""]; A -> B; }', encoding="utf-8"
+        )
+        net = Network(cdn_resources="in_line")
+        net.from_DOT(str(dot_file))
+        _save_and_open(net, tmp_path, "dot_quotes.html", page)
+        page.wait_for_function("typeof network !== 'undefined' && network !== null")
+        label = page.evaluate("network.body.data.nodes.get('A').label")
+        assert label == 'say "hi"'
+        assert sorted(page.evaluate("network.body.data.nodes.getIds()")) == ["A", "B"]

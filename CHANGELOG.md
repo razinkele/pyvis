@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Changed
+- Bundled vis-network upgraded from 10.1.2 to 10.1.5. Picks up the upstream
+  fixes for escaped quotes in DOT strings (a `from_DOT()` file with a label
+  such as `"say \"hi\""` previously failed to render at all) and for starting
+  a view animation while another is pending (`fit()`/`focus()`/`move_to()`
+  and the search box's animated focus).
+
+### Fixed
+- `pyvis_network_ui()` no longer emits a `ShinyDeprecationWarning` on
+  Shiny >= 1.8: it uses `ui.output_code()`/`@render.code` instead of the
+  deprecated `ui.output_text_verbatim()`. Docs and examples updated likewise.
 
 
 ## [4.5.0] - 2026-10-24

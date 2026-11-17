@@ -7,7 +7,7 @@ for easy maintenance and updates.
 from enum import Enum
 
 # vis-network version - update this single constant to upgrade across the entire library
-VIS_NETWORK_VERSION = "10.1.2"
+VIS_NETWORK_VERSION = "10.1.5"
 
 # CDN URLs
 UNPKG_CDN_BASE = f"https://unpkg.com/vis-network@{VIS_NETWORK_VERSION}"
