@@ -290,11 +290,10 @@ class TestThemeLabelColor:
         assert label_color(pyvis_page) == "#123456"
 
 
-def test_binding_outranks_shiny_html_output_binding(pyvis_page):
-    """The output div also carries Shiny's shiny-html-output class (kept for
-    Shiny's visibility observers), so both bindings match it. Shiny's HTML
-    binding registers at priority 0; ties go to whichever script loaded last.
-    An explicit higher priority makes the pyvis binding win regardless."""
+def test_binding_outranks_shiny_builtin_bindings(pyvis_page):
+    """Shiny's built-in output bindings register at priority 0 and ties go to
+    whichever script loaded last; an explicit higher priority removes the
+    dependence on load order."""
     assert (pyvis_page.evaluate("window.__pyvisBindingPriority") or 0) > 0
 
 

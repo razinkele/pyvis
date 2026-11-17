@@ -1134,10 +1134,9 @@ if (typeof Shiny !== 'undefined') {
         }
     }
 
-    // Register the output binding. The output div also carries Shiny's
-    // shiny-html-output class (kept for Shiny's visibility observers), so
-    // Shiny's HTML output binding (priority 0) matches it too; ties go to the
-    // binding registered last, i.e. to script load order. Outrank it.
+    // Register the output binding above Shiny's built-in output bindings
+    // (priority 0), so it never depends on script load order to claim
+    // .pyvis-network-output elements.
     Shiny.outputBindings.register(
         new PyVisOutputBinding(),
         'pyvis-network-output',

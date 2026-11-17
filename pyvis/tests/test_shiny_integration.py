@@ -148,3 +148,13 @@ def test_transform_payload_has_no_height_or_width(_isolated_running_loop):
     r = render_pyvis_network(lambda: net)
     data = asyncio.run(r.transform(net))
     assert "height" not in data and "width" not in data
+
+
+def test_fill_output_is_a_standard_fill_item():
+    """fill=True makes the output a Shiny/htmltools fill item, so it grows in
+    page_fillable(), full-screen cards and sidebars like Shiny's own outputs."""
+    from pyvis.shiny import output_pyvis_network
+
+    filled = str(output_pyvis_network("n", fill=True))
+    assert "html-fill-item" in filled
+    assert "html-fill-item" not in str(output_pyvis_network("n", fill=False))

@@ -100,6 +100,18 @@ def test_toggling_physics_re_renders_without_error(page, app):
     assert page.evaluate("() => window.pyvisNetworks['net-network'].nodes.getIds().length") == 2
     assert not errors, f"browser errors after toggling physics: {errors}"
 
+
+def test_output_keeps_its_requested_height(page, app):
+    """height= must size the output. Shiny's CSS gives any rendered
+    div.shiny-html-output display:contents, which drops the element's box
+    and with it the height/width set on it."""
+    page.goto(app.url)
+    page.wait_for_selector(f"{NETWORK} canvas", timeout=30_000)
+    box = page.evaluate(f"""() => {{ const o = document.querySelector('{NETWORK}');
+        return [getComputedStyle(o).display, o.getBoundingClientRect().height]; }}""")
+    assert box[0] != "contents", box
+    assert abs(box[1] - 400) <= 1, box  # e2e_module_app asks for height="400px"
+
 # --- Command delivery vs. re-render ------------------------------------------
 # Custom messages reach the browser at once; outputs go out at the end of the
 # reactive cycle. A command issued while its network is being re-rendered must

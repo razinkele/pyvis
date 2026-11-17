@@ -357,14 +357,22 @@ def output_pyvis_network(
     # data-pyvis-config carries the base configuration read by the JS binding.
     # The render payload from transform() only carries the options explicitly
     # set on the renderer (it is {} by default), and those override this base.
-    return ui.div(
+    tag = ui.div(
         *_get_pyvis_dependency(),
         id=resolved_id,
-        class_="pyvis-network-output shiny-html-output",
+        # Not "shiny-html-output": Shiny's CSS gives a rendered
+        # div.shiny-html-output display:contents, which drops this element's
+        # box and so the height/width set below.
+        class_="pyvis-network-output",
         style=f"width: {width}; height: {height}; min-height: 200px;",
         data_pyvis_config=_json.dumps(config),
         **kwargs
     )
+    if fill:
+        # A standard fill item grows inside fillable containers
+        # (page_fillable, full-screen cards, sidebars), like Shiny's outputs.
+        tag = ui.fill.as_fill_item(tag)
+    return tag
 
 
 if SHINY_AVAILABLE:

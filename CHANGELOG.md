@@ -5,6 +5,8 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
+- `output_pyvis_network(fill=True)` is a standard Shiny fill item, so the
+  network grows inside `page_fillable()`, full-screen cards and sidebars.
 - `theme="auto"` for `output_pyvis_network()` / `render_pyvis_network()` /
   `set_theme()`: the network follows the page's Bootstrap colour mode
   (`data-bs-theme` on `<html>`, as toggled by `ui.input_dark_mode()`),
@@ -30,6 +32,11 @@ All notable changes to this project are documented in this file.
   its JS is loaded by an ES-module `import`, which cannot carry SRI.
 
 ### Fixed
+- `output_pyvis_network(height=..., width=...)` were ignored once the network
+  rendered: the output div carried Shiny's `shiny-html-output` class, which
+  Shiny's CSS turns into `display: contents` (no box, so no size). The class
+  is dropped; the size you ask for is now the size you get. Apps that relied
+  on the old behaviour (network sized by its parent) may need `fill=True`.
 - `pyvis_network_server` releases its browser-side network (vis instance,
   DataSets, observers) when the parent removes the module with
   `await session.destroy(id)` (Shiny >= 1.6.1).
