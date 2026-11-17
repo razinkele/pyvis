@@ -171,3 +171,36 @@ def test_cluster_props_already_wrapped_pass_through(fake_session, run_async, fn)
     wrapped = {"clusterNodeProperties": {"label": "C"}}
     run_async(fn, fake_session, "net", 3, wrapped)
     assert fake_session.last()[1]["options"] == wrapped
+
+
+# --- delivery timing ----------------------------------------------------------
+
+def test_shiny_19_session_sends_after_outputs_in_order(fake_session, _isolated_running_loop):
+    """On Shiny >= 1.9 commands wait for on_flushed (after the cycle's
+    outputs) and go out in the order they were issued."""
+    import asyncio
+
+    flushed = []
+    fake_session.on_flushed = lambda fn, once=True: flushed.append(fn)
+    fake_session.run_once_when_idle = lambda fn: None  # marks a 1.9 session
+
+    async def go():
+        w.network_add_node(fake_session, "net", {"id": 1})
+        w.network_update_node(fake_session, "net", {"id": 1, "label": "x"})
+        await asyncio.sleep(0)
+        assert fake_session.messages == []  # nothing before the outputs
+        for fn in flushed:  # Shiny awaits them in registration order
+            await fn()
+
+    asyncio.run(go())
+    assert [m["command"] for _, m in fake_session.messages] == ["addNode", "updateNode"]
+
+
+def test_older_shiny_session_sends_immediately(fake_session, run_async):
+    """Before 1.9 on_flushed does not request a flush, so do not defer."""
+    def no_defer(fn, once=True):
+        raise AssertionError("deferred on a pre-1.9 session")
+
+    fake_session.on_flushed = no_defer  # present, but no run_once_when_idle
+    run_async(w.network_fit, fake_session, "net")
+    assert fake_session.last()[0] == "fit"

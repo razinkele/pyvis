@@ -913,7 +913,20 @@ def _send_network_command(
     command: str,
     args: Optional[Dict] = None
 ):
-    """Helper to send command to network."""
+    """Send a command to a network output.
+
+    Custom messages reach the browser at once, but outputs are sent at the end
+    of the session's reactive cycle. A command issued from an effect in the
+    same cycle that re-renders the network would therefore hit the old network
+    and be lost when the new one replaces it.
+
+    On Shiny >= 1.9 the command is sent from ``session.on_flushed()``: right
+    after the current cycle's outputs, in the order commands were issued. In
+    1.9 registering an ``on_flushed`` callback also requests a flush, so a
+    command from an idle session (e.g. a background task) still goes out
+    promptly. Older Shiny does not request one, so there the command is sent
+    immediately, as before.
+    """
     if not SHINY_AVAILABLE:
         raise ImportError("Shiny is required")
 
@@ -924,6 +937,19 @@ def _send_network_command(
         "command": command,
         "args": args or {}
     }
+
+    # run_once_when_idle() arrived in Shiny 1.9 together with on_flushed()
+    # requesting a flush; it marks the sessions where deferring is safe.
+    if hasattr(session, "run_once_when_idle") and hasattr(session, "on_flushed"):
+        async def _send_after_outputs():
+            try:
+                await session.send_custom_message("pyvis-command", message)
+            except Exception as e:  # keep other flushed callbacks running
+                _logger.error("PyVis command %r failed: %s", command, e, exc_info=e)
+
+        session.on_flushed(_send_after_outputs, once=True)
+        return
+
     try:
         loop = asyncio.get_running_loop()
         task = loop.create_task(
