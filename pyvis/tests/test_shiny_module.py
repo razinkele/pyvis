@@ -124,3 +124,17 @@ def test_module_selection_output_and_callback(_isolated_running_loop):
         ts.set_inputs(**{"m-network_selectNode": {"nodeId": 3, "nodes": [3]}})
         assert "Selected Node: 3" in ts.get_output("m-selection_info").value
         assert [s["nodeId"] for s in selected] == [3]  # test_server freezes lists to tuples
+
+
+def test_ended_session_leaves_no_pending_render(_isolated_running_loop):
+    """Closing a session invalidates its outputs after the last flush; the
+    pending-render registry must not keep an entry per closed session."""
+    from shiny import reactive
+
+    def server(input, output, session):
+        data = reactive.value({"nodes": [1, 2], "edges": [(1, 2)]})
+        w.pyvis_network_server("m", network_data=data, show_controls=False)
+
+    with _test_server()(server) as ts:
+        ts.flush()
+    assert not [k for k in w._PENDING_RENDERS if k[1] == "m-network"]

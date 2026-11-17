@@ -924,6 +924,8 @@ else:
 # (session id, resolved output id) of network outputs that have been
 # invalidated and whose new value has not reached the browser yet.
 _PENDING_RENDERS: set = set()
+# Keys whose session already has an on_ended cleanup registered.
+_CLEANUP_REGISTERED: set = set()
 
 
 def _track_pending_render(output_id: str) -> None:
@@ -945,6 +947,17 @@ def _track_pending_render(output_id: str) -> None:
     if session is None or context is None:  # e.g. transform() called directly
         return
     key = (session.id, session.ns(output_id))
+
+    # Ending a session invalidates its outputs after the last flush, so the
+    # on_flushed below never runs; drop the entry when the session ends.
+    if key not in _CLEANUP_REGISTERED:
+        _CLEANUP_REGISTERED.add(key)
+
+        def _on_ended():
+            _PENDING_RENDERS.discard(key)
+            _CLEANUP_REGISTERED.discard(key)
+
+        session.on_ended(_on_ended)
 
     def _on_invalidate():
         _PENDING_RENDERS.add(key)
