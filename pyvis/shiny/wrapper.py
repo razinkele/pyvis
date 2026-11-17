@@ -309,7 +309,9 @@ def output_pyvis_network(
             @render_pyvis_network.
         height: Height of the network container (default: "600px").
         width: Width of the network container (default: "100%").
-        theme: Color theme, "light" or "dark" (default: "light").
+        theme: Color theme: "light", "dark", or "auto" to follow the page's
+            Bootstrap colour mode (``data-bs-theme``, as set by
+            ``ui.input_dark_mode()``) (default: "light").
         show_toolbar: Show the toolbar panel (default: True).
         show_search: Show node search input (default: True).
         show_layout_switcher: Show layout toggle (default: True).
@@ -379,7 +381,7 @@ if SHINY_AVAILABLE:
         Args:
             height: Height of the rendered network (default: "600px").
             width: Width of the rendered network (default: "100%").
-            theme: Color theme, "light" or "dark" (default: None, inherits
+            theme: Color theme, "light", "dark" or "auto" (default: None, inherits
                 from ``output_pyvis_network``).
             show_toolbar: Show the toolbar panel (default: None, inherits).
             show_search: Show node search input (default: None, inherits).
@@ -827,7 +829,7 @@ if SHINY_AVAILABLE:
             """Switch the network container theme without re-rendering.
 
             Args:
-                theme: "light" or "dark"
+                theme: "light", "dark", or "auto" (follow ``data-bs-theme``)
             """
             network_set_theme(self.session, self.output_id, theme)
 
@@ -1200,7 +1202,7 @@ def network_set_theme(session: 'Session', output_id: str, theme: str):
     Args:
         session: The Shiny session object.
         output_id: The ID of the network output.
-        theme: "light" or "dark"
+        theme: "light", "dark", or "auto" (follow ``data-bs-theme``)
     """
     _send_network_command(session, output_id, "setTheme", {"theme": theme})
 

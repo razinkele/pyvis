@@ -296,3 +296,66 @@ def test_binding_outranks_shiny_html_output_binding(pyvis_page):
     binding registers at priority 0; ties go to whichever script loaded last.
     An explicit higher priority makes the pyvis binding win regardless."""
     assert (pyvis_page.evaluate("window.__pyvisBindingPriority") or 0) > 0
+
+
+def container_theme(page):
+    return page.evaluate(
+        "() => (window.pyvisNetworks['net'].container.className.match(/pyvis-theme-(\w+)/) || [])[1]")
+
+
+def set_bs_theme(page, value):
+    page.evaluate("v => v === null ? document.documentElement.removeAttribute('data-bs-theme')"
+                  " : document.documentElement.setAttribute('data-bs-theme', v)", value)
+    page.wait_for_timeout(50)  # MutationObserver callbacks are async
+
+
+class TestAutoTheme:
+    """theme='auto' follows Bootstrap's data-bs-theme on <html>, which Shiny's
+    ui.input_dark_mode() toggles. No attribute means light, like Bootstrap."""
+
+    def test_auto_starts_from_data_bs_theme(self, pyvis_page):
+        set_bs_theme(pyvis_page, "dark")
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "auto"})
+        assert container_theme(pyvis_page) == "dark"
+        assert label_color(pyvis_page) == TestThemeLabelColor.DARK
+
+    def test_auto_without_attribute_is_light(self, pyvis_page):
+        set_bs_theme(pyvis_page, None)
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "auto"})
+        assert container_theme(pyvis_page) == "light"
+
+    def test_auto_follows_attribute_changes(self, pyvis_page):
+        set_bs_theme(pyvis_page, "light")
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "auto"})
+        set_bs_theme(pyvis_page, "dark")
+        assert container_theme(pyvis_page) == "dark"
+        assert label_color(pyvis_page) == TestThemeLabelColor.DARK
+        set_bs_theme(pyvis_page, "light")
+        assert container_theme(pyvis_page) == "light"
+        assert label_color(pyvis_page) == TestThemeLabelColor.LIGHT
+
+    def test_explicit_set_theme_stops_following_and_auto_resumes(self, pyvis_page):
+        set_bs_theme(pyvis_page, "light")
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "auto"})
+        command(pyvis_page, "setTheme", {"theme": "dark"})
+        set_bs_theme(pyvis_page, "light")
+        assert container_theme(pyvis_page) == "dark"
+        command(pyvis_page, "setTheme", {"theme": "auto"})
+        assert container_theme(pyvis_page) == "light"
+        set_bs_theme(pyvis_page, "dark")
+        assert container_theme(pyvis_page) == "dark"
+
+    def test_fixed_theme_ignores_attribute(self, pyvis_page):
+        set_bs_theme(pyvis_page, "light")
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "dark"})
+        set_bs_theme(pyvis_page, "light")
+        assert container_theme(pyvis_page) == "dark"
+
+    def test_destroy_disconnects_the_theme_observer(self, pyvis_page):
+        set_bs_theme(pyvis_page, "light")
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "auto"})
+        command(pyvis_page, "destroy", {})
+        errors = []
+        pyvis_page.on("pageerror", lambda e: errors.append(str(e)))
+        set_bs_theme(pyvis_page, "dark")
+        assert errors == []

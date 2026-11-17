@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+- `theme="auto"` for `output_pyvis_network()` / `render_pyvis_network()` /
+  `set_theme()`: the network follows the page's Bootstrap colour mode
+  (`data-bs-theme` on `<html>`, as toggled by `ui.input_dark_mode()`),
+  including node label colours. An explicit `set_theme("light"/"dark")`
+  stops following; `set_theme("auto")` resumes.
+
 ### Changed
 - Shiny output: node labels follow the theme. With `theme="dark"` labels
   default to `#e0e0e0` (was vis-network's dark grey `#343434`, unreadable on

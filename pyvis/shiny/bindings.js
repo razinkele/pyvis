@@ -56,6 +56,41 @@ if (typeof Shiny !== 'undefined') {
         return PYVIS_THEME_LABEL_COLOR[theme] || PYVIS_THEME_LABEL_COLOR.light;
     }
 
+    // theme='auto' follows Bootstrap's colour mode, i.e. data-bs-theme on
+    // <html>, which Shiny's ui.input_dark_mode() toggles. No attribute means
+    // light, as Bootstrap renders the page.
+    function pyvisResolveTheme(theme) {
+        if (theme !== 'auto') return theme || 'light';
+        return document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light';
+    }
+
+    // Switch a live network's container theme and, unless the user chose a
+    // label colour, its default node label colour.
+    function pyvisApplyTheme(ref, theme) {
+        ref.container.className = ref.container.className
+            .replace(/pyvis-theme-\w+/, 'pyvis-theme-' + theme);
+        if (!ref.userLabelColor) {
+            ref.network.setOptions({ nodes: { font: { color: pyvisThemeLabelColor(theme) } } });
+        }
+    }
+
+    function pyvisStopAutoTheme(ref) {
+        if (ref._themeObserver) {
+            ref._themeObserver.disconnect();
+            ref._themeObserver = null;
+        }
+    }
+
+    function pyvisStartAutoTheme(ref) {
+        pyvisStopAutoTheme(ref);
+        pyvisApplyTheme(ref, pyvisResolveTheme('auto'));
+        ref._themeObserver = new MutationObserver(function() {
+            pyvisApplyTheme(ref, pyvisResolveTheme('auto'));
+        });
+        ref._themeObserver.observe(document.documentElement,
+            { attributes: true, attributeFilter: ['data-bs-theme'] });
+    }
+
     // Tear down a previous network instance: removes global listeners,
     // deregisters DataSet handlers, disconnects the ResizeObserver, destroys
     // the vis.js network, and clears the registry entry.
@@ -76,8 +111,9 @@ if (typeof Shiny !== 'undefined') {
         // Clear DataSets
         if (prev.nodes) prev.nodes.clear();
         if (prev.edges) prev.edges.clear();
-        // Disconnect resize observer
+        // Disconnect resize and theme observers
         if (prev.resizeObserver) prev.resizeObserver.disconnect();
+        pyvisStopAutoTheme(prev);
         // Destroy vis.js network (removes its own event handlers)
         if (prev.network) prev.network.destroy();
         delete window.pyvisNetworks[outputId];
@@ -121,7 +157,8 @@ if (typeof Shiny !== 'undefined') {
                 try { datasetConfig = JSON.parse(el.dataset.pyvisConfig) || {}; } catch (e) { datasetConfig = {}; }
             }
             const config = Object.assign({}, datasetConfig, payload.config || {});
-            const theme = config.theme || 'light';
+            const requestedTheme = config.theme || 'light';
+            const theme = pyvisResolveTheme(requestedTheme);
             const showToolbar = config.showToolbar !== false;
             const showSearch = config.showSearch !== false;
             const showLayoutSwitcher = config.showLayoutSwitcher !== false;
@@ -715,6 +752,7 @@ if (typeof Shiny !== 'undefined') {
                 userLabelColor: userLabelColor
             };
             window.pyvisNetworks[outputId] = ref;
+            if (requestedTheme === 'auto') pyvisStartAutoTheme(ref);
 
             // Attach deferred handler references for cleanup on re-render
             if (typeof escHandler !== 'undefined') {
@@ -1232,10 +1270,11 @@ if (typeof Shiny !== 'undefined') {
             // Theme
             case 'setTheme':
                 var newTheme = args.theme || 'light';
-                ref.container.className = ref.container.className
-                    .replace(/pyvis-theme-\w+/, 'pyvis-theme-' + newTheme);
-                if (!ref.userLabelColor) {
-                    network.setOptions({ nodes: { font: { color: pyvisThemeLabelColor(newTheme) } } });
+                if (newTheme === 'auto') {
+                    pyvisStartAutoTheme(ref);
+                } else {
+                    pyvisStopAutoTheme(ref);  // an explicit theme stops following
+                    pyvisApplyTheme(ref, newTheme);
                 }
                 break;
 
