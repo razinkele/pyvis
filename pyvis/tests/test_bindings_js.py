@@ -20,7 +20,7 @@ window.Shiny = {
   handlers: {},
   addCustomMessageHandler: function(n, f) { this.handlers[n] = f; },
   OutputBinding: class {},
-  outputBindings: { register: function(b) { window.__pyvisBinding = b; } },
+  outputBindings: { register: function(b, name, priority) { window.__pyvisBinding = b; window.__pyvisBindingPriority = priority; } },
 };
 """
 
@@ -288,3 +288,11 @@ class TestThemeLabelColor:
         assert label_color(pyvis_page) == "#123456"
         command(pyvis_page, "setTheme", {"theme": "light"})
         assert label_color(pyvis_page) == "#123456"
+
+
+def test_binding_outranks_shiny_html_output_binding(pyvis_page):
+    """The output div also carries Shiny's shiny-html-output class (kept for
+    Shiny's visibility observers), so both bindings match it. Shiny's HTML
+    binding registers at priority 0; ties go to whichever script loaded last.
+    An explicit higher priority makes the pyvis binding win regardless."""
+    assert (pyvis_page.evaluate("window.__pyvisBindingPriority") or 0) > 0
