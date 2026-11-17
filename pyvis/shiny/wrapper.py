@@ -471,6 +471,14 @@ if SHINY_AVAILABLE:
                 **{k: v for k, v in overrides.items() if v is not None},
             )
 
+        async def render(self) -> Jsonifiable:
+            # Commands issued once this output is invalidated wait for the
+            # re-rendered network (see _send_network_command). Track before
+            # running the user function, so a run that raises, stops at req()
+            # or returns None is covered too.
+            _track_pending_render(self.output_id)
+            return await super().render()
+
         async def transform(self, value: PyVisNetwork) -> Jsonifiable:
             """
             Transform a PyVis Network into JSON-serializable data.
@@ -480,10 +488,6 @@ if SHINY_AVAILABLE:
             JavaScript output binding uses this to create a vis.Network
             directly in the DOM (no iframe).
             """
-            # Commands issued once this output is invalidated wait for the
-            # re-rendered network (see _send_network_command).
-            _track_pending_render(self.output_id)
-
             if value is None:
                 return None
 
@@ -1474,7 +1478,17 @@ if SHINY_AVAILABLE:
         # id now: the destroy callback does not run in this namespace.
         if hasattr(session, "on_destroy"):
             network_id = resolve_id("network")
-            session.on_destroy(lambda: network_destroy(session, network_id))
+            # Ending the whole session also runs destroy callbacks (after the
+            # on_ended ones), but then the browser is gone and the send would
+            # only fail on a closed connection: skip it.
+            session_ended = []
+            session.on_ended(lambda: session_ended.append(True))
+
+            def _destroy_network():
+                if not session_ended:
+                    network_destroy(session, network_id)
+
+            session.on_destroy(_destroy_network)
 
         @render_pyvis_network
         def network():

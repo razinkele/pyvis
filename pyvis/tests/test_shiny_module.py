@@ -138,3 +138,52 @@ def test_ended_session_leaves_no_pending_render(_isolated_running_loop):
     with _test_server()(server) as ts:
         ts.flush()
     assert not [k for k in w._PENDING_RENDERS if k[1] == "m-network"]
+
+
+def test_session_end_does_not_send_destroy(monkeypatch, _isolated_running_loop):
+    """Ending a session also runs module destroy callbacks, but the browser is
+    gone: sending the destroy command would only fail on a closed connection."""
+    from shiny import reactive
+
+    if not hasattr(__import__("shiny").session.Session, "on_destroy"):
+        pytest.skip("session.on_destroy needs Shiny >= 1.6.1")
+    destroyed = []
+    monkeypatch.setattr(w, "network_destroy", lambda session, output_id: destroyed.append(output_id))
+
+    def server(input, output, session):
+        data = reactive.value({"nodes": [1, 2], "edges": [(1, 2)]})
+        w.pyvis_network_server("m", network_data=data, show_controls=False)
+
+    with _test_server()(server) as ts:
+        ts.flush()
+    assert destroyed == []
+
+
+def test_output_blocked_by_req_is_still_tracked_as_pending(_isolated_running_loop):
+    """A render that stopped at req() (or raised) must still count as pending
+    once invalidated, so commands sent in that cycle wait for the new network."""
+    from shiny import reactive, req
+
+    from pyvis.network import Network
+
+    seen = []
+
+    def server(input, output, session):
+        ready = reactive.value(False)
+
+        @w.render_pyvis_network
+        def net():
+            req(ready())
+            n = Network()
+            n.add_node(1)
+            return n
+
+        @reactive.effect
+        @reactive.event(input.go)
+        def _():
+            ready.set(True)
+            seen.append((session.id, session.ns("net")) in w._PENDING_RENDERS)
+
+    with _test_server()(server) as ts:
+        ts.set_inputs(go=1)
+    assert seen == [True]

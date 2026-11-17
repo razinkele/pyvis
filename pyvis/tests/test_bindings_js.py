@@ -19,7 +19,8 @@ window.Shiny = {
   setInputValue: function(id, v) { this.inputs[id] = v; },
   handlers: {},
   addCustomMessageHandler: function(n, f) { this.handlers[n] = f; },
-  OutputBinding: class {},
+  // Like Shiny's default: an error replaces the element's content.
+  OutputBinding: class { renderError(el, err) { el.textContent = err.message; } },
   outputBindings: { register: function(b, name, priority) { window.__pyvisBinding = b; window.__pyvisBindingPriority = priority; } },
 };
 """
@@ -358,3 +359,16 @@ class TestAutoTheme:
         pyvis_page.on("pageerror", lambda e: errors.append(str(e)))
         set_bs_theme(pyvis_page, "dark")
         assert errors == []
+
+
+def test_output_error_tears_down_network_so_commands_queue(pyvis_page):
+    """Shiny's renderError replaces the output's content (an error message, or
+    nothing after req()). The detached network must be released, so commands
+    sent before the next render are queued for it instead of lost."""
+    render(pyvis_page, [{"id": 1}, {"id": 2}], [])
+    pyvis_page.evaluate(
+        "() => window.__pyvisBinding.renderError(document.getElementById('net'), {message: 'boom', type: null})")
+    assert pyvis_page.evaluate("() => window.pyvisNetworks['net'] === undefined")
+    command(pyvis_page, "selectNodes", {"nodeIds": [2], "highlightEdges": False})
+    render(pyvis_page, [{"id": 1}, {"id": 2}], [])
+    assert pyvis_page.evaluate("() => window.pyvisNetworks['net'].network.getSelectedNodes()") == [2]
