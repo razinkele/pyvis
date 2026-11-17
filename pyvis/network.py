@@ -51,6 +51,9 @@ CDN_REMOTE = CDNResource.REMOTE.value
 CDN_REMOTE_ESM = CDNResource.REMOTE_ESM.value
 VALID_CDN_RESOURCES = [CDN_LOCAL, CDN_INLINE, CDN_REMOTE, CDN_REMOTE_ESM]
 
+# add_node()'s default colour (vis-network's own default node colour).
+_DEFAULT_NODE_COLOR = '#97c2fc'
+
 # --- CSS Validation Patterns (Security) ---
 # Prevent CSS injection attacks
 # A dimension is a plain length (e.g. "600px", "100%") or a flat calc() of
@@ -475,7 +478,7 @@ class Network:
         n_id: Union[str, int],
         label: Optional[Union[str, int]] = None,
         shape: Optional[str] = None,
-        color: str = '#97c2fc',
+        color: str = _DEFAULT_NODE_COLOR,
         options: Optional[Union[Dict[str, Any], Any]] = None,
         **kw_options: Any
     ) -> None:
@@ -629,9 +632,24 @@ class Network:
                 # overrides the network-wide default; merge_font_color holds
                 # the precedence rule shared with the typed path.
                 node_font_color = kw_options.pop("font_color", None)
+                # group=None (e.g. group=d.get("group")) means "no group".
+                if "group" in kw_options and kw_options["group"] is None:
+                    del kw_options["group"]
                 if shape is None and "group" not in kw_options:
                     shape = "dot"
                 if "group" in kw_options:
+                    # The default colour must not override the group's style,
+                    # so colour is dropped for grouped nodes. An explicit one
+                    # would be silently lost: say so.
+                    if color != _DEFAULT_NODE_COLOR:
+                        warnings.warn(
+                            f"add_node({n_id!r}): color={color!r} is ignored because the "
+                            f"node is in group {kw_options['group']!r}; the group's style "
+                            f"applies. Set the colour with set_group({kw_options['group']!r}, "
+                            f"color=...) or drop the group.",
+                            UserWarning,
+                            stacklevel=2,
+                        )
                     n = Node(n_id, shape, label=node_label, font_color=node_font_color,
                              network_font_color=self.font_color, **kw_options)
                 else:

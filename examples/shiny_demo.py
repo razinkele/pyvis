@@ -673,7 +673,8 @@ def server(input, output, session):
         for group, color in GROUP_COLORS.items():
             net.set_group(group, color=color)
         for n in INITIAL_NODES:
-            net.add_node(n["id"], label=n["label"], color=n["color"],
+            # Grouped nodes take their colour from GROUP_COLORS via set_group().
+            net.add_node(n["id"], label=n["label"],
                          shape=n["shape"], size=n["size"], group=n.get("group"))
         for e in INITIAL_EDGES:
             net.add_edge(e["from"], e["to"], title=e.get("title", ""))

@@ -23,6 +23,9 @@ All notable changes to this project are documented in this file.
   its JS is loaded by an ES-module `import`, which cannot carry SRI.
 
 ### Fixed
+- `add_node(color=..., group=...)` warns that the colour is ignored (the
+  group's style applies) instead of dropping it silently, and points to
+  `set_group()`. `group=None` now means "no group", so the colour is kept.
 - `cdn_resources="remote_esm"` rendered nothing: the main script ran as an
   ES module, so strict mode threw on an undeclared loop variable and its
   globals were invisible to `utils.js` (highlighting, menus). It is now a
