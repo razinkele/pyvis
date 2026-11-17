@@ -233,7 +233,7 @@ ctrl = PyVisNetworkController("my_network", session)
 | Method | Description | Parameters |
 |--------|-------------|------------|
 | `set_options(options)` | Update options | vis.js options dict |
-| `set_theme(theme)` | Switch theme | `"light"` or `"dark"` |
+| `set_theme(theme)` | Switch theme | `"light"`, `"dark"` or `"auto"` (follow `ui.input_dark_mode()`) |
 
 ### Manipulation Methods
 
@@ -469,7 +469,17 @@ def _on_node_template_mode():
 
 ### App-Level Theme Toggle
 
-To toggle both the Shiny app theme and the pyvis network theme:
+If the app uses Shiny's dark-mode switch, let the network follow it:
+
+```python
+app_ui = ui.page_fluid(
+    ui.input_dark_mode(),
+    output_pyvis_network("net", theme="auto"),  # follows data-bs-theme
+)
+```
+
+For a custom toggle that switches both the Shiny app theme and the pyvis
+network theme yourself:
 
 ```python
 @reactive.effect

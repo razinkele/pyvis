@@ -1447,15 +1447,15 @@ Create a network output placeholder in the UI. Populated by the `@render_pyvis_n
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `id` | `str` | *required* | Output ID (matches the `@render_pyvis_network` function name) |
-| `height` | `str` | `"600px"` | Container height |
+| `height` | `str` | `"600px"` | Container height (ignored with `fill=True` inside a fillable container, which sizes it) |
 | `width` | `str` | `"100%"` | Container width |
-| `theme` | `str` | `"light"` | Theme: `"light"` or `"dark"` |
+| `theme` | `str` | `"light"` | Theme: `"light"`, `"dark"`, or `"auto"` (follows the page's `data-bs-theme`, as toggled by `ui.input_dark_mode()`). Node labels follow the theme unless you set a label colour |
 | `show_toolbar` | `bool` | `True` | Show toolbar |
 | `show_search` | `bool` | `True` | Show search |
 | `show_layout_switcher` | `bool` | `True` | Show layout switcher |
 | `show_export` | `bool` | `True` | Show export button |
 | `show_status` | `bool` | `True` | Show status bar |
-| `fill` | `bool` | `False` | Fill available space |
+| `fill` | `bool` | `False` | Make the output a Shiny fill item, so it grows inside `page_fillable()`, full-screen cards and sidebars |
 | `events` | `list\|None` | `None` | List of event names to subscribe to |
 
 #### `render_pyvis_network` (decorator)
@@ -1588,7 +1588,7 @@ session.on_destroy(ctrl.destroy)      # or session.on_ended(ctrl.destroy)
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `set_options` | `(options)` | Update options (dict or typed) |
-| `set_theme` | `(theme: str)` | Switch theme (`"light"` / `"dark"`) |
+| `set_theme` | `(theme: str)` | Switch theme (`"light"` / `"dark"`, or `"auto"` to follow `data-bs-theme`; an explicit theme stops following) |
 
 #### Manipulation Methods
 
