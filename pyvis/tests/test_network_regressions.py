@@ -553,3 +553,8 @@ class TestColorWithGroup:
         assert net.node_map[1]["color"] == "#ff0000"
         assert "group" not in net.node_map[1]
         assert not [w for w in recwarn if "ignored" in str(w.message)]
+
+
+def test_color_none_with_group_does_not_warn(recwarn):
+    Network().add_node(1, color=None, group="g")
+    assert not [w for w in recwarn if "ignored" in str(w.message)]

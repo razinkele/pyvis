@@ -641,7 +641,7 @@ class Network:
                     # The default colour must not override the group's style,
                     # so colour is dropped for grouped nodes. An explicit one
                     # would be silently lost: say so.
-                    if color != _DEFAULT_NODE_COLOR:
+                    if color is not None and color != _DEFAULT_NODE_COLOR:
                         warnings.warn(
                             f"add_node({n_id!r}): color={color!r} is ignored because the "
                             f"node is in group {kw_options['group']!r}; the group's style "
