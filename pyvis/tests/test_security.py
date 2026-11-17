@@ -109,6 +109,7 @@ class TestCSSDimensionCalc:
         "calc(url(x))", "calc(expression(alert(1)))", "calc()", "calc(100vh -)",
         "calc(var(--h))", "calc(100vh - 40px", 'calc(1px)" onload="x',
         "100px; color: red", "expression(alert(1))", "auto",
+        "600px\n", "calc(100vh - 40px)\n",  # `$` alone would accept a trailing newline
     ]
 
     @pytest.mark.parametrize("value", VALID)

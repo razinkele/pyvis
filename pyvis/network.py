@@ -64,7 +64,7 @@ _CSS_LEN = r'\d+(?:\.\d+)?(?:px|%|em|rem|vh|vw)'
 _CSS_CALC_TERM = r'\d+(?:\.\d+)?(?:px|%|em|rem|vh|vw)?'
 _CSS_DIM_RE = re.compile(
     rf'^(?:{_CSS_LEN}'
-    rf'|calc\(\s*{_CSS_CALC_TERM}(?:\s*[-+*/]\s*{_CSS_CALC_TERM})*\s*\))$'
+    rf'|calc\(\s*{_CSS_CALC_TERM}(?:\s*[-+*/]\s*{_CSS_CALC_TERM})*\s*\))\Z'  # \Z: no trailing newline
 )
 _CSS_COLOR_RE = re.compile(
     r'^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+|rgba?\(\s*[\d.,\s%]+\)|hsla?\(\s*[\d.,\s%]+\))$'
