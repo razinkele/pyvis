@@ -1,0 +1,3 @@
+# Vendored third-party assets: keep their exact bytes (no EOL conversion).
+# The SRI hashes in pyvis/vis_config.py are computed over these bytes.
+pyvis/templates/lib/** -text
