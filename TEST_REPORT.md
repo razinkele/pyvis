@@ -1,6 +1,6 @@
 # PyVis Test Report
 
-> **Update 2026-11-17:** 637 tests pass, browser tests included (Shiny 1.9.0,
+> **Update 2026-11-17:** 647 tests pass, browser tests included (Shiny 1.9.0,
 > vis-network 10.1.5). The `ui.output_text_verbatim()` deprecation below is
 > fixed. The rest of this report is the 2026-10-24 snapshot.
 
