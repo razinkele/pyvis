@@ -1445,7 +1445,14 @@ if SHINY_AVAILABLE:
                 the physics input is not read.
         """
         from pyvis.network import Network
-        
+
+        # When the parent removes this module with session.destroy(id)
+        # (Shiny >= 1.6.1), release the browser-side network too. Resolve the
+        # id now: the destroy callback does not run in this namespace.
+        if hasattr(session, "on_destroy"):
+            network_id = resolve_id("network")
+            session.on_destroy(lambda: network_destroy(session, network_id))
+
         @render_pyvis_network
         def network():
             data = network_data()

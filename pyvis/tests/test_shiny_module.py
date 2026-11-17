@@ -74,3 +74,34 @@ def test_module_ui_emits_no_shiny_deprecation_warning():
         warnings.simplefilter("error", ShinyDeprecationWarning)
         tag = w.pyvis_network_ui("net")
     assert "net-selection_info" in str(tag)
+
+
+# --- headless server tests (shiny.testserver, Shiny >= 1.8) --------------------
+
+def _test_server():
+    return pytest.importorskip("shiny.testserver").test_server
+
+
+def test_module_destroy_tears_down_its_network(monkeypatch, _isolated_running_loop):
+    """session.destroy(id) on a pyvis module also releases the browser-side
+    network (vis instance, DataSets, observers), addressed by its resolved id."""
+    from shiny import reactive
+
+    if not hasattr(__import__("shiny").session.Session, "on_destroy"):
+        pytest.skip("session.on_destroy needs Shiny >= 1.6.1")
+    destroyed = []
+    monkeypatch.setattr(w, "network_destroy", lambda session, output_id: destroyed.append(output_id))
+
+    def server(input, output, session):
+        data = reactive.value({"nodes": [1, 2], "edges": [(1, 2)]})
+        w.pyvis_network_server("m", network_data=data, show_controls=False)
+
+        @reactive.effect
+        @reactive.event(input.kill)
+        async def _():
+            await session.destroy("m")
+
+    with _test_server()(server) as ts:
+        assert destroyed == []
+        ts.set_inputs(kill=1)
+        assert destroyed == ["m-network"]

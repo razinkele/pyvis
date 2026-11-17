@@ -23,6 +23,9 @@ All notable changes to this project are documented in this file.
   its JS is loaded by an ES-module `import`, which cannot carry SRI.
 
 ### Fixed
+- `pyvis_network_server` releases its browser-side network (vis instance,
+  DataSets, observers) when the parent removes the module with
+  `await session.destroy(id)` (Shiny >= 1.6.1).
 - Shiny controller commands (`ctrl.fit()`, `select_nodes()`, `add_node()`,
   ...) issued while their network is being re-rendered (e.g. by the effect
   that just changed its data) used to reach the old network and be lost
