@@ -251,7 +251,7 @@ app_ui = ui.page_sidebar(
             # ── Edit Node ──
             ui.accordion_panel(
                 "Edit Node",
-                ui.output_text_verbatim("selected_node_info"),
+                ui.output_code("selected_node_info"),
                 ui.input_text("edit_node_label", "Label"),
                 ui.layout_columns(
                     ui.input_text("edit_node_color", "Color", value="#e74c3c"),
@@ -268,7 +268,7 @@ app_ui = ui.page_sidebar(
             # ── Edit Edge ──
             ui.accordion_panel(
                 "Edit Edge",
-                ui.output_text_verbatim("selected_edge_info"),
+                ui.output_code("selected_edge_info"),
                 ui.input_text("edit_edge_label", "Label"),
                 ui.layout_columns(
                     ui.input_text("edit_edge_color", "Color", value="#95a5a6"),
@@ -421,7 +421,7 @@ def server(input, output, session):
     def _on_deselect_node():
         selected_node_id.set(None)
 
-    @render.text
+    @render.code
     def selected_node_info():
         ev = input.network_selectNode()
         if ev and ev.get("nodeData"):
@@ -465,7 +465,7 @@ def server(input, output, session):
     def _on_deselect_edge():
         selected_edge_id.set(None)
 
-    @render.text
+    @render.code
     def selected_edge_info():
         ev = input.network_selectEdge()
         if ev and ev.get("edgeData") and not ev.get("nodeIds"):

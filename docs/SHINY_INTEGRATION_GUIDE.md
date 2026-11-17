@@ -58,7 +58,7 @@ from pyvis.shiny import output_pyvis_network, render_pyvis_network
 
 app_ui = ui.page_fluid(
     output_pyvis_network("my_network", height="600px"),
-    ui.output_text_verbatim("selected")
+    ui.output_code("selected")
 )
 
 def server(input, output, session):
@@ -70,7 +70,7 @@ def server(input, output, session):
         net.add_edge(1, 2)
         return net
     
-    @render.text
+    @render.code
     def selected():
         event = input.my_network_selectNode()
         if event:

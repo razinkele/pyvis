@@ -25,7 +25,7 @@ app_ui = ui.page_fillable(
             ui.input_action_button("add", "Add Random Node", class_="btn-outline-secondary w-100"),
             ui.hr(),
             ui.h6("Last Event"),
-            ui.output_text_verbatim("event_display"),
+            ui.output_code("event_display"),
             width=280,
         ),
         output_pyvis_network("network", height="100%"),
@@ -66,7 +66,7 @@ def server(input, output, session):
             "color": "#818cf8", "shape": "dot", "size": 20,
         })
 
-    @render.text
+    @render.code
     def event_display():
         sel = input.network_selectNode()
         if sel:

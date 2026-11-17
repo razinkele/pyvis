@@ -328,7 +328,7 @@ def output_pyvis_network(
         ```python
         app_ui = ui.page_fluid(
             output_pyvis_network("my_network", height="500px"),
-            ui.output_text_verbatim("selected_node")
+            ui.output_code("selected_node")
         )
         ```
     """
@@ -1355,7 +1355,7 @@ if SHINY_AVAILABLE:
             *controls,
             output_pyvis_network("network", height=height, width=width),
             ui.div(
-                ui.output_text_verbatim("selection_info"),
+                ui.output_code("selection_info"),
                 style="margin-top: 10px; font-size: 12px;"
             )
         )
@@ -1402,7 +1402,7 @@ if SHINY_AVAILABLE:
             return net
 
         @output
-        @render.text
+        @render.code
         def selection_info():
             info = []
             if 'network_selectNode' in input and input.network_selectNode():

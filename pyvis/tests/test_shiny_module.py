@@ -62,3 +62,15 @@ def test_ui_has_no_node_spacing_slider():
     with namespace_context("m"):
         html = str(w.pyvis_network_ui("m"))
     assert "node_spacing" not in html
+
+
+def test_module_ui_emits_no_shiny_deprecation_warning():
+    """Shiny 1.8 deprecated ui.output_text_verbatim(); the module UI must not use it."""
+    import warnings
+
+    from shiny._deprecated import ShinyDeprecationWarning
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", ShinyDeprecationWarning)
+        tag = w.pyvis_network_ui("net")
+    assert "net-selection_info" in str(tag)

@@ -419,7 +419,7 @@ def _tab_editor():
             ),
             ui.accordion_panel(
                 "Selected Node",
-                ui.output_text_verbatim("selected_info"),
+                ui.output_code("selected_info"),
                 ui.input_text("edit_label", "New Label"),
                 ui.input_text("edit_color", "New Color", value="#e74c3c"),
                 ui.layout_columns(
@@ -522,7 +522,7 @@ def _tab_events():
             ),
             ui.accordion_panel(
                 "Event Log",
-                ui.output_text_verbatim("event_log"),
+                ui.output_code("event_log"),
                 icon=ui.tags.i(class_="fa fa-stream"),
             ),
             id="events_acc",
@@ -562,7 +562,7 @@ def _tab_queries():
             ),
             ui.accordion_panel(
                 "Response",
-                ui.output_text_verbatim("query_response"),
+                ui.output_code("query_response"),
                 icon=ui.tags.i(class_="fa fa-terminal"),
             ),
             id="queries_acc",
@@ -729,7 +729,7 @@ def server(input, output, session):
     def _on_deselect_node():
         selected_node_id.set(None)
 
-    @render.text
+    @render.code
     def selected_info():
         ev = input.network_selectNode()
         if ev and ev.get("nodeData"):
@@ -930,7 +930,7 @@ def server(input, output, session):
     def _clear_log():
         event_log_entries.set([])
 
-    @render.text
+    @render.code
     def event_log():
         entries = event_log_entries()
         if not entries:
@@ -1053,7 +1053,7 @@ def server(input, output, session):
         known_nodes.set(nodes_update)
         _refresh_selects()
 
-    @render.text
+    @render.code
     def query_response():
         return last_query_response()
 

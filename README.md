@@ -130,7 +130,7 @@ from pyvis.shiny import (
 app_ui = ui.page_fluid(
     output_pyvis_network("network", height="600px"),
     ui.input_action_button("fit", "Fit to View"),
-    ui.output_text_verbatim("selected")
+    ui.output_code("selected")
 )
 
 def server(input, output, session):
@@ -149,7 +149,7 @@ def server(input, output, session):
     def _():
         ctrl.fit()
 
-    @render.text
+    @render.code
     def selected():
         event = input.network_selectNode()
         return f"Selected: {event['nodeId']}" if event else "Click a node"
