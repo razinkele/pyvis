@@ -40,6 +40,22 @@ if (typeof Shiny !== 'undefined') {
         }
     }
 
+    // Default node label colour per theme. 'light' is vis-network's own
+    // default; 'dark' matches --pyvis-text in styles.css. Applied only when the
+    // user has not chosen a label colour (options.nodes.font); per-node font
+    // settings always win because vis.js applies them over the global options.
+    var PYVIS_THEME_LABEL_COLOR = { light: '#343434', dark: '#e0e0e0' };
+
+    function pyvisHasUserLabelColor(options) {
+        var font = options && options.nodes && options.nodes.font;
+        // vis.js also accepts a shorthand string such as "14px arial red".
+        return typeof font === 'string' || !!(font && font.color);
+    }
+
+    function pyvisThemeLabelColor(theme) {
+        return PYVIS_THEME_LABEL_COLOR[theme] || PYVIS_THEME_LABEL_COLOR.light;
+    }
+
     // Tear down a previous network instance: removes global listeners,
     // deregisters DataSet handlers, disconnects the ResizeObserver, destroys
     // the vis.js network, and clears the registry entry.
@@ -233,6 +249,14 @@ if (typeof Shiny !== 'undefined') {
             var options = payload.options || {};
             if (typeof options === 'string') {
                 options = JSON.parse(options);
+            }
+
+            // Theme-aware label colour (copy, so the payload is not mutated).
+            var userLabelColor = pyvisHasUserLabelColor(options);
+            if (!userLabelColor && theme === 'dark') {
+                var nodeOpts = Object.assign({}, options.nodes);
+                nodeOpts.font = Object.assign({}, nodeOpts.font, { color: pyvisThemeLabelColor(theme) });
+                options = Object.assign({}, options, { nodes: nodeOpts });
             }
 
             // === MANIPULATION MODALS ===
@@ -687,7 +711,8 @@ if (typeof Shiny !== 'undefined') {
                 container: container,
                 canvasDiv: canvasDiv,
                 outputId: outputId,
-                resizeObserver: null
+                resizeObserver: null,
+                userLabelColor: userLabelColor
             };
             window.pyvisNetworks[outputId] = ref;
 
@@ -1196,6 +1221,7 @@ if (typeof Shiny !== 'undefined') {
 
             // Options
             case 'setOptions':
+                if (pyvisHasUserLabelColor(args.options)) ref.userLabelColor = true;
                 network.setOptions(args.options);
                 break;
 
@@ -1204,6 +1230,9 @@ if (typeof Shiny !== 'undefined') {
                 var newTheme = args.theme || 'light';
                 ref.container.className = ref.container.className
                     .replace(/pyvis-theme-\w+/, 'pyvis-theme-' + newTheme);
+                if (!ref.userLabelColor) {
+                    network.setOptions({ nodes: { font: { color: pyvisThemeLabelColor(newTheme) } } });
+                }
                 break;
 
             // Explicit teardown, for a server that knows the output is going

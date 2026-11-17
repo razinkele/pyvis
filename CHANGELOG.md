@@ -5,6 +5,11 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Changed
+- Shiny output: node labels follow the theme. With `theme="dark"` labels
+  default to `#e0e0e0` (was vis-network's dark grey `#343434`, unreadable on
+  the dark canvas), and `set_theme()` switches them. A label colour you set
+  yourself (`options.nodes.font`, at render or via `set_options()`) or per
+  node is never overridden.
 - Bundled vis-network upgraded from 10.1.2 to 10.1.5. Picks up the upstream
   fixes for escaped quotes in DOT strings (a `from_DOT()` file with a label
   such as `"say \"hi\""` previously failed to render at all) and for starting
@@ -31,8 +36,7 @@ All notable changes to this project are documented in this file.
   `examples/shiny_demo.py` and `examples/shiny_editor_demo.py` crash at
   startup.
 - Dark-theme demos are readable: sidebar text no longer inherits bslib's
-  near-black sidebar colour, node labels follow the theme (and switch with
-  it), and `shiny_demo.py` applies its per-group colours via `set_group()`
+  near-black sidebar colour, and `shiny_demo.py` applies its per-group colours via `set_group()`
   (a node's own `color` is ignored when it has a `group`).
 - `pyvis_network_ui()` no longer emits a `ShinyDeprecationWarning` on
   Shiny >= 1.8: it uses `ui.output_code()`/`@render.code` instead of the

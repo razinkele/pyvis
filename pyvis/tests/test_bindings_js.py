@@ -243,3 +243,48 @@ def test_stabilize_zero_iterations_passed_through(pyvis_page):
     )
     command(pyvis_page, "stabilize", {"iterations": 0})
     assert pyvis_page.evaluate("() => window.__stabilizeArgs") == [0]
+
+
+def label_color(page, node_id=1):
+    return page.evaluate(f"() => window.pyvisNetworks['net'].network.body.nodes[{node_id}].options.font.color")
+
+
+class TestThemeLabelColor:
+    """Node labels follow the theme unless the user chose a label colour."""
+
+    DARK, LIGHT = "#e0e0e0", "#343434"  # LIGHT is vis-network's own default
+
+    def test_dark_theme_render_uses_light_labels(self, pyvis_page):
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "dark"})
+        assert label_color(pyvis_page) == self.DARK
+
+    def test_light_theme_render_keeps_vis_default(self, pyvis_page):
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "light"})
+        assert label_color(pyvis_page) == self.LIGHT
+
+    def test_set_theme_switches_label_colour_both_ways(self, pyvis_page):
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "dark"})
+        command(pyvis_page, "setTheme", {"theme": "light"})
+        assert label_color(pyvis_page) == self.LIGHT
+        command(pyvis_page, "setTheme", {"theme": "dark"})
+        assert label_color(pyvis_page) == self.DARK
+
+    def test_user_font_colour_option_wins(self, pyvis_page):
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "dark"},
+               options={"physics": False, "nodes": {"font": {"color": "#ff0000"}}})
+        assert label_color(pyvis_page) == "#ff0000"
+        command(pyvis_page, "setTheme", {"theme": "light"})
+        assert label_color(pyvis_page) == "#ff0000"
+
+    def test_set_options_font_colour_is_respected_by_later_theme_switch(self, pyvis_page):
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "dark"})
+        command(pyvis_page, "setOptions", {"options": {"nodes": {"font": {"color": "#00ff00"}}}})
+        command(pyvis_page, "setTheme", {"theme": "light"})
+        assert label_color(pyvis_page) == "#00ff00"
+
+    def test_per_node_font_colour_wins(self, pyvis_page):
+        render(pyvis_page, [{"id": 1, "label": "a", "font": {"color": "#123456"}}], [],
+               config={"theme": "dark"})
+        assert label_color(pyvis_page) == "#123456"
+        command(pyvis_page, "setTheme", {"theme": "light"})
+        assert label_color(pyvis_page) == "#123456"

@@ -17,7 +17,7 @@ Run:
 from shiny import App, ui, render, reactive
 from pyvis.network import Network
 from pyvis.shiny import output_pyvis_network, render_pyvis_network, PyVisNetworkController
-from pyvis.types import NetworkOptions, ManipulationOptions, NodeOptions, Font
+from pyvis.types import NetworkOptions, ManipulationOptions
 
 
 # ── Initial graph data ───────────────────────────────────────────────
@@ -49,9 +49,6 @@ INITIAL_EDGES = [
 ]
 
 NODE_CHOICES = {str(n["id"]): f'{n["label"]} ({n["id"]})' for n in INITIAL_NODES}
-
-# vis.js draws node labels in dark grey by default; match them to the theme.
-LABEL_COLORS = {"dark": "#e2e8f0", "light": "#1f2937"}
 
 
 # ── CSS (theme-aware) ──────────────────────────────────────────────
@@ -341,7 +338,6 @@ def server(input, output, session):
         is_dark = input.dark_mode()
         # Toggle pyvis network theme
         ctrl.set_theme("dark" if is_dark else "light")
-        ctrl.set_options({"nodes": {"font": {"color": LABEL_COLORS["dark" if is_dark else "light"]}}})
         # Toggle app body class for Shiny UI theme
         await session.send_custom_message("pyvis-run-js", {
             "selector": "body",
@@ -387,7 +383,6 @@ def server(input, output, session):
                          label=e.get("label"))
         # Enable vis.js native manipulation toolbar (add/edit/delete on canvas)
         net.set_options(NetworkOptions(
-            nodes=NodeOptions(font=Font(color=LABEL_COLORS["dark"])),
             manipulation=ManipulationOptions(enabled=True, initiallyActive=False),
         ))
         return net
