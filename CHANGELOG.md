@@ -19,6 +19,10 @@ All notable changes to this project are documented in this file.
   pattern is now shared by `Network` and the Shiny wrapper. This had made
   `examples/shiny_demo.py` and `examples/shiny_editor_demo.py` crash at
   startup.
+- Dark-theme demos are readable: sidebar text no longer inherits bslib's
+  near-black sidebar colour, node labels follow the theme (and switch with
+  it), and `shiny_demo.py` applies its per-group colours via `set_group()`
+  (a node's own `color` is ignored when it has a `group`).
 - `pyvis_network_ui()` no longer emits a `ShinyDeprecationWarning` on
   Shiny >= 1.8: it uses `ui.output_code()`/`@render.code` instead of the
   deprecated `ui.output_text_verbatim()`. Docs and examples updated likewise.

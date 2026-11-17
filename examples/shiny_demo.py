@@ -28,7 +28,7 @@ from pyvis.shiny import output_pyvis_network, render_pyvis_network, PyVisNetwork
 from pyvis.types import (
     NetworkOptions, NodeOptions, EdgeOptions, PhysicsOptions,
     BarnesHut, ForceAtlas2Based, Repulsion as RepulsionOpts,
-    EdgeSmooth, InteractionOptions,
+    EdgeSmooth, InteractionOptions, Font,
 )
 
 
@@ -63,6 +63,13 @@ INITIAL_EDGES = [
     {"from": 4, "to": 2, "title": "depends"},
     {"from": 10, "to": 9, "title": "uses"},
 ]
+
+# A node's own color is dropped when it has a group (the group's style wins),
+# so the per-group colors above are applied as group definitions.
+GROUP_COLORS = {"language": "#3776ab", "framework": "#27ae60", "library": "#e67e22"}
+
+# vis.js draws node labels in dark grey by default; match them to the theme.
+LABEL_COLORS = {"dark": "#e2e8f0", "light": "#1f2937"}
 
 # Node IDs for select dropdowns -- built from initial data
 INITIAL_NODE_CHOICES = {str(n["id"]): f'{n["label"]} ({n["id"]})' for n in INITIAL_NODES}
@@ -140,6 +147,8 @@ header::after, .navbar::after {
 
 /* ── Sidebar ── */
 .bslib-sidebar-layout > .sidebar {
+    --bslib-sidebar-fg: var(--pv-text);
+    color: var(--pv-text) !important;
     background: var(--pv-bg-surface) !important;
     border-right: 1px solid var(--pv-border) !important;
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3) !important;
@@ -664,6 +673,9 @@ def server(input, output, session):
     @render_pyvis_network(theme="dark")
     def network():
         net = Network(heading="")
+        net.set_options(NetworkOptions(nodes=NodeOptions(font=Font(color=LABEL_COLORS["dark"]))))
+        for group, color in GROUP_COLORS.items():
+            net.set_group(group, color=color)
         for n in INITIAL_NODES:
             net.add_node(n["id"], label=n["label"], color=n["color"],
                          shape=n["shape"], size=n["size"], group=n.get("group"))
@@ -676,7 +688,9 @@ def server(input, output, session):
     @reactive.effect
     @reactive.event(input.theme, ignore_init=True)
     def _switch_theme():
-        ctrl.set_theme(input.theme())
+        theme = input.theme()
+        ctrl.set_theme(theme)
+        ctrl.set_options({"nodes": {"font": {"color": LABEL_COLORS[theme]}}})
 
     # ── Helper: refresh node-select dropdowns ─────────────────────────
 
