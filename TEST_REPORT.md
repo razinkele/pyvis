@@ -1,5 +1,9 @@
 # PyVis Test Report
 
+> **Update 2026-11-17:** 637 tests pass, browser tests included (Shiny 1.9.0,
+> vis-network 10.1.5). The `ui.output_text_verbatim()` deprecation below is
+> fixed. The rest of this report is the 2026-10-24 snapshot.
+
 **Date**: 2026-10-24  
 **Test Environment**: Python 3.13.11, pytest 9.0.2  
 **Test Suite**: Non-browser tests (548 tests)
@@ -77,7 +81,7 @@ Most uncovered lines are:
 
 ### Deprecation Warnings (3)
 - `test_api_reference.py`: `maxsplit` passed as positional argument (minor, fixable)
-- `test_shiny_module.py`: `ui.output_text_verbatim()` deprecated (use `ui.output_code()` instead)
+- ~~`test_shiny_module.py`: `ui.output_text_verbatim()` deprecated~~ (fixed 2026-11-17: now `ui.output_code()`)
 
 ### User Warnings (1)
 - `test_ui_alignment.py`: XSS prevention working correctly - unsafe keys filtered from select options

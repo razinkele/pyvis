@@ -11,7 +11,6 @@ VIS_NETWORK_VERSION = "10.1.5"
 
 # CDN URLs
 UNPKG_CDN_BASE = f"https://unpkg.com/vis-network@{VIS_NETWORK_VERSION}"
-CDNJS_CDN_BASE = f"https://cdnjs.cloudflare.com/ajax/libs/vis-network/{VIS_NETWORK_VERSION}"
 
 # Local library directory name
 LOCAL_LIB_DIR = f"vis-{VIS_NETWORK_VERSION}"
