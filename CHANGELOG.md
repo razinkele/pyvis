@@ -12,6 +12,13 @@ All notable changes to this project are documented in this file.
   and the search box's animated focus).
 
 ### Fixed
+- CSS dimensions accept a flat `calc()` expression, e.g.
+  `output_pyvis_network(..., height="calc(100vh - 40px)")` or
+  `Network(height="calc(100% - 2rem)")`. Only numbers, the existing units and
+  `+ - * /` are allowed inside, so the injection guard still holds. The
+  pattern is now shared by `Network` and the Shiny wrapper. This had made
+  `examples/shiny_demo.py` and `examples/shiny_editor_demo.py` crash at
+  startup.
 - `pyvis_network_ui()` no longer emits a `ShinyDeprecationWarning` on
   Shiny >= 1.8: it uses `ui.output_code()`/`@render.code` instead of the
   deprecated `ui.output_text_verbatim()`. Docs and examples updated likewise.

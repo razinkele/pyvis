@@ -93,3 +93,41 @@ class TestFromDOTValidation:
             assert "A" in net.dot_lang
         finally:
             os.unlink(tmppath)
+
+
+class TestCSSDimensionCalc:
+    """calc() dimensions are accepted; anything that could escape the style
+    attribute is still rejected (shared by Network and the Shiny wrapper)."""
+
+    VALID = [
+        "600px", "100%", "1.5em", "50vh",
+        "calc(100vh - 40px)", "calc(100% - 2rem)", "calc(50vw + 10px)",
+        "calc(100vh/2)", "calc(2 * 300px)", "calc( 100% - 1.5em - 4px )",
+    ]
+    INVALID = [
+        "calc(100vh - 40px); background: red", "calc(100vh - 40px))",
+        "calc(url(x))", "calc(expression(alert(1)))", "calc()", "calc(100vh -)",
+        "calc(var(--h))", "calc(100vh - 40px", 'calc(1px)" onload="x',
+        "100px; color: red", "expression(alert(1))", "auto",
+    ]
+
+    @pytest.mark.parametrize("value", VALID)
+    def test_network_accepts(self, value):
+        net = Network(height=value, width=value)
+        assert net.height == value and net.width == value
+
+    @pytest.mark.parametrize("value", INVALID)
+    def test_network_rejects(self, value):
+        with pytest.raises(ValueError):
+            Network(height=value)
+
+    @pytest.mark.parametrize("value", VALID)
+    def test_shiny_accepts(self, value):
+        w = pytest.importorskip("pyvis.shiny.wrapper")
+        assert w._validate_css_dim(value, "height") == value
+
+    @pytest.mark.parametrize("value", INVALID)
+    def test_shiny_rejects(self, value):
+        w = pytest.importorskip("pyvis.shiny.wrapper")
+        with pytest.raises(ValueError):
+            w._validate_css_dim(value, "height")

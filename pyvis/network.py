@@ -53,7 +53,16 @@ VALID_CDN_RESOURCES = [CDN_LOCAL, CDN_INLINE, CDN_REMOTE, CDN_REMOTE_ESM]
 
 # --- CSS Validation Patterns (Security) ---
 # Prevent CSS injection attacks
-_CSS_DIM_RE = re.compile(r'^\d+(\.\d+)?(px|%|em|rem|vh|vw)$')
+# A dimension is a plain length (e.g. "600px", "100%") or a flat calc() of
+# lengths and unitless numbers joined by + - * / (e.g. "calc(100vh - 40px)").
+# No nested parentheses, functions, quotes or semicolons can match, so the
+# value cannot break out of the style attribute it is interpolated into.
+_CSS_LEN = r'\d+(?:\.\d+)?(?:px|%|em|rem|vh|vw)'
+_CSS_CALC_TERM = r'\d+(?:\.\d+)?(?:px|%|em|rem|vh|vw)?'
+_CSS_DIM_RE = re.compile(
+    rf'^(?:{_CSS_LEN}'
+    rf'|calc\(\s*{_CSS_CALC_TERM}(?:\s*[-+*/]\s*{_CSS_CALC_TERM})*\s*\))$'
+)
 _CSS_COLOR_RE = re.compile(
     r'^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+|rgba?\(\s*[\d.,\s%]+\)|hsla?\(\s*[\d.,\s%]+\))$'
 )

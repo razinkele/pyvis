@@ -82,7 +82,6 @@ def server(input, output, session):
 import json as _json
 import logging as _logging
 import os
-import re as _re
 from pathlib import Path
 from typing import Optional, Dict, Any, Union, List, Callable
 
@@ -91,7 +90,7 @@ try:
 except ImportError:
     _PYVIS_VERSION = "0.0.0"
 
-_CSS_DIM_RE = _re.compile(r'^\d+(\.\d+)?(px|%|em|rem|vh|vw)$')
+from pyvis.network import _CSS_DIM_RE  # single source of truth (incl. calc())
 
 
 def _validate_css_dim(value: str, name: str) -> str:
