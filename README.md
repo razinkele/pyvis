@@ -49,7 +49,7 @@ pip install .
 | [jinja2](https://jinja.palletsprojects.com/) >= 2.9.6 | HTML template rendering |
 | [jsonpickle](https://jsonpickle.github.io/) >= 1.4.1 | JSON serialization |
 
-Optional: [ipython](https://ipython.org/) >= 5.3.0 (`pyvis-optimized[notebook]`), [shiny](https://shiny.posit.co/py/) >= 1.0 and [htmltools](https://pypi.org/project/htmltools/) (`pyvis-optimized[shiny]`)
+Optional: [ipython](https://ipython.org/) >= 5.3.0 (`pyvis-optimized[notebook]`), [shiny](https://shiny.posit.co/py/) >= 1.6.4 and [htmltools](https://pypi.org/project/htmltools/) (`pyvis-optimized[shiny]`)
 
 ## Quick Start
 

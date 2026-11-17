@@ -14,6 +14,9 @@ All notable changes to this project are documented in this file.
   stops following; `set_theme("auto")` resumes.
 
 ### Changed
+- The `shiny` extra now requires `shiny>=1.6.4` (was `>=1.0`, never tested):
+  1.6.4 fixes a bookmark path-traversal vulnerability, and 1.6.1 added the
+  `session.on_destroy()` that module cleanup uses.
 - Shiny output: node labels follow the theme. With `theme="dark"` labels
   default to `#e0e0e0` (was vis-network's dark grey `#343434`, unreadable on
   the dark canvas), and `set_theme()` switches them. A label colour you set

@@ -21,7 +21,10 @@ def test_notebook_lib_matches_package_lib(rel):
 
 
 def test_environment_shiny_floor_matches_pyproject():
-    assert "shiny>=1.0" in (ROOT / "environment.yml").read_text(encoding="utf-8")
+    import re
+    floor = re.search(r'"(shiny>=[0-9.]+)"', (ROOT / "pyproject.toml").read_text(encoding="utf-8")).group(1)
+    assert floor in (ROOT / "environment.yml").read_text(encoding="utf-8")
+    assert floor.replace(">=", "](https://shiny.posit.co/py/) >= ") in (ROOT / "README.md").read_text(encoding="utf-8")
 
 
 def test_recipes_check_same_runtime_files():

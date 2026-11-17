@@ -40,7 +40,7 @@ dependencies = [
 [project.optional-dependencies]
 # Shiny integration support
 shiny = [
-    "shiny>=1.0",
+    "shiny>=1.6.4",  # 1.6.4: bookmark path-traversal fix; 1.6.1: session.on_destroy
     "htmltools",
 ]
 
