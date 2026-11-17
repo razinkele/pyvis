@@ -1250,6 +1250,8 @@ class Network:
                                     vis_css_cdn=vis_config.VIS_CSS_UNPKG,
                                     vis_js_cdn=vis_config.VIS_JS_UNPKG,
                                     vis_esm_cdn=vis_config.VIS_ESM_UNPKG,
+                                    vis_js_sri=vis_config.VIS_JS_SRI,
+                                    vis_css_sri=vis_config.VIS_CSS_SRI,
                                     legend=self.legend,
                                     groups=self.groups,
                                     highlight_degree=self.highlight_degree,

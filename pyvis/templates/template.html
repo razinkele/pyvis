@@ -21,21 +21,19 @@
             {%  endif %}
         {%  elif cdn_resources=="remote" %}
             <script>{%  include 'lib/bindings/utils.js' %}</script>
-            <link rel="stylesheet" href="{{ vis_css_cdn|safe }}" type="text/css" />
-            <script src="{{ vis_js_cdn|safe }}" type="text/javascript"></script>
+            <link rel="stylesheet" href="{{ vis_css_cdn|safe }}" integrity="{{ vis_css_sri }}" crossorigin="anonymous" type="text/css" />
+            <script src="{{ vis_js_cdn|safe }}" integrity="{{ vis_js_sri }}" crossorigin="anonymous" type="text/javascript"></script>
             {% if select_menu or filter_menu %}
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.4.3/css/tom-select.min.css" integrity="sha512-WBuHdUNR/QocxZ4cSMmXUrV142yazK51uQdknbg+RBTJsrQBbdXFxH8EPyjoU/rGV7FPR9HoWBul4nVbEWifzQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.4.3/js/tom-select.complete.js" integrity="sha512-cv8SyZZkoW3eB3rWs0JsM/wNxKZe59+tMN8ewVIu24I1EAeBOT6lqkdty/iMxo3OJGvrFRYIrrGwM5BJqAXsYw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
             {%  endif %}
         {%  elif cdn_resources=="remote_esm" %}
             <script>{%  include 'lib/bindings/utils.js' %}</script>
-            <link rel="stylesheet" href="{{ vis_css_cdn|safe }}" type="text/css" />
+            <link rel="stylesheet" href="{{ vis_css_cdn|safe }}" integrity="{{ vis_css_sri }}" crossorigin="anonymous" type="text/css" />
             <script type="module">
-                import { Network, DataSet } from "{{ vis_esm_cdn|safe }}";
-                window.vis = {
-                    Network: Network,
-                    DataSet: DataSet
-                };
+                import * as visNetwork from "{{ vis_esm_cdn|safe }}";
+                window.vis = visNetwork;
+                window.dispatchEvent(new Event("pyvis:vis-ready"));
             </script>
             {% if select_menu or filter_menu %}
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.4.3/css/tom-select.min.css" integrity="sha512-WBuHdUNR/QocxZ4cSMmXUrV142yazK51uQdknbg+RBTJsrQBbdXFxH8EPyjoU/rGV7FPR9HoWBul4nVbEWifzQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -462,7 +460,7 @@
               </div>
             </div>
         {% endif %}
-        <script type="{{ 'module' if cdn_resources == 'remote_esm' else 'text/javascript' }}">
+        <script type="text/javascript">
                   var HIGHLIGHT_DEGREE = {{highlight_degree|tojson|safe}};
 
               // initialize global variables.
@@ -773,7 +771,7 @@
 
                   nodeColors = {};
                   allNodes = nodes.get({ returnType: "Object" });
-                  for (nodeId in allNodes) {
+                  for (var nodeId in allNodes) {
                     nodeColors[nodeId] = allNodes[nodeId].color;
                   }
                   allEdges = edges.get({ returnType: "Object" });
@@ -908,7 +906,17 @@
                   return network;
 
               }
+              {% if cdn_resources == "remote_esm" %}
+              // The ES module that loads vis-network runs after this classic
+              // script, so draw once it has published window.vis.
+              if (window.vis) {
+                  drawGraph();
+              } else {
+                  window.addEventListener("pyvis:vis-ready", drawGraph, { once: true });
+              }
+              {% else %}
               drawGraph();
+              {% endif %}
         </script>
     </body>
 </html>

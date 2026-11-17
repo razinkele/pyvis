@@ -21,6 +21,13 @@ VIS_CSS_UNPKG = f"{UNPKG_CDN_BASE}/styles/vis-network.min.css"
 VIS_JS_UNPKG = f"{UNPKG_CDN_BASE}/dist/vis-network.min.js"
 VIS_ESM_UNPKG = f"{UNPKG_CDN_BASE}/dist/vis-network.esm.js"
 
+# Subresource Integrity hashes for the remote (unpkg) assets. unpkg serves the
+# npm tarball's bytes, which are also what lib/vis-<version>/ bundles, so a
+# test recomputes these from the bundled files: update them with the version.
+# (remote_esm loads the JS via an ES-module import, which cannot carry SRI.)
+VIS_JS_SRI = "sha384-zMmuvYzbBQWEfFCPQQwDg0k2YM8AzPmrLXsttUZwhUxdbJw+nes8IIkndnv6Ygb/"
+VIS_CSS_SRI = "sha384-dyJxWiQJAf9QvdWzvgaFgxG2+qGBlxRcGINxMWNJBYZ7731QjuquKfhX2OUkb22J"
+
 # Local resource paths (relative to lib directory)
 VIS_CSS_LOCAL = f"lib/{LOCAL_LIB_DIR}/vis-network.min.css"
 VIS_JS_LOCAL = f"lib/{LOCAL_LIB_DIR}/vis-network.min.js"

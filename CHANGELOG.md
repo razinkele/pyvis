@@ -11,7 +11,18 @@ All notable changes to this project are documented in this file.
   a view animation while another is pending (`fit()`/`focus()`/`move_to()`
   and the search box's animated focus).
 
+### Security
+- Remote vis-network assets now carry Subresource Integrity hashes
+  (`integrity` + `crossorigin` on the unpkg `<script>`/`<link>`), as the
+  `cdn_resources="remote"` docs already claimed. `remote_esm` covers the CSS;
+  its JS is loaded by an ES-module `import`, which cannot carry SRI.
+
 ### Fixed
+- `cdn_resources="remote_esm"` rendered nothing: the main script ran as an
+  ES module, so strict mode threw on an undeclared loop variable and its
+  globals were invisible to `utils.js` (highlighting, menus). It is now a
+  classic script that draws once the module has loaded vis-network, and the
+  module exposes the full namespace, so `from_DOT()` works in this mode too.
 - CSS dimensions accept a flat `calc()` expression, e.g.
   `output_pyvis_network(..., height="calc(100vh - 40px)")` or
   `Network(height="calc(100% - 2rem)")`. Only numbers, the existing units and

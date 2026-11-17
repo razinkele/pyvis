@@ -131,3 +131,39 @@ class TestCSSDimensionCalc:
         w = pytest.importorskip("pyvis.shiny.wrapper")
         with pytest.raises(ValueError):
             w._validate_css_dim(value, "height")
+
+
+class TestCDNSubresourceIntegrity:
+    """Remote vis-network assets carry SRI hashes that match the bundled files
+    (unpkg serves the same bytes as the npm tarball the bundle comes from)."""
+
+    @staticmethod
+    def _sri(path):
+        import base64
+        import hashlib
+        return "sha384-" + base64.b64encode(hashlib.sha384(path.read_bytes()).digest()).decode()
+
+    def _lib(self):
+        from pathlib import Path
+        from pyvis import vis_config
+        return Path(vis_config.__file__).parent / "templates" / "lib" / vis_config.LOCAL_LIB_DIR
+
+    def test_constants_match_bundled_files(self):
+        from pyvis import vis_config
+        assert vis_config.VIS_JS_SRI == self._sri(self._lib() / "vis-network.min.js")
+        assert vis_config.VIS_CSS_SRI == self._sri(self._lib() / "vis-network.min.css")
+
+    def test_remote_html_has_integrity(self):
+        from pyvis import vis_config
+        net = Network(cdn_resources="remote")
+        net.add_node(1)
+        html = net.generate_html()
+        assert f'src="{vis_config.VIS_JS_UNPKG}" integrity="{vis_config.VIS_JS_SRI}" crossorigin="anonymous"' in html
+        assert f'href="{vis_config.VIS_CSS_UNPKG}" integrity="{vis_config.VIS_CSS_SRI}" crossorigin="anonymous"' in html
+
+    def test_remote_esm_css_has_integrity(self):
+        from pyvis import vis_config
+        net = Network(cdn_resources="remote_esm")
+        net.add_node(1)
+        html = net.generate_html()
+        assert f'href="{vis_config.VIS_CSS_UNPKG}" integrity="{vis_config.VIS_CSS_SRI}" crossorigin="anonymous"' in html

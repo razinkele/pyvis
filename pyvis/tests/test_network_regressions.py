@@ -316,11 +316,13 @@ class TestSmallCoreFixes:
 
 
 class TestExamples:
-    def test_edge_attribute_example_runs(self, tmp_path, no_browser):
+    def test_edge_attribute_example_runs(self, tmp_path, no_browser, monkeypatch):
         import runpy
         from pathlib import Path
         example = Path(__file__).resolve().parents[2] / "examples" / "edge_attribute_editing_example.py"
+        monkeypatch.chdir(tmp_path)  # the example writes its HTML to the cwd
         runpy.run_path(str(example), run_name="__main__")
+        assert (tmp_path / "edge_attribute_editing_example.html").exists()
 
 
 class TestNotebookExtra:

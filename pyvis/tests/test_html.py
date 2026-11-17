@@ -151,3 +151,45 @@ class TestDOTEscapedQuotes:
         label = page.evaluate("network.body.data.nodes.get('A').label")
         assert label == 'say "hi"'
         assert sorted(page.evaluate("network.body.data.nodes.getIds()")) == ["A", "B"]
+
+
+def _unpkg_reachable() -> bool:
+    import urllib.request
+    try:
+        urllib.request.urlopen("https://unpkg.com/", timeout=5)
+        return True
+    except Exception:
+        return False
+
+
+@pytest.mark.skipif(not _unpkg_reachable(), reason="needs network access to unpkg.com")
+class TestRemoteCDN:
+    """Remote modes load vis-network from unpkg (with SRI) and draw the graph.
+
+    remote_esm used to run the main script as an ES module, which made its
+    vars module-local (utils.js handlers expect globals) and strict mode
+    threw on an undeclared loop variable, so nothing rendered.
+    """
+
+    @pytest.mark.parametrize("mode", ["remote", "remote_esm"])
+    def test_graph_renders(self, mode, page: Page, tmp_path: Path):
+        errors = []
+        page.on("pageerror", lambda e: errors.append(str(e)))
+        page.on("console", lambda m: m.type == "error" and errors.append(m.text))
+        net = Network(cdn_resources=mode)
+        net.add_nodes([1, 2, 3])
+        net.add_edge(1, 2)
+        _save_and_open(net, tmp_path, f"{mode}.html", page)
+        page.wait_for_function("typeof network !== 'undefined' && network !== null", timeout=30000)
+        assert page.evaluate("network.body.data.nodes.length") == 3
+        assert page.evaluate("typeof allNodes === 'object' && allNodes !== null")
+        assert errors == []
+
+    def test_remote_esm_dot(self, page: Page, tmp_path: Path):
+        dot_file = tmp_path / "g.dot"
+        dot_file.write_text("digraph g { A -> B; B -> C; }", encoding="utf-8")
+        net = Network(cdn_resources="remote_esm")
+        net.from_DOT(str(dot_file))
+        _save_and_open(net, tmp_path, "esm_dot.html", page)
+        page.wait_for_function("typeof network !== 'undefined' && network !== null", timeout=30000)
+        assert sorted(page.evaluate("network.body.data.nodes.getIds()")) == ["A", "B", "C"]
