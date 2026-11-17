@@ -32,7 +32,9 @@ INITIAL_NODES = [
     {"id": 5, "label": "Epsilon", "color": "#9b59b6", "shape": "diamond",  "size": 32},
     {"id": 6, "label": "Zeta",    "color": "#1abc9c", "shape": "dot",      "size": 22},
     {"id": 7, "label": "Eta",     "color": "#e67e22", "shape": "ellipse",  "size": 26},
-    {"id": 8, "label": "Theta",   "color": "#34495e", "shape": "box",      "size": 28},
+    # Box labels sit inside the (dark) node, so keep them white in both themes.
+    {"id": 8, "label": "Theta",   "color": "#34495e", "shape": "box",      "size": 28,
+     "font": {"color": "#ffffff"}},
 ]
 
 INITIAL_EDGES = [
@@ -375,8 +377,9 @@ def server(input, output, session):
     def network():
         net = Network(heading="")
         for n in INITIAL_NODES:
+            extra = {"font": n["font"]} if "font" in n else {}
             net.add_node(n["id"], label=n["label"], color=n["color"],
-                         shape=n["shape"], size=n["size"])
+                         shape=n["shape"], size=n["size"], **extra)
         for e in INITIAL_EDGES:
             net.add_edge(e["from"], e["to"], id=e["id"],
                          width=e.get("width", 1), color=e.get("color"),
