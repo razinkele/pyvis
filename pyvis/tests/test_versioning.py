@@ -258,3 +258,25 @@ class TestExplicitBumpCollectsChangelog:
         text = cl.read_text(encoding="utf-8")
         assert "[Unreleased]" not in text
         assert text.index("## [4.3]") < text.index("hand-written note") < text.index("## [4.2]")
+
+    def test_curated_unreleased_notes_replace_generated_entries(self, monkeypatch, tmp_path):
+        """Hand-written [Unreleased] notes are the release notes: appending the
+        commit-subject list as well repeated every heading in the section."""
+        import auto_version as av
+        cl = tmp_path / "CHANGELOG.md"
+        cl.write_text("# Changelog\n\n## [Unreleased]\n\n### Fixed\n- hand-written note\n\n## [4.2] - 2026-03-28\n\n- old\n", encoding="utf-8")
+        monkeypatch.setattr(av, "CHANGELOG", cl)
+        av.update_changelog("4.3", {"Fixed": ["fix: commit subject"], "Added": ["a thing"]})
+        section = cl.read_text(encoding="utf-8").split("## [4.3]")[1].split("## [4.2]")[0]
+        assert "hand-written note" in section
+        assert "commit subject" not in section and "a thing" not in section
+        assert section.count("### Fixed") == 1
+
+    def test_generated_entries_used_without_curated_notes(self, monkeypatch, tmp_path):
+        import auto_version as av
+        cl = tmp_path / "CHANGELOG.md"
+        cl.write_text("# Changelog\n\n## [Unreleased]\n\n## [4.2] - 2026-03-28\n\n- old\n", encoding="utf-8")
+        monkeypatch.setattr(av, "CHANGELOG", cl)
+        av.update_changelog("4.3", {"Added": ["a thing"]})
+        section = cl.read_text(encoding="utf-8").split("## [4.3]")[1].split("## [4.2]")[0]
+        assert "### Added" in section and "- a thing" in section
