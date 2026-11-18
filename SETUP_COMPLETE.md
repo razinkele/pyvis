@@ -158,7 +158,7 @@ When working with Copilot in this repository:
 4. **Consistent** — Clear naming conventions (snake_case ↔ camelCase)
 5. **Secure** — XSS prevention, CSS validation, input validation
 6. **Performant** — O(1) node/edge lookups, caching strategy
-7. **Modern Python** — 3.10+, type hints throughout, dataclasses
+7. **Modern Python** — 3.11+, type hints throughout, dataclasses
 
 ### Architecture Highlights
 

@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Breaking Changes
+- **Python 3.11+.** `requires-python` is now `>=3.11` (was `>=3.10`),
+  following Shiny for Python, whose next release drops 3.10. Python 3.10
+  users stay on pyvis-optimized 4.5.x.
+- **`shiny>=1.6.4`** for the `shiny` extra (was `>=1.0`, never tested):
+  1.6.4 fixes a bookmark path-traversal vulnerability, and 1.6.1 added the
+  `session.on_destroy()` that module cleanup uses.
+- **Shiny output size is honoured.** `output_pyvis_network(height=...,
+  width=...)` used to be ignored once the network rendered: the output div
+  carried Shiny's `shiny-html-output` class, which Shiny's CSS turns into
+  `display: contents` (no box, so no size). The class is dropped, so the
+  size you ask for is the size you get. Apps that relied on the old
+  behaviour (network sized by its parent) may need `fill=True`.
+
 ### Added
 - `output_pyvis_network(fill=True)` is a standard Shiny fill item, so the
   network grows inside `page_fillable()`, full-screen cards and sidebars.
@@ -14,9 +28,6 @@ All notable changes to this project are documented in this file.
   stops following; `set_theme("auto")` resumes.
 
 ### Changed
-- The `shiny` extra now requires `shiny>=1.6.4` (was `>=1.0`, never tested):
-  1.6.4 fixes a bookmark path-traversal vulnerability, and 1.6.1 added the
-  `session.on_destroy()` that module cleanup uses.
 - Shiny output: node labels follow the theme. With `theme="dark"` labels
   default to `#e0e0e0` (was vis-network's dark grey `#343434`, unreadable on
   the dark canvas), and `set_theme()` switches them. A label colour you set
@@ -35,11 +46,6 @@ All notable changes to this project are documented in this file.
   its JS is loaded by an ES-module `import`, which cannot carry SRI.
 
 ### Fixed
-- `output_pyvis_network(height=..., width=...)` were ignored once the network
-  rendered: the output div carried Shiny's `shiny-html-output` class, which
-  Shiny's CSS turns into `display: contents` (no box, so no size). The class
-  is dropped; the size you ask for is now the size you get. Apps that relied
-  on the old behaviour (network sized by its parent) may need `fill=True`.
 - `pyvis_network_server` releases its browser-side network (vis instance,
   DataSets, observers) when the parent removes the module with
   `await session.destroy(id)` (Shiny >= 1.6.1).

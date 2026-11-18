@@ -17,7 +17,7 @@ PyVis is a Python library for creating and visualizing interactive network graph
 
 ## Installation
 
-**Requires Python >= 3.10**
+**Requires Python >= 3.11**
 
 ```bash
 pip install pyvis-optimized

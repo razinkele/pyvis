@@ -25,7 +25,7 @@ if errorlevel 1 (
     echo [ERROR] Environment creation failed!
     echo.
     echo Try creating manually:
-    echo   conda create -n pyvis-optimized python=3.10
+    echo   conda create -n pyvis-optimized python=3.11
     echo   conda activate pyvis-optimized
     echo   pip install -e .
     exit /b 1
