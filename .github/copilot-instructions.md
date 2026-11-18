@@ -283,7 +283,7 @@ Version is single source of truth in `pyvis/_version.py`. Use the bump script:
 ```bash
 python auto_version.py          # Bump from conventional commits, update CHANGELOG, tag
 python auto_version.py minor    # Explicit bump to minor version
-python auto_version.py --no-commit   # Dry run
+python auto_version.py --no-commit   # Update files without committing or tagging
 ```
 
 ### Pull Request Guidelines

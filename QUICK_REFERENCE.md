@@ -180,12 +180,13 @@ net.show("output.html")
 
 ### Export to JSON
 ```python
-# Get graph as JSON-serializable dict
-data = net.get_network_data()
-print(data)  # {'nodes': [...], 'edges': [...]}
+import json
+
+# Get graph as JSON-serializable dict ({'nodes': [...], 'edges': [...], ...})
+data = net.get_network_json()
 
 # Get JSON string
-json_str = net.get_network_json()
+json_str = json.dumps(data)
 ```
 
 ## Performance Optimization
@@ -198,7 +199,7 @@ json_str = net.get_network_json()
 ### Batch Operations
 ```python
 # ✅ GOOD - batch add
-net.add_nodes([(1, {"label": "A"}), (2, {"label": "B"})])
+net.add_nodes([1, 2], label=["A", "B"])
 
 # ❌ SLOW - loop add
 for i, label in enumerate(["A", "B"]):
@@ -234,7 +235,7 @@ python auto_version.py
 python auto_version.py minor
 python auto_version.py major
 
-# Dry run (don't commit/tag)
+# Update files (_version.py, recipes, CHANGELOG) without committing or tagging
 python auto_version.py --no-commit
 ```
 
