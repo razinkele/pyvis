@@ -1160,6 +1160,20 @@ if (typeof Shiny !== 'undefined') {
         var args = pyvisUndefNulls(message.args || {});
         var ref = window.pyvisNetworks[outputId];
 
+        // Explicit teardown, for a server that knows the output is going
+        // away (e.g. from session.on_destroy) before the DOM node is
+        // removed. Releases the vis network, its DataSets, the resize and
+        // theme observers and the global keydown handler. Handled before
+        // the queue: with no network there is nothing to destroy, and a
+        // queued destroy would tear down the next network rendered under
+        // this id (e.g. a module re-created with the same id). Commands
+        // still queued for the old output are dropped too.
+        if (command === 'destroy') {
+            delete window.pyvisPendingCommands[outputId];
+            pyvisDestroy(outputId);
+            return;
+        }
+
         if (!ref || !ref.network) {
             (window.pyvisPendingCommands[outputId] = window.pyvisPendingCommands[outputId] || []).push(message);
             console.debug('PyVis: queued command until render:', command, outputId);
@@ -1275,14 +1289,6 @@ if (typeof Shiny !== 'undefined') {
                     pyvisStopAutoTheme(ref);  // an explicit theme stops following
                     pyvisApplyTheme(ref, newTheme);
                 }
-                break;
-
-            // Explicit teardown, for a server that knows the output is going
-            // away (e.g. from session.on_destroy) before the DOM node is
-            // removed. Releases the vis network, its DataSets, the resize
-            // observer and the global keydown handler.
-            case 'destroy':
-                pyvisDestroy(outputId);
                 break;
 
             // Queries - responses sent back as Shiny inputs

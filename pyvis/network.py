@@ -1380,7 +1380,14 @@ class Network:
                     "show(notebook=True) needs IPython. "
                     "Install with: pip install 'pyvis-optimized[notebook]'"
                 ) from e
-            return IFrame(name, width=self.width, height=self.height)
+            # IFrame writes width/height as HTML attributes, which cannot
+            # express calc(); repeat them as CSS (it wins over attributes).
+            # Re-checked here because the attributes are public and may have
+            # been reassigned since the constructor validated them.
+            extras = []
+            if all(isinstance(v, str) and _CSS_DIM_RE.match(v) for v in (self.width, self.height)):
+                extras.append(f'style="width: {self.width}; height: {self.height};"')
+            return IFrame(name, width=self.width, height=self.height, extras=extras)
 
     def prep_notebook(self,
                       custom_template=False, custom_template_path=None):

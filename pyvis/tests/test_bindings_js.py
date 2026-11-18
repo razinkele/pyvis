@@ -372,3 +372,14 @@ def test_output_error_tears_down_network_so_commands_queue(pyvis_page):
     command(pyvis_page, "selectNodes", {"nodeIds": [2], "highlightEdges": False})
     render(pyvis_page, [{"id": 1}, {"id": 2}], [])
     assert pyvis_page.evaluate("() => window.pyvisNetworks['net'].network.getSelectedNodes()") == [2]
+
+
+def test_destroy_without_a_network_is_not_replayed_on_next_render(pyvis_page):
+    """destroy for an output with no network (e.g. a module whose data was
+    None) must not be queued: a module re-created under the same id would
+    replay it and tear down its new network. It also drops stale commands."""
+    command(pyvis_page, "selectNodes", {"nodeIds": [1], "highlightEdges": False})
+    command(pyvis_page, "destroy", {})
+    render(pyvis_page, [{"id": 1}, {"id": 2}], [])
+    assert pyvis_page.evaluate("() => !!(window.pyvisNetworks['net'] && window.pyvisNetworks['net'].network)")
+    assert pyvis_page.evaluate("() => window.pyvisNetworks['net'].network.getSelectedNodes()") == []

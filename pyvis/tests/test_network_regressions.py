@@ -558,3 +558,13 @@ class TestColorWithGroup:
 def test_color_none_with_group_does_not_warn(recwarn):
     Network().add_node(1, color=None, group="g")
     assert not [w for w in recwarn if "ignored" in str(w.message)]
+
+
+def test_notebook_iframe_applies_calc_dimensions_as_css(tmp_path):
+    """IPython's IFrame writes width/height as HTML attributes, which cannot
+    express calc(); the dimensions must also be set as CSS on the frame."""
+    pytest.importorskip("IPython")
+    net = Network(height="calc(100vh - 40px)", width="100%")
+    net.add_node(1)
+    html = net.show(str(tmp_path / "nb.html"), notebook=True)._repr_html_()
+    assert 'style="width: 100%; height: calc(100vh - 40px);"' in html
