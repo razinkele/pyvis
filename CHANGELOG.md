@@ -2,7 +2,8 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased]
+
+## [5.0.0] - 2026-11-18
 
 ### Breaking Changes
 - **Python 3.11+.** `requires-python` is now `>=3.11` (was `>=3.10`),
@@ -77,7 +78,6 @@ All notable changes to this project are documented in this file.
 - `pyvis_network_ui()` no longer emits a `ShinyDeprecationWarning` on
   Shiny >= 1.8: it uses `ui.output_code()`/`@render.code` instead of the
   deprecated `ui.output_text_verbatim()`. Docs and examples updated likewise.
-
 
 ## [4.5.0] - 2026-10-24
 
