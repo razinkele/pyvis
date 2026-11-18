@@ -2,6 +2,81 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Breaking Changes
+- **Python 3.11+.** `requires-python` is now `>=3.11` (was `>=3.10`),
+  following Shiny for Python, whose next release drops 3.10. Python 3.10
+  users stay on pyvis-optimized 4.5.x.
+- **`shiny>=1.6.4`** for the `shiny` extra (was `>=1.0`, never tested):
+  1.6.4 fixes a bookmark path-traversal vulnerability, and 1.6.1 added the
+  `session.on_destroy()` that module cleanup uses.
+- **Shiny output size is honoured.** `output_pyvis_network(height=...,
+  width=...)` used to be ignored once the network rendered: the output div
+  carried Shiny's `shiny-html-output` class, which Shiny's CSS turns into
+  `display: contents` (no box, so no size). The class is dropped, so the
+  size you ask for is the size you get. Apps that relied on the old
+  behaviour (network sized by its parent) may need `fill=True`.
+
+### Added
+- `output_pyvis_network(fill=True)` is a standard Shiny fill item, so the
+  network grows inside `page_fillable()`, full-screen cards and sidebars.
+- `theme="auto"` for `output_pyvis_network()` / `render_pyvis_network()` /
+  `set_theme()`: the network follows the page's Bootstrap colour mode
+  (`data-bs-theme` on `<html>`, as toggled by `ui.input_dark_mode()`),
+  including node label colours. An explicit `set_theme("light"/"dark")`
+  stops following; `set_theme("auto")` resumes.
+
+### Changed
+- Shiny output: node labels follow the theme. With `theme="dark"` labels
+  default to `#e0e0e0` (was vis-network's dark grey `#343434`, unreadable on
+  the dark canvas), and `set_theme()` switches them. A label colour you set
+  yourself (`options.nodes.font`, at render or via `set_options()`) or per
+  node is never overridden.
+- Bundled vis-network upgraded from 10.1.2 to 10.1.5. Picks up the upstream
+  fixes for escaped quotes in DOT strings (a `from_DOT()` file with a label
+  such as `"say \"hi\""` previously failed to render at all) and for starting
+  a view animation while another is pending (`fit()`/`focus()`/`move_to()`
+  and the search box's animated focus).
+
+### Security
+- Remote vis-network assets now carry Subresource Integrity hashes
+  (`integrity` + `crossorigin` on the unpkg `<script>`/`<link>`), as the
+  `cdn_resources="remote"` docs already claimed. `remote_esm` covers the CSS;
+  its JS is loaded by an ES-module `import`, which cannot carry SRI.
+
+### Fixed
+- `pyvis_network_server` releases its browser-side network (vis instance,
+  DataSets, observers) when the parent removes the module with
+  `await session.destroy(id)` (Shiny >= 1.6.1).
+- Shiny controller commands (`ctrl.fit()`, `select_nodes()`, `add_node()`,
+  ...) issued while their network is being re-rendered (e.g. by the effect
+  that just changed its data) used to reach the old network and be lost
+  when the new one replaced it. They are now sent right after the outputs
+  carrying the new network (via `session.on_flushed()`), in the order
+  issued. All other commands are still sent immediately, so step-by-step
+  async effects show each step.
+- `add_node(color=..., group=...)` warns that the colour is ignored (the
+  group's style applies) instead of dropping it silently, and points to
+  `set_group()`. `group=None` now means "no group", so the colour is kept.
+- `cdn_resources="remote_esm"` rendered nothing: the main script ran as an
+  ES module, so strict mode threw on an undeclared loop variable and its
+  globals were invisible to `utils.js` (highlighting, menus). It is now a
+  classic script that draws once the module has loaded vis-network, and the
+  module exposes the full namespace, so `from_DOT()` works in this mode too.
+- CSS dimensions accept a flat `calc()` expression, e.g.
+  `output_pyvis_network(..., height="calc(100vh - 40px)")` or
+  `Network(height="calc(100% - 2rem)")`. Only numbers, the existing units and
+  `+ - * /` are allowed inside, so the injection guard still holds. The
+  pattern is now shared by `Network` and the Shiny wrapper. This had made
+  `examples/shiny_demo.py` and `examples/shiny_editor_demo.py` crash at
+  startup.
+- Dark-theme demos are readable: sidebar text no longer inherits bslib's
+  near-black sidebar colour, and `shiny_demo.py` applies its per-group colours via `set_group()`
+  (a node's own `color` is ignored when it has a `group`).
+- `pyvis_network_ui()` no longer emits a `ShinyDeprecationWarning` on
+  Shiny >= 1.8: it uses `ui.output_code()`/`@render.code` instead of the
+  deprecated `ui.output_text_verbatim()`. Docs and examples updated likewise.
 
 
 ## [4.5.0] - 2026-10-24

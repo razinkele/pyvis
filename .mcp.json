@@ -1,5 +1,11 @@
 {
   "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "playwright-mcp"],
+      "disabled": false,
+      "description": "Browser automation for testing HTML output and interactive features"
+    },
     "github": {
       "command": "cmd",
       "args": ["/c", "npx", "-y", "@anthropic-ai/github-mcp-server"],

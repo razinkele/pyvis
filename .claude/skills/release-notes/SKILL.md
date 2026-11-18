@@ -29,7 +29,12 @@ Automates the full pyvis release workflow. Run with `/release-notes <bump-type>`
 
 - NEVER push automatically — let the user decide when to push
 - ALWAYS run the full test suite before committing
-- ALWAYS categorize changelog entries (Security, Fixed, Added, Changed, Removed)
-- ALWAYS note breaking changes in the Changed section
+- ALWAYS categorize changelog entries (Breaking Changes, Security, Fixed, Added, Changed, Removed)
+- ALWAYS list breaking changes under a `### Breaking Changes` heading at the top of the
+  release section, as earlier releases do (auto_version.py emits that heading first)
+- A breaking change (`type!:` or a `BREAKING CHANGE:` footer) makes auto_version.py pick
+  a major bump; pass an explicit bump only if the user decides otherwise
+- Hand-written notes under `## [Unreleased]` become the release notes; the entries
+  generated from commit subjects are used only when that section is empty
 - Use `git log --oneline <last-tag>..HEAD` to find changes since last release
 - If no tag exists, use `git log --oneline` for recent commits

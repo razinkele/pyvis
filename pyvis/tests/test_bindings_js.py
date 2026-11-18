@@ -19,8 +19,9 @@ window.Shiny = {
   setInputValue: function(id, v) { this.inputs[id] = v; },
   handlers: {},
   addCustomMessageHandler: function(n, f) { this.handlers[n] = f; },
-  OutputBinding: class {},
-  outputBindings: { register: function(b) { window.__pyvisBinding = b; } },
+  // Like Shiny's default: an error replaces the element's content.
+  OutputBinding: class { renderError(el, err) { el.textContent = err.message; } },
+  outputBindings: { register: function(b, name, priority) { window.__pyvisBinding = b; window.__pyvisBindingPriority = priority; } },
 };
 """
 
@@ -243,3 +244,142 @@ def test_stabilize_zero_iterations_passed_through(pyvis_page):
     )
     command(pyvis_page, "stabilize", {"iterations": 0})
     assert pyvis_page.evaluate("() => window.__stabilizeArgs") == [0]
+
+
+def label_color(page, node_id=1):
+    return page.evaluate(f"() => window.pyvisNetworks['net'].network.body.nodes[{node_id}].options.font.color")
+
+
+class TestThemeLabelColor:
+    """Node labels follow the theme unless the user chose a label colour."""
+
+    DARK, LIGHT = "#e0e0e0", "#343434"  # LIGHT is vis-network's own default
+
+    def test_dark_theme_render_uses_light_labels(self, pyvis_page):
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "dark"})
+        assert label_color(pyvis_page) == self.DARK
+
+    def test_light_theme_render_keeps_vis_default(self, pyvis_page):
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "light"})
+        assert label_color(pyvis_page) == self.LIGHT
+
+    def test_set_theme_switches_label_colour_both_ways(self, pyvis_page):
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "dark"})
+        command(pyvis_page, "setTheme", {"theme": "light"})
+        assert label_color(pyvis_page) == self.LIGHT
+        command(pyvis_page, "setTheme", {"theme": "dark"})
+        assert label_color(pyvis_page) == self.DARK
+
+    def test_user_font_colour_option_wins(self, pyvis_page):
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "dark"},
+               options={"physics": False, "nodes": {"font": {"color": "#ff0000"}}})
+        assert label_color(pyvis_page) == "#ff0000"
+        command(pyvis_page, "setTheme", {"theme": "light"})
+        assert label_color(pyvis_page) == "#ff0000"
+
+    def test_set_options_font_colour_is_respected_by_later_theme_switch(self, pyvis_page):
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "dark"})
+        command(pyvis_page, "setOptions", {"options": {"nodes": {"font": {"color": "#00ff00"}}}})
+        command(pyvis_page, "setTheme", {"theme": "light"})
+        assert label_color(pyvis_page) == "#00ff00"
+
+    def test_per_node_font_colour_wins(self, pyvis_page):
+        render(pyvis_page, [{"id": 1, "label": "a", "font": {"color": "#123456"}}], [],
+               config={"theme": "dark"})
+        assert label_color(pyvis_page) == "#123456"
+        command(pyvis_page, "setTheme", {"theme": "light"})
+        assert label_color(pyvis_page) == "#123456"
+
+
+def test_binding_outranks_shiny_builtin_bindings(pyvis_page):
+    """Shiny's built-in output bindings register at priority 0 and ties go to
+    whichever script loaded last; an explicit higher priority removes the
+    dependence on load order."""
+    assert (pyvis_page.evaluate("window.__pyvisBindingPriority") or 0) > 0
+
+
+def container_theme(page):
+    return page.evaluate(
+        "() => (window.pyvisNetworks['net'].container.className.match(/pyvis-theme-(\w+)/) || [])[1]")
+
+
+def set_bs_theme(page, value):
+    page.evaluate("v => v === null ? document.documentElement.removeAttribute('data-bs-theme')"
+                  " : document.documentElement.setAttribute('data-bs-theme', v)", value)
+    page.wait_for_timeout(50)  # MutationObserver callbacks are async
+
+
+class TestAutoTheme:
+    """theme='auto' follows Bootstrap's data-bs-theme on <html>, which Shiny's
+    ui.input_dark_mode() toggles. No attribute means light, like Bootstrap."""
+
+    def test_auto_starts_from_data_bs_theme(self, pyvis_page):
+        set_bs_theme(pyvis_page, "dark")
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "auto"})
+        assert container_theme(pyvis_page) == "dark"
+        assert label_color(pyvis_page) == TestThemeLabelColor.DARK
+
+    def test_auto_without_attribute_is_light(self, pyvis_page):
+        set_bs_theme(pyvis_page, None)
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "auto"})
+        assert container_theme(pyvis_page) == "light"
+
+    def test_auto_follows_attribute_changes(self, pyvis_page):
+        set_bs_theme(pyvis_page, "light")
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "auto"})
+        set_bs_theme(pyvis_page, "dark")
+        assert container_theme(pyvis_page) == "dark"
+        assert label_color(pyvis_page) == TestThemeLabelColor.DARK
+        set_bs_theme(pyvis_page, "light")
+        assert container_theme(pyvis_page) == "light"
+        assert label_color(pyvis_page) == TestThemeLabelColor.LIGHT
+
+    def test_explicit_set_theme_stops_following_and_auto_resumes(self, pyvis_page):
+        set_bs_theme(pyvis_page, "light")
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "auto"})
+        command(pyvis_page, "setTheme", {"theme": "dark"})
+        set_bs_theme(pyvis_page, "light")
+        assert container_theme(pyvis_page) == "dark"
+        command(pyvis_page, "setTheme", {"theme": "auto"})
+        assert container_theme(pyvis_page) == "light"
+        set_bs_theme(pyvis_page, "dark")
+        assert container_theme(pyvis_page) == "dark"
+
+    def test_fixed_theme_ignores_attribute(self, pyvis_page):
+        set_bs_theme(pyvis_page, "light")
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "dark"})
+        set_bs_theme(pyvis_page, "light")
+        assert container_theme(pyvis_page) == "dark"
+
+    def test_destroy_disconnects_the_theme_observer(self, pyvis_page):
+        set_bs_theme(pyvis_page, "light")
+        render(pyvis_page, [{"id": 1, "label": "a"}], [], config={"theme": "auto"})
+        command(pyvis_page, "destroy", {})
+        errors = []
+        pyvis_page.on("pageerror", lambda e: errors.append(str(e)))
+        set_bs_theme(pyvis_page, "dark")
+        assert errors == []
+
+
+def test_output_error_tears_down_network_so_commands_queue(pyvis_page):
+    """Shiny's renderError replaces the output's content (an error message, or
+    nothing after req()). The detached network must be released, so commands
+    sent before the next render are queued for it instead of lost."""
+    render(pyvis_page, [{"id": 1}, {"id": 2}], [])
+    pyvis_page.evaluate(
+        "() => window.__pyvisBinding.renderError(document.getElementById('net'), {message: 'boom', type: null})")
+    assert pyvis_page.evaluate("() => window.pyvisNetworks['net'] === undefined")
+    command(pyvis_page, "selectNodes", {"nodeIds": [2], "highlightEdges": False})
+    render(pyvis_page, [{"id": 1}, {"id": 2}], [])
+    assert pyvis_page.evaluate("() => window.pyvisNetworks['net'].network.getSelectedNodes()") == [2]
+
+
+def test_destroy_without_a_network_is_not_replayed_on_next_render(pyvis_page):
+    """destroy for an output with no network (e.g. a module whose data was
+    None) must not be queued: a module re-created under the same id would
+    replay it and tear down its new network. It also drops stale commands."""
+    command(pyvis_page, "selectNodes", {"nodeIds": [1], "highlightEdges": False})
+    command(pyvis_page, "destroy", {})
+    render(pyvis_page, [{"id": 1}, {"id": 2}], [])
+    assert pyvis_page.evaluate("() => !!(window.pyvisNetworks['net'] && window.pyvisNetworks['net'].network)")
+    assert pyvis_page.evaluate("() => window.pyvisNetworks['net'].network.getSelectedNodes()") == []

@@ -58,7 +58,7 @@ from pyvis.shiny import output_pyvis_network, render_pyvis_network
 
 app_ui = ui.page_fluid(
     output_pyvis_network("my_network", height="600px"),
-    ui.output_text_verbatim("selected")
+    ui.output_code("selected")
 )
 
 def server(input, output, session):
@@ -70,7 +70,7 @@ def server(input, output, session):
         net.add_edge(1, 2)
         return net
     
-    @render.text
+    @render.code
     def selected():
         event = input.my_network_selectNode()
         if event:
@@ -233,7 +233,7 @@ ctrl = PyVisNetworkController("my_network", session)
 | Method | Description | Parameters |
 |--------|-------------|------------|
 | `set_options(options)` | Update options | vis.js options dict |
-| `set_theme(theme)` | Switch theme | `"light"` or `"dark"` |
+| `set_theme(theme)` | Switch theme | `"light"`, `"dark"` or `"auto"` (follow `ui.input_dark_mode()`) |
 
 ### Manipulation Methods
 
@@ -469,7 +469,17 @@ def _on_node_template_mode():
 
 ### App-Level Theme Toggle
 
-To toggle both the Shiny app theme and the pyvis network theme:
+If the app uses Shiny's dark-mode switch, let the network follow it:
+
+```python
+app_ui = ui.page_fluid(
+    ui.input_dark_mode(),
+    output_pyvis_network("net", theme="auto"),  # follows data-bs-theme
+)
+```
+
+For a custom toggle that switches both the Shiny app theme and the pyvis
+network theme yourself:
 
 ```python
 @reactive.effect

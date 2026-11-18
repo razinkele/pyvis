@@ -186,6 +186,19 @@ def update_recipe_yaml(new_version):
 
 
 def update_changelog(new_version, categorized):
+    """Add a ``## [new_version]`` section to CHANGELOG.md.
+
+    Hand-written notes under ``## [Unreleased]`` become the release notes;
+    the entries generated from commit subjects are used only when there are
+    none (appending both repeated every heading in the section).
+    """
+    text = CHANGELOG.read_text(encoding="utf-8")
+    m = re.search(r"^## \[Unreleased\][^\n]*\n(.*?)(?=^## \[|\Z)", text, flags=re.MULTILINE | re.DOTALL)
+    curated = m.group(1).strip("\n") if m else ""
+    if m:
+        text = text[:m.start()] + text[m.end():]
+    if curated:
+        categorized = {}
     today = date.today().isoformat()
     lines = [f"\n## [{new_version}] - {today}\n"]
     order = [
@@ -199,13 +212,8 @@ def update_changelog(new_version, categorized):
             for entry in entries:
                 lines.append(f"- {entry}\n")
     new_section = "".join(lines)
-    text = CHANGELOG.read_text(encoding="utf-8")
-    m = re.search(r"^## \[Unreleased\][^\n]*\n(.*?)(?=^## \[|\Z)", text, flags=re.MULTILINE | re.DOTALL)
-    if m:
-        unreleased_body = m.group(1).strip("\n")
-        text = text[:m.start()] + text[m.end():]
-        if unreleased_body:
-            new_section += "\n" + unreleased_body + "\n"
+    if curated:
+        new_section += "\n" + curated + "\n"
     first_heading = text.find("\n## ")
     if first_heading == -1:
         text = text + "\n" + new_section

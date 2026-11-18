@@ -40,6 +40,57 @@ if (typeof Shiny !== 'undefined') {
         }
     }
 
+    // Default node label colour per theme. 'light' is vis-network's own
+    // default; 'dark' matches --pyvis-text in styles.css. Applied only when the
+    // user has not chosen a label colour (options.nodes.font); per-node font
+    // settings always win because vis.js applies them over the global options.
+    var PYVIS_THEME_LABEL_COLOR = { light: '#343434', dark: '#e0e0e0' };
+
+    function pyvisHasUserLabelColor(options) {
+        var font = options && options.nodes && options.nodes.font;
+        // vis.js also accepts a shorthand string such as "14px arial red".
+        return typeof font === 'string' || !!(font && font.color);
+    }
+
+    function pyvisThemeLabelColor(theme) {
+        return PYVIS_THEME_LABEL_COLOR[theme] || PYVIS_THEME_LABEL_COLOR.light;
+    }
+
+    // theme='auto' follows Bootstrap's colour mode, i.e. data-bs-theme on
+    // <html>, which Shiny's ui.input_dark_mode() toggles. No attribute means
+    // light, as Bootstrap renders the page.
+    function pyvisResolveTheme(theme) {
+        if (theme !== 'auto') return theme || 'light';
+        return document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light';
+    }
+
+    // Switch a live network's container theme and, unless the user chose a
+    // label colour, its default node label colour.
+    function pyvisApplyTheme(ref, theme) {
+        ref.container.className = ref.container.className
+            .replace(/pyvis-theme-\w+/, 'pyvis-theme-' + theme);
+        if (!ref.userLabelColor) {
+            ref.network.setOptions({ nodes: { font: { color: pyvisThemeLabelColor(theme) } } });
+        }
+    }
+
+    function pyvisStopAutoTheme(ref) {
+        if (ref._themeObserver) {
+            ref._themeObserver.disconnect();
+            ref._themeObserver = null;
+        }
+    }
+
+    function pyvisStartAutoTheme(ref) {
+        pyvisStopAutoTheme(ref);
+        pyvisApplyTheme(ref, pyvisResolveTheme('auto'));
+        ref._themeObserver = new MutationObserver(function() {
+            pyvisApplyTheme(ref, pyvisResolveTheme('auto'));
+        });
+        ref._themeObserver.observe(document.documentElement,
+            { attributes: true, attributeFilter: ['data-bs-theme'] });
+    }
+
     // Tear down a previous network instance: removes global listeners,
     // deregisters DataSet handlers, disconnects the ResizeObserver, destroys
     // the vis.js network, and clears the registry entry.
@@ -60,8 +111,9 @@ if (typeof Shiny !== 'undefined') {
         // Clear DataSets
         if (prev.nodes) prev.nodes.clear();
         if (prev.edges) prev.edges.clear();
-        // Disconnect resize observer
+        // Disconnect resize and theme observers
         if (prev.resizeObserver) prev.resizeObserver.disconnect();
+        pyvisStopAutoTheme(prev);
         // Destroy vis.js network (removes its own event handlers)
         if (prev.network) prev.network.destroy();
         delete window.pyvisNetworks[outputId];
@@ -105,7 +157,8 @@ if (typeof Shiny !== 'undefined') {
                 try { datasetConfig = JSON.parse(el.dataset.pyvisConfig) || {}; } catch (e) { datasetConfig = {}; }
             }
             const config = Object.assign({}, datasetConfig, payload.config || {});
-            const theme = config.theme || 'light';
+            const requestedTheme = config.theme || 'light';
+            const theme = pyvisResolveTheme(requestedTheme);
             const showToolbar = config.showToolbar !== false;
             const showSearch = config.showSearch !== false;
             const showLayoutSwitcher = config.showLayoutSwitcher !== false;
@@ -233,6 +286,14 @@ if (typeof Shiny !== 'undefined') {
             var options = payload.options || {};
             if (typeof options === 'string') {
                 options = JSON.parse(options);
+            }
+
+            // Theme-aware label colour (copy, so the payload is not mutated).
+            var userLabelColor = pyvisHasUserLabelColor(options);
+            if (!userLabelColor && theme === 'dark') {
+                var nodeOpts = Object.assign({}, options.nodes);
+                nodeOpts.font = Object.assign({}, nodeOpts.font, { color: pyvisThemeLabelColor(theme) });
+                options = Object.assign({}, options, { nodes: nodeOpts });
             }
 
             // === MANIPULATION MODALS ===
@@ -687,9 +748,11 @@ if (typeof Shiny !== 'undefined') {
                 container: container,
                 canvasDiv: canvasDiv,
                 outputId: outputId,
-                resizeObserver: null
+                resizeObserver: null,
+                userLabelColor: userLabelColor
             };
             window.pyvisNetworks[outputId] = ref;
+            if (requestedTheme === 'auto') pyvisStartAutoTheme(ref);
 
             // Attach deferred handler references for cleanup on re-render
             if (typeof escHandler !== 'undefined') {
@@ -1071,10 +1134,13 @@ if (typeof Shiny !== 'undefined') {
         }
     }
 
-    // Register the output binding
+    // Register the output binding above Shiny's built-in output bindings
+    // (priority 0), so it never depends on script load order to claim
+    // .pyvis-network-output elements.
     Shiny.outputBindings.register(
         new PyVisOutputBinding(),
-        'pyvis-network-output'
+        'pyvis-network-output',
+        10
     );
 
     // === COMMAND HANDLER ===
@@ -1093,6 +1159,20 @@ if (typeof Shiny !== 'undefined') {
         var command = message.command;
         var args = pyvisUndefNulls(message.args || {});
         var ref = window.pyvisNetworks[outputId];
+
+        // Explicit teardown, for a server that knows the output is going
+        // away (e.g. from session.on_destroy) before the DOM node is
+        // removed. Releases the vis network, its DataSets, the resize and
+        // theme observers and the global keydown handler. Handled before
+        // the queue: with no network there is nothing to destroy, and a
+        // queued destroy would tear down the next network rendered under
+        // this id (e.g. a module re-created with the same id). Commands
+        // still queued for the old output are dropped too.
+        if (command === 'destroy') {
+            delete window.pyvisPendingCommands[outputId];
+            pyvisDestroy(outputId);
+            return;
+        }
 
         if (!ref || !ref.network) {
             (window.pyvisPendingCommands[outputId] = window.pyvisPendingCommands[outputId] || []).push(message);
@@ -1196,22 +1276,19 @@ if (typeof Shiny !== 'undefined') {
 
             // Options
             case 'setOptions':
+                if (pyvisHasUserLabelColor(args.options)) ref.userLabelColor = true;
                 network.setOptions(args.options);
                 break;
 
             // Theme
             case 'setTheme':
                 var newTheme = args.theme || 'light';
-                ref.container.className = ref.container.className
-                    .replace(/pyvis-theme-\w+/, 'pyvis-theme-' + newTheme);
-                break;
-
-            // Explicit teardown, for a server that knows the output is going
-            // away (e.g. from session.on_destroy) before the DOM node is
-            // removed. Releases the vis network, its DataSets, the resize
-            // observer and the global keydown handler.
-            case 'destroy':
-                pyvisDestroy(outputId);
+                if (newTheme === 'auto') {
+                    pyvisStartAutoTheme(ref);
+                } else {
+                    pyvisStopAutoTheme(ref);  // an explicit theme stops following
+                    pyvisApplyTheme(ref, newTheme);
+                }
                 break;
 
             // Queries - responses sent back as Shiny inputs

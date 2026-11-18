@@ -93,3 +93,78 @@ class TestFromDOTValidation:
             assert "A" in net.dot_lang
         finally:
             os.unlink(tmppath)
+
+
+class TestCSSDimensionCalc:
+    """calc() dimensions are accepted; anything that could escape the style
+    attribute is still rejected (shared by Network and the Shiny wrapper)."""
+
+    VALID = [
+        "600px", "100%", "1.5em", "50vh",
+        "calc(100vh - 40px)", "calc(100% - 2rem)", "calc(50vw + 10px)",
+        "calc(100vh/2)", "calc(2 * 300px)", "calc( 100% - 1.5em - 4px )",
+    ]
+    INVALID = [
+        "calc(100vh - 40px); background: red", "calc(100vh - 40px))",
+        "calc(url(x))", "calc(expression(alert(1)))", "calc()", "calc(100vh -)",
+        "calc(var(--h))", "calc(100vh - 40px", 'calc(1px)" onload="x',
+        "100px; color: red", "expression(alert(1))", "auto",
+        "600px\n", "calc(100vh - 40px)\n",  # `$` alone would accept a trailing newline
+    ]
+
+    @pytest.mark.parametrize("value", VALID)
+    def test_network_accepts(self, value):
+        net = Network(height=value, width=value)
+        assert net.height == value and net.width == value
+
+    @pytest.mark.parametrize("value", INVALID)
+    def test_network_rejects(self, value):
+        with pytest.raises(ValueError):
+            Network(height=value)
+
+    @pytest.mark.parametrize("value", VALID)
+    def test_shiny_accepts(self, value):
+        w = pytest.importorskip("pyvis.shiny.wrapper")
+        assert w._validate_css_dim(value, "height") == value
+
+    @pytest.mark.parametrize("value", INVALID)
+    def test_shiny_rejects(self, value):
+        w = pytest.importorskip("pyvis.shiny.wrapper")
+        with pytest.raises(ValueError):
+            w._validate_css_dim(value, "height")
+
+
+class TestCDNSubresourceIntegrity:
+    """Remote vis-network assets carry SRI hashes that match the bundled files
+    (unpkg serves the same bytes as the npm tarball the bundle comes from)."""
+
+    @staticmethod
+    def _sri(path):
+        import base64
+        import hashlib
+        return "sha384-" + base64.b64encode(hashlib.sha384(path.read_bytes()).digest()).decode()
+
+    def _lib(self):
+        from pathlib import Path
+        from pyvis import vis_config
+        return Path(vis_config.__file__).parent / "templates" / "lib" / vis_config.LOCAL_LIB_DIR
+
+    def test_constants_match_bundled_files(self):
+        from pyvis import vis_config
+        assert vis_config.VIS_JS_SRI == self._sri(self._lib() / "vis-network.min.js")
+        assert vis_config.VIS_CSS_SRI == self._sri(self._lib() / "vis-network.min.css")
+
+    def test_remote_html_has_integrity(self):
+        from pyvis import vis_config
+        net = Network(cdn_resources="remote")
+        net.add_node(1)
+        html = net.generate_html()
+        assert f'src="{vis_config.VIS_JS_UNPKG}" integrity="{vis_config.VIS_JS_SRI}" crossorigin="anonymous"' in html
+        assert f'href="{vis_config.VIS_CSS_UNPKG}" integrity="{vis_config.VIS_CSS_SRI}" crossorigin="anonymous"' in html
+
+    def test_remote_esm_css_has_integrity(self):
+        from pyvis import vis_config
+        net = Network(cdn_resources="remote_esm")
+        net.add_node(1)
+        html = net.generate_html()
+        assert f'href="{vis_config.VIS_CSS_UNPKG}" integrity="{vis_config.VIS_CSS_SRI}" crossorigin="anonymous"' in html

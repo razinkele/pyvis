@@ -316,11 +316,13 @@ class TestSmallCoreFixes:
 
 
 class TestExamples:
-    def test_edge_attribute_example_runs(self, tmp_path, no_browser):
+    def test_edge_attribute_example_runs(self, tmp_path, no_browser, monkeypatch):
         import runpy
         from pathlib import Path
         example = Path(__file__).resolve().parents[2] / "examples" / "edge_attribute_editing_example.py"
+        monkeypatch.chdir(tmp_path)  # the example writes its HTML to the cwd
         runpy.run_path(str(example), run_name="__main__")
+        assert (tmp_path / "edge_attribute_editing_example.html").exists()
 
 
 class TestNotebookExtra:
@@ -524,3 +526,45 @@ def test_show_warns_in_jupyter_kernel_when_notebook_unset(tmp_path, monkeypatch)
     monkeypatch.setattr(net, "write_html", lambda name, **kw: None)
     with pytest.warns(UserWarning, match="notebook=True"):
         net.show(str(tmp_path / "x.html"))
+
+
+class TestColorWithGroup:
+    """A node's own colour is dropped when it has a group (the group's style
+    applies). Say so instead of silently ignoring it; group=None is no group."""
+
+    def test_color_with_group_warns(self):
+        net = Network()
+        with pytest.warns(UserWarning, match=r"color.*ignored.*group 'g'.*set_group"):
+            net.add_node(1, color="#ff0000", group="g")
+        assert "color" not in net.node_map[1]
+
+    def test_group_without_color_does_not_warn(self, recwarn):
+        Network().add_node(1, group="g")
+        assert not [w for w in recwarn if "ignored" in str(w.message)]
+
+    def test_default_color_with_group_does_not_warn(self, recwarn):
+        # add_nodes() passes the default colour for every node.
+        Network().add_nodes([1, 2], group=["g", "h"])
+        assert not [w for w in recwarn if "ignored" in str(w.message)]
+
+    def test_group_none_keeps_color(self, recwarn):
+        net = Network()
+        net.add_node(1, color="#ff0000", group=None)
+        assert net.node_map[1]["color"] == "#ff0000"
+        assert "group" not in net.node_map[1]
+        assert not [w for w in recwarn if "ignored" in str(w.message)]
+
+
+def test_color_none_with_group_does_not_warn(recwarn):
+    Network().add_node(1, color=None, group="g")
+    assert not [w for w in recwarn if "ignored" in str(w.message)]
+
+
+def test_notebook_iframe_applies_calc_dimensions_as_css(tmp_path):
+    """IPython's IFrame writes width/height as HTML attributes, which cannot
+    express calc(); the dimensions must also be set as CSS on the frame."""
+    pytest.importorskip("IPython")
+    net = Network(height="calc(100vh - 40px)", width="100%")
+    net.add_node(1)
+    html = net.show(str(tmp_path / "nb.html"), notebook=True)._repr_html_()
+    assert 'style="width: 100%; height: calc(100vh - 40px);"' in html

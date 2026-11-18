@@ -51,9 +51,21 @@ CDN_REMOTE = CDNResource.REMOTE.value
 CDN_REMOTE_ESM = CDNResource.REMOTE_ESM.value
 VALID_CDN_RESOURCES = [CDN_LOCAL, CDN_INLINE, CDN_REMOTE, CDN_REMOTE_ESM]
 
+# add_node()'s default colour (vis-network's own default node colour).
+_DEFAULT_NODE_COLOR = '#97c2fc'
+
 # --- CSS Validation Patterns (Security) ---
 # Prevent CSS injection attacks
-_CSS_DIM_RE = re.compile(r'^\d+(\.\d+)?(px|%|em|rem|vh|vw)$')
+# A dimension is a plain length (e.g. "600px", "100%") or a flat calc() of
+# lengths and unitless numbers joined by + - * / (e.g. "calc(100vh - 40px)").
+# No nested parentheses, functions, quotes or semicolons can match, so the
+# value cannot break out of the style attribute it is interpolated into.
+_CSS_LEN = r'\d+(?:\.\d+)?(?:px|%|em|rem|vh|vw)'
+_CSS_CALC_TERM = r'\d+(?:\.\d+)?(?:px|%|em|rem|vh|vw)?'
+_CSS_DIM_RE = re.compile(
+    rf'^(?:{_CSS_LEN}'
+    rf'|calc\(\s*{_CSS_CALC_TERM}(?:\s*[-+*/]\s*{_CSS_CALC_TERM})*\s*\))\Z'  # \Z: no trailing newline
+)
 _CSS_COLOR_RE = re.compile(
     r'^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+|rgba?\(\s*[\d.,\s%]+\)|hsla?\(\s*[\d.,\s%]+\))$'
 )
@@ -466,7 +478,7 @@ class Network:
         n_id: Union[str, int],
         label: Optional[Union[str, int]] = None,
         shape: Optional[str] = None,
-        color: str = '#97c2fc',
+        color: str = _DEFAULT_NODE_COLOR,
         options: Optional[Union[Dict[str, Any], Any]] = None,
         **kw_options: Any
     ) -> None:
@@ -620,9 +632,24 @@ class Network:
                 # overrides the network-wide default; merge_font_color holds
                 # the precedence rule shared with the typed path.
                 node_font_color = kw_options.pop("font_color", None)
+                # group=None (e.g. group=d.get("group")) means "no group".
+                if "group" in kw_options and kw_options["group"] is None:
+                    del kw_options["group"]
                 if shape is None and "group" not in kw_options:
                     shape = "dot"
                 if "group" in kw_options:
+                    # The default colour must not override the group's style,
+                    # so colour is dropped for grouped nodes. An explicit one
+                    # would be silently lost: say so.
+                    if color is not None and color != _DEFAULT_NODE_COLOR:
+                        warnings.warn(
+                            f"add_node({n_id!r}): color={color!r} is ignored because the "
+                            f"node is in group {kw_options['group']!r}; the group's style "
+                            f"applies. Set the colour with set_group({kw_options['group']!r}, "
+                            f"color=...) or drop the group.",
+                            UserWarning,
+                            stacklevel=2,
+                        )
                     n = Node(n_id, shape, label=node_label, font_color=node_font_color,
                              network_font_color=self.font_color, **kw_options)
                 else:
@@ -1241,6 +1268,8 @@ class Network:
                                     vis_css_cdn=vis_config.VIS_CSS_UNPKG,
                                     vis_js_cdn=vis_config.VIS_JS_UNPKG,
                                     vis_esm_cdn=vis_config.VIS_ESM_UNPKG,
+                                    vis_js_sri=vis_config.VIS_JS_SRI,
+                                    vis_css_sri=vis_config.VIS_CSS_SRI,
                                     legend=self.legend,
                                     groups=self.groups,
                                     highlight_degree=self.highlight_degree,
@@ -1351,7 +1380,14 @@ class Network:
                     "show(notebook=True) needs IPython. "
                     "Install with: pip install 'pyvis-optimized[notebook]'"
                 ) from e
-            return IFrame(name, width=self.width, height=self.height)
+            # IFrame writes width/height as HTML attributes, which cannot
+            # express calc(); repeat them as CSS (it wins over attributes).
+            # Re-checked here because the attributes are public and may have
+            # been reassigned since the constructor validated them.
+            extras = []
+            if all(isinstance(v, str) and _CSS_DIM_RE.match(v) for v in (self.width, self.height)):
+                extras.append(f'style="width: {self.width}; height: {self.height};"')
+            return IFrame(name, width=self.width, height=self.height, extras=extras)
 
     def prep_notebook(self,
                       custom_template=False, custom_template_path=None):

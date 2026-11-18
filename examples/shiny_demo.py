@@ -64,6 +64,10 @@ INITIAL_EDGES = [
     {"from": 10, "to": 9, "title": "uses"},
 ]
 
+# A node's own color is dropped when it has a group (the group's style wins),
+# so the per-group colors above are applied as group definitions.
+GROUP_COLORS = {"language": "#3776ab", "framework": "#27ae60", "library": "#e67e22"}
+
 # Node IDs for select dropdowns -- built from initial data
 INITIAL_NODE_CHOICES = {str(n["id"]): f'{n["label"]} ({n["id"]})' for n in INITIAL_NODES}
 
@@ -140,6 +144,8 @@ header::after, .navbar::after {
 
 /* ── Sidebar ── */
 .bslib-sidebar-layout > .sidebar {
+    --bslib-sidebar-fg: var(--pv-text);
+    color: var(--pv-text) !important;
     background: var(--pv-bg-surface) !important;
     border-right: 1px solid var(--pv-border) !important;
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3) !important;
@@ -419,7 +425,7 @@ def _tab_editor():
             ),
             ui.accordion_panel(
                 "Selected Node",
-                ui.output_text_verbatim("selected_info"),
+                ui.output_code("selected_info"),
                 ui.input_text("edit_label", "New Label"),
                 ui.input_text("edit_color", "New Color", value="#e74c3c"),
                 ui.layout_columns(
@@ -522,7 +528,7 @@ def _tab_events():
             ),
             ui.accordion_panel(
                 "Event Log",
-                ui.output_text_verbatim("event_log"),
+                ui.output_code("event_log"),
                 icon=ui.tags.i(class_="fa fa-stream"),
             ),
             id="events_acc",
@@ -562,7 +568,7 @@ def _tab_queries():
             ),
             ui.accordion_panel(
                 "Response",
-                ui.output_text_verbatim("query_response"),
+                ui.output_code("query_response"),
                 icon=ui.tags.i(class_="fa fa-terminal"),
             ),
             id="queries_acc",
@@ -664,8 +670,11 @@ def server(input, output, session):
     @render_pyvis_network(theme="dark")
     def network():
         net = Network(heading="")
+        for group, color in GROUP_COLORS.items():
+            net.set_group(group, color=color)
         for n in INITIAL_NODES:
-            net.add_node(n["id"], label=n["label"], color=n["color"],
+            # Grouped nodes take their colour from GROUP_COLORS via set_group().
+            net.add_node(n["id"], label=n["label"],
                          shape=n["shape"], size=n["size"], group=n.get("group"))
         for e in INITIAL_EDGES:
             net.add_edge(e["from"], e["to"], title=e.get("title", ""))
@@ -676,6 +685,7 @@ def server(input, output, session):
     @reactive.effect
     @reactive.event(input.theme, ignore_init=True)
     def _switch_theme():
+        # Node labels follow the theme automatically.
         ctrl.set_theme(input.theme())
 
     # ── Helper: refresh node-select dropdowns ─────────────────────────
@@ -729,7 +739,7 @@ def server(input, output, session):
     def _on_deselect_node():
         selected_node_id.set(None)
 
-    @render.text
+    @render.code
     def selected_info():
         ev = input.network_selectNode()
         if ev and ev.get("nodeData"):
@@ -930,7 +940,7 @@ def server(input, output, session):
     def _clear_log():
         event_log_entries.set([])
 
-    @render.text
+    @render.code
     def event_log():
         entries = event_log_entries()
         if not entries:
@@ -1053,7 +1063,7 @@ def server(input, output, session):
         known_nodes.set(nodes_update)
         _refresh_selects()
 
-    @render.text
+    @render.code
     def query_response():
         return last_query_response()
 

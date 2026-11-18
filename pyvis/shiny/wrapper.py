@@ -82,7 +82,6 @@ def server(input, output, session):
 import json as _json
 import logging as _logging
 import os
-import re as _re
 from pathlib import Path
 from typing import Optional, Dict, Any, Union, List, Callable
 
@@ -91,7 +90,7 @@ try:
 except ImportError:
     _PYVIS_VERSION = "0.0.0"
 
-_CSS_DIM_RE = _re.compile(r'^\d+(\.\d+)?(px|%|em|rem|vh|vw)$')
+from pyvis.network import _CSS_DIM_RE  # single source of truth (incl. calc())
 
 
 def _validate_css_dim(value: str, name: str) -> str:
@@ -310,7 +309,9 @@ def output_pyvis_network(
             @render_pyvis_network.
         height: Height of the network container (default: "600px").
         width: Width of the network container (default: "100%").
-        theme: Color theme, "light" or "dark" (default: "light").
+        theme: Color theme: "light", "dark", or "auto" to follow the page's
+            Bootstrap colour mode (``data-bs-theme``, as set by
+            ``ui.input_dark_mode()``) (default: "light").
         show_toolbar: Show the toolbar panel (default: True).
         show_search: Show node search input (default: True).
         show_layout_switcher: Show layout toggle (default: True).
@@ -328,7 +329,7 @@ def output_pyvis_network(
         ```python
         app_ui = ui.page_fluid(
             output_pyvis_network("my_network", height="500px"),
-            ui.output_text_verbatim("selected_node")
+            ui.output_code("selected_node")
         )
         ```
     """
@@ -356,14 +357,22 @@ def output_pyvis_network(
     # data-pyvis-config carries the base configuration read by the JS binding.
     # The render payload from transform() only carries the options explicitly
     # set on the renderer (it is {} by default), and those override this base.
-    return ui.div(
+    tag = ui.div(
         *_get_pyvis_dependency(),
         id=resolved_id,
-        class_="pyvis-network-output shiny-html-output",
+        # Not "shiny-html-output": Shiny's CSS gives a rendered
+        # div.shiny-html-output display:contents, which drops this element's
+        # box and so the height/width set below.
+        class_="pyvis-network-output",
         style=f"width: {width}; height: {height}; min-height: 200px;",
         data_pyvis_config=_json.dumps(config),
         **kwargs
     )
+    if fill:
+        # A standard fill item grows inside fillable containers
+        # (page_fillable, full-screen cards, sidebars), like Shiny's outputs.
+        tag = ui.fill.as_fill_item(tag)
+    return tag
 
 
 if SHINY_AVAILABLE:
@@ -380,7 +389,7 @@ if SHINY_AVAILABLE:
         Args:
             height: Height of the rendered network (default: "600px").
             width: Width of the rendered network (default: "100%").
-            theme: Color theme, "light" or "dark" (default: None, inherits
+            theme: Color theme, "light", "dark" or "auto" (default: None, inherits
                 from ``output_pyvis_network``).
             show_toolbar: Show the toolbar panel (default: None, inherits).
             show_search: Show node search input (default: None, inherits).
@@ -461,6 +470,14 @@ if SHINY_AVAILABLE:
                 width=self.width,
                 **{k: v for k, v in overrides.items() if v is not None},
             )
+
+        async def render(self) -> Jsonifiable:
+            # Commands issued once this output is invalidated wait for the
+            # re-rendered network (see _send_network_command). Track before
+            # running the user function, so a run that raises, stops at req()
+            # or returns None is covered too.
+            _track_pending_render(self.output_id)
+            return await super().render()
 
         async def transform(self, value: PyVisNetwork) -> Jsonifiable:
             """
@@ -824,7 +841,7 @@ if SHINY_AVAILABLE:
             """Switch the network container theme without re-rendering.
 
             Args:
-                theme: "light" or "dark"
+                theme: "light", "dark", or "auto" (follow ``data-bs-theme``)
             """
             network_set_theme(self.session, self.output_id, theme)
 
@@ -908,13 +925,74 @@ else:
 # Standalone command functions (alternative to controller class)
 # =============================================================================
 
+# (session id, resolved output id) of network outputs that have been
+# invalidated and whose new value has not reached the browser yet.
+_PENDING_RENDERS: set = set()
+# Keys whose session already has an on_ended cleanup registered.
+_CLEANUP_REGISTERED: set = set()
+
+
+def _track_pending_render(output_id: str) -> None:
+    """Record when this network output is about to be re-rendered.
+
+    Called by ``render_pyvis_network`` while it renders, i.e. inside the
+    output's reactive context. Once that context is invalidated, the output
+    re-renders and the browser replaces the network when the cycle's outputs
+    are sent; until then the key stays in ``_PENDING_RENDERS``.
+    """
+    from shiny.reactive import get_current_context
+    from shiny.session import get_current_session
+
+    session = get_current_session()
+    try:
+        context = get_current_context()
+    except RuntimeError:
+        context = None
+    if session is None or context is None:  # e.g. transform() called directly
+        return
+    key = (session.id, session.ns(output_id))
+
+    # Ending a session invalidates its outputs after the last flush, so the
+    # on_flushed below never runs; drop the entry when the session ends.
+    if key not in _CLEANUP_REGISTERED:
+        _CLEANUP_REGISTERED.add(key)
+
+        def _on_ended():
+            _PENDING_RENDERS.discard(key)
+            _CLEANUP_REGISTERED.discard(key)
+
+        session.on_ended(_on_ended)
+
+    def _on_invalidate():
+        _PENDING_RENDERS.add(key)
+        try:
+            # Cleared right after the outputs carrying the new network are sent.
+            session.on_flushed(lambda: _PENDING_RENDERS.discard(key), once=True)
+        except Exception:  # session already ended
+            _PENDING_RENDERS.discard(key)
+
+    context.on_invalidate(_on_invalidate)
+
+
 def _send_network_command(
     session: 'Session',
     output_id: str,
     command: str,
     args: Optional[Dict] = None
 ):
-    """Helper to send command to network."""
+    """Send a command to a network output.
+
+    Custom messages reach the browser at once, but outputs are sent at the end
+    of the session's reactive cycle. A command issued while the network output
+    is invalidated (e.g. by the effect that changed its data) would hit the old
+    network and be lost when the re-rendered one replaces it. Such commands
+    are sent from ``session.on_flushed()`` instead: right after the outputs
+    that carry the new network, in the order issued. A pending re-render
+    always ends in an output flush, so they are always delivered.
+
+    Every other command is sent immediately, so step-by-step updates from an
+    async effect (command, ``await``, command) show as they happen.
+    """
     if not SHINY_AVAILABLE:
         raise ImportError("Shiny is required")
 
@@ -925,6 +1003,18 @@ def _send_network_command(
         "command": command,
         "args": args or {}
     }
+
+    pending = (getattr(session, "id", None), message["outputId"]) in _PENDING_RENDERS
+    if pending and hasattr(session, "on_flushed"):
+        async def _send_after_outputs():
+            try:
+                await session.send_custom_message("pyvis-command", message)
+            except Exception as e:  # keep other flushed callbacks running
+                _logger.error("PyVis command %r failed: %s", command, e, exc_info=e)
+
+        session.on_flushed(_send_after_outputs, once=True)
+        return
+
     try:
         loop = asyncio.get_running_loop()
         task = loop.create_task(
@@ -1137,7 +1227,7 @@ def network_set_theme(session: 'Session', output_id: str, theme: str):
     Args:
         session: The Shiny session object.
         output_id: The ID of the network output.
-        theme: "light" or "dark"
+        theme: "light", "dark", or "auto" (follow ``data-bs-theme``)
     """
     _send_network_command(session, output_id, "setTheme", {"theme": theme})
 
@@ -1355,7 +1445,7 @@ if SHINY_AVAILABLE:
             *controls,
             output_pyvis_network("network", height=height, width=width),
             ui.div(
-                ui.output_text_verbatim("selection_info"),
+                ui.output_code("selection_info"),
                 style="margin-top: 10px; font-size: 12px;"
             )
         )
@@ -1382,7 +1472,24 @@ if SHINY_AVAILABLE:
                 the physics input is not read.
         """
         from pyvis.network import Network
-        
+
+        # When the parent removes this module with session.destroy(id)
+        # (Shiny >= 1.6.1), release the browser-side network too. Resolve the
+        # id now: the destroy callback does not run in this namespace.
+        if hasattr(session, "on_destroy"):
+            network_id = resolve_id("network")
+            # Ending the whole session also runs destroy callbacks (after the
+            # on_ended ones), but then the browser is gone and the send would
+            # only fail on a closed connection: skip it.
+            session_ended = []
+            session.on_ended(lambda: session_ended.append(True))
+
+            def _destroy_network():
+                if not session_ended:
+                    network_destroy(session, network_id)
+
+            session.on_destroy(_destroy_network)
+
         @render_pyvis_network
         def network():
             data = network_data()
@@ -1402,7 +1509,7 @@ if SHINY_AVAILABLE:
             return net
 
         @output
-        @render.text
+        @render.code
         def selection_info():
             info = []
             if 'network_selectNode' in input and input.network_selectNode():

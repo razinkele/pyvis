@@ -171,3 +171,43 @@ def test_cluster_props_already_wrapped_pass_through(fake_session, run_async, fn)
     wrapped = {"clusterNodeProperties": {"label": "C"}}
     run_async(fn, fake_session, "net", 3, wrapped)
     assert fake_session.last()[1]["options"] == wrapped
+
+
+# --- delivery timing ----------------------------------------------------------
+
+def test_command_for_pending_render_waits_for_outputs_in_order(fake_session, _isolated_running_loop):
+    """While the network output is invalidated, commands wait for on_flushed
+    (after the outputs that carry the new network) and keep their order."""
+    import asyncio
+
+    flushed = []
+    fake_session.id = "s1"
+    fake_session.on_flushed = lambda fn, once=True: flushed.append(fn)
+    w._PENDING_RENDERS.add(("s1", "net"))
+    try:
+        async def go():
+            w.network_add_node(fake_session, "net", {"id": 1})
+            w.network_update_node(fake_session, "net", {"id": 1, "label": "x"})
+            await asyncio.sleep(0)
+            assert fake_session.messages == []  # nothing before the outputs
+            for fn in flushed:  # Shiny awaits them in registration order
+                await fn()
+
+        asyncio.run(go())
+    finally:
+        w._PENDING_RENDERS.discard(("s1", "net"))
+    assert [m["command"] for _, m in fake_session.messages] == ["addNode", "updateNode"]
+
+
+def test_command_without_pending_render_is_sent_immediately(fake_session, run_async):
+    def no_defer(fn, once=True):
+        raise AssertionError("deferred although no re-render is pending")
+
+    fake_session.id = "s1"
+    fake_session.on_flushed = no_defer
+    w._PENDING_RENDERS.add(("s1", "other-output"))  # a different output
+    try:
+        run_async(w.network_fit, fake_session, "net")
+    finally:
+        w._PENDING_RENDERS.discard(("s1", "other-output"))
+    assert fake_session.last()[0] == "fit"

@@ -32,7 +32,9 @@ INITIAL_NODES = [
     {"id": 5, "label": "Epsilon", "color": "#9b59b6", "shape": "diamond",  "size": 32},
     {"id": 6, "label": "Zeta",    "color": "#1abc9c", "shape": "dot",      "size": 22},
     {"id": 7, "label": "Eta",     "color": "#e67e22", "shape": "ellipse",  "size": 26},
-    {"id": 8, "label": "Theta",   "color": "#34495e", "shape": "box",      "size": 28},
+    # Box labels sit inside the (dark) node, so keep them white in both themes.
+    {"id": 8, "label": "Theta",   "color": "#34495e", "shape": "box",      "size": 28,
+     "font": {"color": "#ffffff"}},
 ]
 
 INITIAL_EDGES = [
@@ -124,6 +126,8 @@ header::after, .navbar::after {
 }
 
 .bslib-sidebar-layout > .sidebar {
+    --bslib-sidebar-fg: var(--text);
+    color: var(--text) !important;
     background: var(--bg-surface) !important;
     border-right: 1px solid var(--border) !important;
 }
@@ -251,7 +255,7 @@ app_ui = ui.page_sidebar(
             # ── Edit Node ──
             ui.accordion_panel(
                 "Edit Node",
-                ui.output_text_verbatim("selected_node_info"),
+                ui.output_code("selected_node_info"),
                 ui.input_text("edit_node_label", "Label"),
                 ui.layout_columns(
                     ui.input_text("edit_node_color", "Color", value="#e74c3c"),
@@ -268,7 +272,7 @@ app_ui = ui.page_sidebar(
             # ── Edit Edge ──
             ui.accordion_panel(
                 "Edit Edge",
-                ui.output_text_verbatim("selected_edge_info"),
+                ui.output_code("selected_edge_info"),
                 ui.input_text("edit_edge_label", "Label"),
                 ui.layout_columns(
                     ui.input_text("edit_edge_color", "Color", value="#95a5a6"),
@@ -373,8 +377,9 @@ def server(input, output, session):
     def network():
         net = Network(heading="")
         for n in INITIAL_NODES:
+            extra = {"font": n["font"]} if "font" in n else {}
             net.add_node(n["id"], label=n["label"], color=n["color"],
-                         shape=n["shape"], size=n["size"])
+                         shape=n["shape"], size=n["size"], **extra)
         for e in INITIAL_EDGES:
             net.add_edge(e["from"], e["to"], id=e["id"],
                          width=e.get("width", 1), color=e.get("color"),
@@ -421,7 +426,7 @@ def server(input, output, session):
     def _on_deselect_node():
         selected_node_id.set(None)
 
-    @render.text
+    @render.code
     def selected_node_info():
         ev = input.network_selectNode()
         if ev and ev.get("nodeData"):
@@ -465,7 +470,7 @@ def server(input, output, session):
     def _on_deselect_edge():
         selected_edge_id.set(None)
 
-    @render.text
+    @render.code
     def selected_edge_info():
         ev = input.network_selectEdge()
         if ev and ev.get("edgeData") and not ev.get("nodeIds"):
