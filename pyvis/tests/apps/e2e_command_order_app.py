@@ -51,7 +51,9 @@ def server(input, output, session):
     @reactive.effect
     @reactive.event(input.add_then_update)
     def _add_then_update():
-        ctrl.add_node({"id": 50, "label": "added"})
+        # "title" is only in addNode: if updateNode arrived first it would
+        # create node 50 itself and the later addNode would fail.
+        ctrl.add_node({"id": 50, "label": "added", "title": "from-add"})
         ctrl.update_node({"id": 50, "label": "updated"})
 
     @reactive.effect

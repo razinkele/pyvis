@@ -158,7 +158,9 @@ def test_commands_in_one_cycle_arrive_in_order(page, order_app):
     controller.InputActionButton(page, "add_then_update").click()
     page.wait_for_function("window.pyvisNetworks['net'].nodes.get(50) !== null", timeout=5_000)
     page.wait_for_timeout(300)
-    assert page.evaluate("window.pyvisNetworks['net'].nodes.get(50).label") == "updated"
+    node = page.evaluate("window.pyvisNetworks['net'].nodes.get(50)")
+    assert node["label"] == "updated"  # updateNode applied...
+    assert node["title"] == "from-add"  # ...on top of addNode, not instead of it
 
 
 def test_command_from_background_task_is_delivered_when_idle(page, order_app):
