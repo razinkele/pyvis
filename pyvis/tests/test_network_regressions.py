@@ -529,14 +529,35 @@ def test_show_warns_in_jupyter_kernel_when_notebook_unset(tmp_path, monkeypatch)
 
 
 class TestColorWithGroup:
-    """A node's own colour is dropped when it has a group (the group's style
-    applies). Say so instead of silently ignoring it; group=None is no group."""
+    """vis-network lets node options override group options. An explicit node
+    colour is therefore kept for a grouped node (it overrides the group for
+    that node); only add_node's *default* colour is dropped, so it cannot mask
+    the group's colour. group=None is no group."""
 
-    def test_color_with_group_warns(self):
+    def test_explicit_color_with_group_is_kept(self, recwarn):
         net = Network()
-        with pytest.warns(UserWarning, match=r"color.*ignored.*group 'g'.*set_group"):
-            net.add_node(1, color="#ff0000", group="g")
+        net.add_node(1, color="#ff0000", group="g")
+        assert net.node_map[1]["color"] == "#ff0000"
+        assert net.node_map[1]["group"] == "g"
+        assert not [w for w in recwarn if "ignored" in str(w.message)]
+
+    def test_default_color_is_dropped_for_grouped_node(self):
+        net = Network()
+        net.add_node(1, group="g")
         assert "color" not in net.node_map[1]
+
+    def test_keyword_and_typed_paths_agree(self):
+        from pyvis.types import NodeOptions
+        kw, typed = Network(), Network()
+        kw.add_node(1, color="#ff0000", group="g")
+        typed.add_node(1, options=NodeOptions(color="#ff0000", group="g"))
+        assert kw.node_map[1]["color"] == typed.node_map[1]["color"] == "#ff0000"
+
+    def test_add_nodes_explicit_colors_with_groups_are_kept(self):
+        net = Network()
+        net.add_nodes([1, 2], color=["#ff0000", "#00ff00"], group=["g", "h"])
+        assert net.node_map[1]["color"] == "#ff0000"
+        assert net.node_map[2]["color"] == "#00ff00"
 
     def test_group_without_color_does_not_warn(self, recwarn):
         Network().add_node(1, group="g")

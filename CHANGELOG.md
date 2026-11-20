@@ -3,6 +3,20 @@
 All notable changes to this project are documented in this file.
 
 
+## [Unreleased]
+
+### Fixed
+- `add_node(color=..., group=...)` keeps the explicit colour again instead of
+  dropping it with a warning. vis-network gives node options precedence over
+  group options (verified in the bundled vis-network 10.1.5: a node in a blue
+  group with its own red colour renders red), so the colour was never
+  "ignored because the group's style applies" — pyvis was discarding it. Only
+  `add_node`'s default colour (`#97c2fc`) is still dropped for grouped nodes,
+  so it cannot mask the group's colour. The keyword path now agrees with
+  `add_node(options=NodeOptions(color=..., group=...))`, which always kept it.
+  Apps that worked around the 5.0.0 warning with `set_group(group, color=...)`
+  are unaffected.
+
 ## [5.0.0] - 2026-11-18
 
 ### Breaking Changes

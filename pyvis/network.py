@@ -637,19 +637,12 @@ class Network:
                     del kw_options["group"]
                 if shape is None and "group" not in kw_options:
                     shape = "dot"
-                if "group" in kw_options:
-                    # The default colour must not override the group's style,
-                    # so colour is dropped for grouped nodes. An explicit one
-                    # would be silently lost: say so.
-                    if color is not None and color != _DEFAULT_NODE_COLOR:
-                        warnings.warn(
-                            f"add_node({n_id!r}): color={color!r} is ignored because the "
-                            f"node is in group {kw_options['group']!r}; the group's style "
-                            f"applies. Set the colour with set_group({kw_options['group']!r}, "
-                            f"color=...) or drop the group.",
-                            UserWarning,
-                            stacklevel=2,
-                        )
+                if "group" in kw_options and (color is None or color == _DEFAULT_NODE_COLOR):
+                    # vis-network lets node options override group options, so
+                    # the *default* colour must not be emitted for a grouped
+                    # node or it would mask the group's colour. An explicit
+                    # colour is kept: it overrides the group for this node,
+                    # exactly as with options=NodeOptions(color=..., group=...).
                     n = Node(n_id, shape, label=node_label, font_color=node_font_color,
                              network_font_color=self.font_color, **kw_options)
                 else:
